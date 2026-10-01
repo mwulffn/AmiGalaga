@@ -93,7 +93,7 @@ How it counts time:
 - At 1.2x the per-frame move is larger, so "reached home" accepts +-2
   units instead of +-1, and "reached dive depth" accepts having passed it.
 
-Result over 624 runs (24 entry paths, both sides, every formation slot
+Result over 636 runs (24 entry paths, both sides, every formation slot
 for the normal-stage paths, plus 120 dives started from states the real
 game produced): the exact build is identical to the arcade in all of
 them. The PAL build always ends the same way (home, or off screen) and
