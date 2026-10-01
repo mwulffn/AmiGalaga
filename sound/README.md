@@ -10,6 +10,7 @@ or distributed.
 | File | What it is |
 |---|---|
 | `galaga_sound.py` | the sound driver (the arcade's own program in a Z80 emulator), the sound chip model, the list of sounds |
+| `native.py` | the driver rewritten by hand as plain logic over the ROM's tables: the blueprint for the 68000 port; checks itself against `Driver` |
 | `extract.py` | plays every sound on its own; writes `build/wav/`, `build/stream/`, `build/waves.bin`, `build/sounds.txt` |
 | `trace_sound.lua` | MAME script: plays the game and logs every sound driver tick |
 | `validate.py` | replays a trace through the driver and compares what it writes to the chip |
