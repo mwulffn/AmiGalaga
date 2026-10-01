@@ -20,9 +20,10 @@ FLIGHT_FLYING	equ	0
 FLIGHT_HOME	equ	1		; reached its place in the formation
 FLIGHT_GONE	equ	2		; its script ended
 
-; a STAGE_TEST build logs these two, and launches
+; a STAGE_TEST build logs these two, launches, and a checksum of the formation's table each frame
 STAGE_LAUNCHED	equ	0
-STAGE_LOG_BYTES	equ	4*2048
+STAGE_FORMATION	equ	3
+STAGE_LOG_BYTES	equ	4*4096
 
 ; fl_flags bits
 FLB_ACTIVE	equ	0

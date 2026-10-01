@@ -65,6 +65,7 @@ class Launcher:
         self.table, self.at = wave_table(rom, stage, rank), 0
         self.entries, self.starts = rom.entry_paths(), rom.start_positions()
         self.flying = 0  # how many were flying a frame ago: the arcade hears of a landing a frame late
+        self.all_in = False  # every wave launched, and nothing flying since
 
     def done(self) -> bool:
         return self.table[self.at] == WAVE_END
@@ -73,6 +74,7 @@ class Launcher:
         c = self.table[self.at]
         flying, self.flying = self.flying, flying
         if c == WAVE_END:
+            self.all_in = self.all_in or not flying
             return None
         if c == WAVE_START:
             if not flying:

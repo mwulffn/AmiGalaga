@@ -26,13 +26,15 @@
 	xref	FlyerDraw
 	xref	FormationCompose
 	xref	FormationDraw
+	xref	FormationTick
 	xref	HomeRc
 	xref	Enemies
 	if	STAGE_TEST
 	xdef	StageLog
 	endc
 
-STAGE_PAUSE	equ	150			; until there is a game: frames a full formation is shown
+STAGE_PAUSE	equ	450			; until there is a game: frames a full formation is shown,
+EMPTY_PAUSE	equ	100			;   and an empty one
 UPRIGHT		equ	6*FRAME_SIZE		; an enemy's upright image
 FLYING_BITS	equ	1<<FLB_ACTIVE|1<<FLB_LANDED
 QUADRANT_BITS	equ	2
@@ -78,13 +80,26 @@ GameFrame:
 	cmp.w	#FIFTHS,d6
 	bcc	.Ticked
 	bsr	StageTick
-	sne	d0
-	move.b	d0,d7				; zero once every wave is launched
+	bsr	FormationTick
 	addq.w	#1,ArcadeFrame(a5)
 	addq.w	#FRAME_FIFTHS,Clock(a5)
 	bra	.Tick
 .Ticked	subq.w	#FIFTHS,Clock(a5)
-	move.w	d7,-(sp)
+	if	STAGE_TEST
+	; checksum = (checksum rol 1) + x, over the formation's 16 positions
+	lea	HomeX(a5),a0
+	moveq	#0,d0
+	moveq	#HOME_ENTRIES-1,d1
+.Sum	rol.b	#1,d0
+	add.b	(a0),d0
+	addq.l	#2,a0
+	dbf	d1,.Sum
+	move.l	StageLogPtr(a5),a1
+	move.w	FlightFrame(a5),(a1)+
+	move.b	#STAGE_FORMATION,(a1)+
+	move.b	d0,(a1)+
+	move.l	a1,StageLogPtr(a5)
+	endc
 
 	lea	Flights(a5),a0
 	lea	FLIGHT_SLOTS*fl_SIZEOF(a0),a3
@@ -168,16 +183,24 @@ GameFrame:
 .Drawn	lea	fl_SIZEOF(a3),a3
 	dbf	d7,.Draw
 	move.w	(sp)+,d6
-	move.w	(sp)+,d7
 
 	; until there is a game: once everyone is in, show the formation a while, then the next stage
-	tst.b	d7
-	bne	.Busy
+	tst.b	WavesIn(a5)
+	beq	.Busy
 	tst.w	d6
 	bne	.Busy
-	addq.w	#1,StageWait(a5)
-	cmp.w	#STAGE_PAUSE,StageWait(a5)
-	bne	.Busy
+	lea	FormPresent(a5),a0
+	moveq	#0,d0
+	rept	FORM_ROWS
+	or.w	(a0)+,d0
+	endr
+	move.w	#STAGE_PAUSE,d1
+	tst.w	d0
+	bne	.Pause
+	moveq	#EMPTY_PAUSE,d1			; nobody stayed: a challenging stage
+.Pause	addq.w	#1,StageWait(a5)
+	cmp.w	StageWait(a5),d1
+	bhi	.Busy
 	move.w	Stage(a5),d0
 	addq.w	#1,d0
 	cmp.w	#DEMO_STAGES,d0

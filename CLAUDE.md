@@ -57,8 +57,21 @@ decision is made or changed.
   The arcade moves the columns up to 32 pixels either way and the bottom
   row up to 32 down (measured over the MAME trace); strips are sized for
   that. Butterflies and bees are 10 rows tall upright, so their strips
-  are 12 lines; the boss strip is 18 with a blank line above and below.
-  A mask per row (`FormPresent`) says who is there.
+  are 14 lines (two blank lines each side, which overlap the next
+  strip's when the rows are closed up); the boss strip is 18 with a
+  blank line above and below. The blank lines wipe what a moving row
+  leaves behind. A mask per row (`FormPresent`) says who is there.
+- The formation moves as the arcade's does: it drifts sideways as a
+  whole while the waves arrive (a pixel every 4 arcade frames, up to 32
+  either way), then breathes (each column and row a pixel out or in
+  every 4 frames by bit patterns from the ROM, 32 steps each way).
+  `motion/formation.py` is the model: identical to the MAME trace's
+  tables on all 33,016 frames of the 7 stages with a formation. The
+  68000 version is `FormationTick`; `test_stage.sh` checks it every
+  frame. The drift is added when strips are drawn, so all rows move
+  together; breathing reaches a row when its strip is recomposed, so a
+  row can be up to 5 frames (2 pixels) behind. When breathing starts
+  the pulse sound starts, and follows its direction.
 - **Flyers** (divers, bombs, explosions, score pop-ups): masked bobs,
   erased with a clear blit of the old position.
 - **Text:** panel text is drawn by the CPU when it changes. Text inside
@@ -229,14 +242,14 @@ included, so the real figure is a little lower.
   sprites, the flight stepper, and the stage entrance: each stage's five
   waves fly in and take their places. All to the style guide and linted.
   It cycles through stages 1 to 3 (`DEMO_STAGES`); `demo.s` stands in
-  for the player. Stage 1's entrance with the start theme takes 131
-  raster lines on average, 185 at worst (8 flying).
+  for the player. Stage 1's entrance with the start theme takes 144
+  raster lines on average, 202 at worst (8 flying).
 - **Not in the entrance yet:** the enemies that fly through without
   joining (stage 4 on; needs the arcade's random numbers), the wait
   before the first wave (READY, STAGE n), and holding waves back while
   the fighter is replaced.
-- **Game logic** is not ported or measured: formation drift and
-  breathing, dive scheduling, bombs, capture, scoring.
+- **Game logic** not ported or measured yet: dive scheduling, bombs,
+  collisions, capture, scoring.
 - **Sound cost: deferred, by decision.** The driver works and the user
   has confirmed it sounds right on the emulated A500 (2026-10-01). At up
   to 19 lines a frame it is the largest CPU item measured, and it lifts

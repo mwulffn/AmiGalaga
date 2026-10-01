@@ -44,6 +44,7 @@ START_POS = 0x2A6C  # 12 x (y/2, x/2, heading high byte)
 ESCORT_TABLE = 0x1B65  # 3 script addresses for a diving bee's escorts
 # Addresses in the sub CPU ROM.
 HOME_RC = 0x0100  # per object: row index, column index into the home tables
+BREATHE_PATTERNS = 0x1E6A  # main ROM: 4 sets of 16 bit patterns, see formation.py
 # Scripts the main CPU starts by address (dives and special cases).
 DIVES = {
     0x034F: "bee_dive",

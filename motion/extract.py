@@ -135,6 +135,7 @@ def main() -> None:
     table("StageData", "combat stages: bomb timer, bomb bits, 5 x (extras, path, path), $ff", m[G.STAGE_DATA : G.STAGE_DATA + 13 * 18], 18)
     table("ChallengeData", "challenging stages, same layout", m[G.CHALLENGE_DATA : G.CHALLENGE_DATA + 8 * 18], 18)
     table("WaveObjects", "object numbers in arrival order: 5 waves of 8", m[G.WAVE_OBJECTS : G.WAVE_OBJECTS + 40], 8)
+    table("BreathePatterns", "formation breathing: 4 sets of bit patterns for 10 columns and 6 rows", m[G.BREATHE_PATTERNS : G.BREATHE_PATTERNS + 64], 16)
     table("HomeRc", "per object number: row index, column index of its formation slot", rom.sub[G.HOME_RC : G.HOME_RC + 0x60], 16)
     asm.append("\teven")
     (out / "motion_data.s").write_text("\n".join(asm) + "\n")

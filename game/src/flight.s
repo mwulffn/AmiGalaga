@@ -32,6 +32,7 @@
 	xdef	ChallengeData
 	xdef	WaveObjects
 	xdef	HomeRc
+	xdef	BreathePatterns
 
 FIRST_COMMAND	equ	$ef			; script bytes from here up are commands
 COMMANDS	equ	$100-FIRST_COMMAND

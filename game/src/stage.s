@@ -129,6 +129,10 @@ StageInit:
 	clr.w	WaveAt(a5)
 	clr.w	WasFlying(a5)
 	clr.w	StageWait(a5)
+	clr.b	WavesIn(a5)
+	if	SOUND_TEST=0			; the sound test makes its own requests
+	clr.b	Sound+SND_PULSE(a5)
+	endc
 
 	lea	Flights(a5),a0
 	moveq	#FLIGHT_SLOTS-1,d0
@@ -182,7 +186,13 @@ StageTick:
 .Wait	moveq	#1,d0
 	rts
 .Enemy	cmp.b	#WAVE_END,d0
-	beq	.Done
+	bne	.Launch
+	tst.w	d1				; the last wave has landed: the formation can settle
+	bne	.Over
+	st	WavesIn(a5)
+.Over	moveq	#0,d0
+	rts
+.Launch
 	btst	#CTLB_NOW,d0
 	bne	.Now
 	moveq	#LINE_FRAMES-1,d1
@@ -227,4 +237,4 @@ StageTick:
 	move.b	(a1)+,d3
 	bsr	FlightLaunch
 	moveq	#1,d0
-.Done	rts
+	rts

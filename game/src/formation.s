@@ -8,6 +8,15 @@
 ; flyer's erase wiped. A strip is recomposed, one a frame, to follow the
 ; tables, the wings, and who is there.
 ;
+; The formation moves as the arcade's does (the model is motion/formation.py).
+; While a stage's waves arrive it drifts from side to side as a whole, a
+; pixel every four arcade frames, up to 32 either way. Once every wave is in
+; and the drift is back at the middle it breathes instead: every four frames
+; each column and row may move a pixel outwards, for 32 steps, then back in.
+; Which move on a step comes from a bit pattern each, rotated every step and
+; reloaded every eight. The drift is added when the strips are drawn, so all
+; rows move together; breathing reaches a row when its strip is recomposed.
+;
 ; Where everything is comes from the arcade's two tables, which the
 ; flights read as well: HomeLoc (an offset and an origin for each of 10
 ; columns and 6 rows) and HomeX (origin plus offset, in pixels). The
@@ -27,6 +36,8 @@
 	xdef	FormationInit
 	xdef	FormationCompose
 	xdef	FormationDraw
+	xdef	FormationTick
+	xref	BreathePatterns
 	xref	Enemies
 
 CELL		equ	16				; an enemy's width and height
@@ -57,16 +68,25 @@ row_SIZEOF	rs.b	0
 WORDS4		equ	(CELL+3*CELL+FORM_SPREAD+CELL+15)/16+1
 WORDS8		equ	(CELL+7*CELL+FORM_SPREAD+CELL+15)/16+1
 WORDS10		equ	(CELL+9*CELL+FORM_SPREAD+CELL+15)/16+1
-; lines in a strip: the bosses fill their 16 rows, so their strip has a blank line above
-; and below to wipe their old image when the row moves; the others bring their own
+; Lines in a strip. A row moves down or up by up to two lines between one drawing and
+; the next, and the strip's blank lines wipe what it leaves behind. The others are 10 rows
+; tall in their 16, so 14 rows of the image bring two blank lines each side; these overlap
+; the next strip's blank lines when the rows are closed up. The bosses fill their 16 rows
+; and move a line at most, so their strip has a blank line above and below.
 BOSS_LINES	equ	18
-SMALL_LINES	equ	12
+SMALL_LINES	equ	14
+DRIFT_LIMIT	equ	32				; the drift turns round this far out
+STEP_FRAMES	equ	4				; arcade frames between steps
+RELOAD_STEPS	equ	8				; breathing steps between new bit patterns
+BREATHE_STEPS	equ	32				; steps out, and back
+CLOSING		equ	7				; FormCount: on the way back in
+PATTERN_SETS	equ	4
 
 	section	code,code
 
 ;--
 ; FormationInit
-; Put the formation at rest with nobody in it, and compose every strip.
+; Put the formation at rest with nobody in it, ready to drift, and compose every strip.
 ; In:       a5 = state, a6 = CUSTOM
 ; Out:      -
 ; Clobbers: d0-d7, a0-a3
@@ -85,6 +105,10 @@ FormationInit:
 	moveq	#FORM_ROWS-1,d0
 .Empty	clr.w	(a0)+
 	dbf	d0,.Empty
+	clr.w	FormDrift(a5)
+	st	FormDrifting(a5)
+	clr.b	FormLeftwards(a5)
+	clr.b	FormCount(a5)
 ROW	set	0
 	rept	FORM_ROWS
 	moveq	#ROW,d0
@@ -114,7 +138,7 @@ FormationCompose:
 	move.l	a1,bltdpt(a6)
 	move.w	d2,bltsize(a6)
 
-	; strip x = HomeX[first column] - 1 - the blank word
+	; strip x = HomeX[first column] - 1 - the blank word - the drift, which is added when it is drawn
 	; strip y = HomeX[row] - 40 + image rows skipped - blank lines above
 	lea	HomeX(a5),a2
 	move.w	row_first(a3),d5		; the column, from here on
@@ -133,6 +157,7 @@ FormationCompose:
 	add.w	d0,a0
 	move.w	d6,d2
 	sub.w	#SPRITE_X+CELL,d2
+	sub.w	FormDrift(a5),d2
 	move.w	d2,(a0)+
 	move.w	d3,(a0)
 
@@ -196,6 +221,7 @@ FormationDraw:
 	moveq	#-1,d0
 	move.l	d0,bltafwm(a6)
 .Row	move.w	(a2)+,d0
+	add.w	FormDrift(a5),d0
 	move.w	(a2)+,d1
 	mulu.w	#ROW_BYTES,d1
 	moveq	#15,d4
@@ -233,6 +259,117 @@ FormationDraw:
 	dbf	d5,.Row
 	rts
 
+;--
+; FormationTick
+; One arcade frame of the formation's own movement: drift, or breathe.
+; In:       a5 = state
+; Out:      -
+; Clobbers: d0-d3, a0-a2
+FormationTick:
+	move.w	ArcadeFrame(a5),d0
+	tst.b	FormDrifting(a5)
+	beq	.Breathe
+	subq.w	#1,d0				; the arcade's two movements take turns on different frames
+	and.w	#STEP_FRAMES-1,d0
+	bne	.Done
+	tst.b	WavesIn(a5)
+	beq	.Drift
+	; all in and nobody stayed (a challenging stage): nothing to settle
+	lea	FormPresent(a5),a0
+	moveq	#0,d0
+	rept	FORM_ROWS
+	or.w	(a0)+,d0
+	endr
+	beq	.Done
+.Drift	moveq	#1,d1
+	tst.b	FormLeftwards(a5)
+	beq	.Columns
+	moveq	#-1,d1
+.Columns
+	lea	HomeLoc(a5),a0
+	lea	HomeX(a5),a1
+	moveq	#HOME_COLUMNS-1,d0
+.Column	add.b	d1,(a0)
+	add.b	d1,(a1)
+	addq.l	#2,a0
+	addq.l	#2,a1
+	dbf	d0,.Column
+	move.b	HomeLoc(a5),d0
+	ext.w	d0
+	move.w	d0,FormDrift(a5)
+	bne	.Limit
+	tst.b	WavesIn(a5)
+	beq	.Done
+	; everyone is in and it is back in the middle: from here it breathes, and pulses
+	clr.b	FormDrifting(a5)
+	if	SOUND_TEST=0			; the sound test makes its own requests
+	move.b	#1,Sound+SND_PULSE(a5)
+	endc
+.Done	rts
+.Limit	cmp.w	#DRIFT_LIMIT,d0
+	bne	.Left
+	st	FormLeftwards(a5)
+	rts
+.Left	cmp.w	#-DRIFT_LIMIT,d0
+	bne	.Done
+	clr.b	FormLeftwards(a5)
+	rts
+
+.Breathe
+	and.w	#STEP_FRAMES-1,d0
+	bne	.Done
+	; count 0 to 31 on the way out, then with bit 7 set from 32 back down to 1
+	move.b	FormCount(a5),d0
+	bmi	.In
+	moveq	#1,d2				; a step outwards
+	addq.b	#1,FormCount(a5)
+	cmp.b	#BREATHE_STEPS-1,d0
+	bne	.Counted
+	bset	#CLOSING,FormCount(a5)
+	bra	.Counted
+.In	moveq	#-1,d2
+	subq.b	#1,FormCount(a5)
+	cmp.b	#(1<<CLOSING)+1,d0
+	bne	.Counted
+	bclr	#CLOSING,FormCount(a5)
+.Counted
+	if	SOUND_TEST=0
+	move.b	d2,Sound+snd_dir(a5)		; the pulse rises as it opens and falls as it closes
+	endc
+	moveq	#RELOAD_STEPS-1,d1
+	and.b	d0,d1
+	bne	.Step
+	; new bit patterns: set = the new count / 8, of the four
+	moveq	#(PATTERN_SETS-1)*RELOAD_STEPS,d1
+	and.b	FormCount(a5),d1
+	add.w	d1,d1				; HOME_ENTRIES bytes a set
+	lea	BreathePatterns(pc),a0
+	add.w	d1,a0
+	lea	FormBits(a5),a1
+	moveq	#HOME_ENTRIES-1,d0
+.Load	move.b	(a0)+,(a1)+
+	dbf	d0,.Load
+.Step	lea	FormBits(a5),a0
+	lea	HomeLoc(a5),a1
+	lea	HomeX(a5),a2
+	move.b	d2,d1
+	neg.b	d1				; the left five columns open leftwards
+	moveq	#HOME_ENTRIES-1,d0
+.Entry	move.b	(a0),d3
+	ror.b	#1,d3
+	move.b	d3,(a0)+
+	bpl	.Still				; the bit that came round is now on top
+	move.b	d2,d3
+	cmp.w	#HOME_ENTRIES-HOME_COLUMNS/2,d0
+	bcs	.Move
+	move.b	d1,d3
+.Move	add.b	d3,(a1)
+	add.b	d3,(a2)
+.Still	addq.l	#2,a1
+	addq.l	#2,a2
+	dbf	d0,.Entry
+	rts
+
 ; The formation at rest, as the arcade has it: for each column, then each row,
 ; its position in pixels (HomeX) and the origin flights aim for (HomeLoc).
 ; A column's origin is its x; a row's is its height above the bottom, halved.
@@ -255,10 +392,10 @@ ROW	macro
 
 RowTable:
 	ROW	Strip0,GFX_BOSS,WORDS4,4,3,BOSS_LINES,16,0,1
-	ROW	Strip1,GFX_BUTTERFLY,WORDS8,8,1,SMALL_LINES,12,2,0
-	ROW	Strip2,GFX_BUTTERFLY,WORDS8,8,1,SMALL_LINES,12,2,0
-	ROW	Strip3,GFX_BEE,WORDS10,10,0,SMALL_LINES,12,2,0
-	ROW	Strip4,GFX_BEE,WORDS10,10,0,SMALL_LINES,12,2,0
+	ROW	Strip1,GFX_BUTTERFLY,WORDS8,8,1,SMALL_LINES,SMALL_LINES,1,0
+	ROW	Strip2,GFX_BUTTERFLY,WORDS8,8,1,SMALL_LINES,SMALL_LINES,1,0
+	ROW	Strip3,GFX_BEE,WORDS10,10,0,SMALL_LINES,SMALL_LINES,1,0
+	ROW	Strip4,GFX_BEE,WORDS10,10,0,SMALL_LINES,SMALL_LINES,1,0
 
 	section	chip_bss,bss_c
 

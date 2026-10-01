@@ -50,6 +50,11 @@ flying; enemies in a line are 8 frames apart). Against the trace it
 makes all 160 launches of stages 1, 2, 3 and 7 at the arcade's frame.
 Enemies that only fly through (stage 4 on) are not modelled yet.
 
+`formation.py` is the model of the formation's own movement: the drift
+from side to side while waves arrive and the breathing afterwards. Its
+tables are identical to the trace's on all 33,016 frames of the seven
+stages that have a formation.
+
 ## Validation
 
 `validate.py` against 38,600 frames of MAME (stages 1 to about 9, bot
@@ -66,9 +71,6 @@ To repeat it (the trace is about 17 MB):
 
 ## Not covered yet
 
-- The formation itself: side-to-side drift while waves arrive, and the
-  breathing afterwards. Homing enemies track it through two offset bytes
-  the main CPU keeps updating.
 - Which enemy dives when, bombs, the capture sequence, escorts and the
   transforming enemies. The scripts are extracted; the logic that starts
   them is in the main CPU and has not been ported.

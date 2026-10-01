@@ -37,6 +37,7 @@ FORM_ROWS	equ	5			; rows drawn as strips
 FORM_SPREAD	equ	64			; how much further apart the outer columns get at most
 HOME_COLUMNS	equ	10
 HOME_ROWS	equ	2*HOME_COLUMNS		; offset of the first row's entry
+HOME_ENTRIES	equ	HOME_COLUMNS+6		; columns and rows
 STRIP_ROWS	equ	1			; the first row with a strip: row 0 is for captured fighters
 
 ; From the arcade's coordinates to the buffer's. A sprite at x, y in HomeX,

@@ -28,6 +28,12 @@ StageWait	rs.w	1		; until there is a game: frames since the stage was all in
 WaveAt		rs.w	1		; launcher: where it is in WaveTable
 WasFlying	rs.w	1		;   flights in the air one arcade frame ago
 FormNext	rs.w	1		; formation: the row whose strip is rebuilt next
+FormDrift	rs.w	1		;   how far it has drifted sideways as a whole, in pixels
+FormDrifting	rs.b	1		;   nonzero while it drifts; then it breathes
+FormLeftwards	rs.b	1		;   nonzero: drifting left
+FormCount	rs.b	1		;   breathing: steps out so far; bit 7 set on the way back in
+WavesIn		rs.b	1		; launcher: nonzero once every wave is launched and has landed
+FormBits	rs.b	HOME_ENTRIES	; breathing: per column and row, bit 0 set if it moves this step
 StageLogPtr	rs.l	1		; STAGE_TEST builds: next free entry of the log
 FlightFrame	rs.w	1		; flight: frames stepped; its low bit picks which speed a step uses
 FighterX	rs.b	1		;   the fighter's x as the arcade's scripts see it: sprite x
