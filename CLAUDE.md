@@ -110,9 +110,10 @@ Sprites pair up and each pair shares three colours.
   quadrant plus the upright one, mirrored by quadrant. The arcade's
   hardware flips sprites; the blitter cannot, so `make_gfx.py` writes
   every frame in all four flips (32 images a kind, 90 KB of chip RAM
-  for the 11 kinds). The rule was read from the sub CPU's code and
-  checked by eye, not against MAME: its result goes to sprite RAM, which
-  the trace does not record.
+  for the 11 kinds). The rule was read from the sub CPU's code, not
+  checked against MAME: its result goes to sprite RAM, which the trace
+  does not record. The user has looked at the entrance and the rotation
+  on the emulated A500 and confirmed both look right (2026-10-01).
 - A landed enemy is drawn as a flyer at its place until its row's strip
   is next rebuilt (at most 5 frames), then it is part of the strip.
 
