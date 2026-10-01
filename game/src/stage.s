@@ -27,6 +27,7 @@
 	xdef	StageIdle
 	xref	FormationInit
 	xref	DivesInit
+	xref	StarsStage
 	xref	FlightLaunch
 	xref	EntryPaths
 	xref	StartPos
@@ -67,6 +68,7 @@ CHALLENGE_MASK	equ	3			; a stage whose number ends in these two bits set is a ch
 ; Clobbers: d0-d7, a0-a3
 StageInit:
 	move.w	d0,Stage(a5)
+	bsr	StarsStage
 	; stages past the last repeat the last four; every fourth is a challenging stage
 	move.w	d0,d1
 .Wrap	cmp.w	#LAST_STAGE,d1

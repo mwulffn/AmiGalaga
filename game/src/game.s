@@ -44,6 +44,7 @@
 	xref	FlowTick
 	xref	TextDraw
 	xref	StageIdle
+	xref	StarsTick
 	xref	HomeRc
 	xref	Enemies
 	if	STAGE_TEST
@@ -111,6 +112,7 @@ GameFrame:
 	move.b	d0,FighterX(a5)
 	bsr	PlayerInput
 	clr.w	TicksNow(a5)
+	clr.w	StarSteps(a5)
 
 	; an arcade frame for each one that begins in this displayed frame
 .Tick	move.w	Clock(a5),d6
@@ -123,11 +125,13 @@ GameFrame:
 	bsr	BombsDrop
 	bsr	BlastsTick
 	bsr	FlowTick
+	bsr	StarsTick
 	addq.w	#1,TicksNow(a5)
 	addq.w	#1,ArcadeFrame(a5)
 	addq.w	#FRAME_FIFTHS,Clock(a5)
 	bra	.Tick
 .Ticked	subq.w	#FIFTHS,Clock(a5)
+	move.w	StarSteps(a5),StarSpeed(a5)	; the vertical blank scrolls the stars by this
 	if	STAGE_TEST
 	; checksum = (checksum rol 1) + x, over the formation's 16 positions
 	lea	HomeX(a5),a0

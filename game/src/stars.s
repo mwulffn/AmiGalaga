@@ -10,6 +10,9 @@
 ; fades are a schedule of (colour word, new colour) pairs, a few per
 ; frame, written into the table here; the schedule loops.
 ;
+; How fast it scrolls is the arcade's: a line per arcade frame at first,
+; more on later stages, standing still while the fighter is gone.
+;
 ; The one thing that needs patching for the scroll: a copper wait cannot
 ; ignore bit 7 of the line number, so the entries that currently fall on
 ; raster lines 128-255 carry that bit. Scrolling by n lines moves 2n
@@ -23,6 +26,8 @@
 	include	"state.i"
 
 	xdef	StarsInit
+	xdef	StarsStage
+	xdef	StarsTick
 	xdef	StarsVBlank
 
 STAR_ENTRY	equ	12			; a table entry: move position, move colour, wait
@@ -34,6 +39,11 @@ TO_LINE_128	equ	128-DISPLAY_TOP		; entries from the first line to raster line 12
 TO_LINE_256	equ	256-DISPLAY_TOP
 FADE_END	equ	-2			; schedule: -1 ends a frame, -2 ends the schedule
 COPPER_END	equ	$fffffffe
+STAR_SPEED	equ	$40			; a line per arcade frame, in 64ths: the speed on the first stages
+FASTEST_STAGE	equ	16			; from this stage on they go no faster
+STAGE_STEPS	equ	$70			; stage * 4, masked with this, is added to the speed
+CARRY_BITS	equ	6
+CARRY_MASK	equ	(1<<CARRY_BITS)-1
 
 ; Set the line bit of the entry \1 lines below the first one to \2, in both
 ; copies of the table. d0 = first entry, a1 = table, a2 = its second copy.
@@ -56,9 +66,59 @@ SETLINE	macro
 ; Clobbers: -
 StarsInit:
 	clr.w	StarFirst(a5)
-	move.w	#1,StarSpeed(a5)
+	clr.w	StarSpeed(a5)
+	clr.b	StarNow(a5)
+	clr.b	StarCarry(a5)
+	move.b	#STAR_SPEED,StarTarget(a5)
 	move.l	#StarFades,StarFade(a5)
 	move.l	#StarTable,cop2lc(a6)
+	rts
+
+;--
+; StarsStage
+; Set the speed the stars work up to for a stage: faster every fourth stage, up to stage 16.
+; In:       d0.w = stage, a5 = state
+; Out:      -
+; Clobbers: d1
+StarsStage:
+	moveq	#FASTEST_STAGE,d1
+	cmp.w	d1,d0
+	bcc	.Speed
+	move.w	d0,d1
+.Speed	lsl.w	#2,d1
+	and.w	#STAGE_STEPS,d1
+	add.w	#STAR_SPEED,d1
+	move.b	d1,StarTarget(a5)
+	rts
+
+;--
+; StarsTick
+; One arcade frame of the stars' speed, as the arcade has it: they stand still while the
+; fighter is not on the screen, and work back up to speed, a 64th of a line per frame more
+; each frame, when it returns.
+; In:       a5 = state
+; Out:      -
+; Clobbers: d0-d1
+StarsTick:
+	move.b	PlayerState(a5),d0
+	beq	.Moving				; PS_PLAYING
+	cmp.b	#PS_READY,d0
+	beq	.Moving
+	clr.b	StarNow(a5)
+	clr.b	StarCarry(a5)
+	rts
+.Moving	move.b	StarNow(a5),d0
+	cmp.b	StarTarget(a5),d0
+	beq	.Steady
+	addq.b	#1,d0
+	move.b	d0,StarNow(a5)
+.Steady	add.b	StarCarry(a5),d0
+	moveq	#CARRY_MASK,d1
+	and.b	d0,d1
+	move.b	d1,StarCarry(a5)
+	lsr.b	#CARRY_BITS,d0
+	ext.w	d0
+	add.w	d0,StarSteps(a5)
 	rts
 
 ;--

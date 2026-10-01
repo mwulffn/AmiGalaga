@@ -7,6 +7,11 @@ FrontScreen	rs.l	1		; the screen being shown (a scr_ structure)
 BackScreen	rs.l	1		; the screen being drawn
 StarFirst	rs.w	1		; star table entry shown on the first line, 0-255
 StarSpeed	rs.w	1		; lines the stars scroll per frame
+StarTarget	rs.b	1		;   the speed they work up to, in 64ths of a line per arcade frame
+StarNow		rs.b	1		;   their speed now
+StarCarry	rs.b	1		;   the 64ths left over
+StarPad		rs.b	1
+StarSteps	rs.w	1		;   lines to scroll, gathered over this frame's arcade frames
 StarFade	rs.l	1		; next entry of the fade schedule
 ReportPtr	rs.l	1		; test builds: what to write to "results"
 ReportLen	rs.l	1

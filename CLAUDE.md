@@ -125,6 +125,13 @@ option is kept for later.
 - Each star fades in three steps on its own period and phase, from a
   pre-computed 256-frame schedule. The user prefers this to the arcade's
   group blink.
+- Scroll speed is the arcade's (`StarsTick`): a line per arcade frame on
+  the first stages, a quarter more every fourth stage up to two lines at
+  stage 16; the stars stand still while the fighter is not on screen
+  (a game's opening, after a loss) and work back up to speed over about
+  a second when it comes on. Checked on screenshots: no movement during
+  the opening, then 60 lines a second. Not done yet: the arcade runs
+  them backwards while the tractor beam pulls the fighter up.
 
 ### Enemy movement
 - Use the arcade's own flight scripts and wave tables, extracted from
