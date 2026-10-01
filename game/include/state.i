@@ -178,6 +178,13 @@ Rank		rs.b	1		;   and the arcade's switch value for it: which rank's tables a st
 PadWas		rs.b	1		; title and options: the stick and button as they were last frame
 MenuTimer	rs.w	1		;   frames since the stick or button was last used
 Scores		rs.l	SCORES		; the best scores, highest first, as Score has them
+Names		rs.b	SCORES*NAME_BYTES ;   and whose they are; the two together are what is saved to disk
+EntryPlace	rs.b	1		; entering initials: which of the best scores it is, 0 the best
+EntryAt		rs.b	1		;   which letter is being chosen, 0 to 2
+PadHold		rs.b	1		;   frames the stick has been held to one side
+ScoresLoaded	rs.b	1		; nonzero: the best scores were read from disk at the start
+ScoresDirty	rs.b	1		; nonzero: they have changed since, and are saved when the game quits
+QuitWanted	rs.b	1		; nonzero: QUIT was taken; the main loop ends
 ObjKind		rs.b	OBJECTS/2	; what each enemy looks like (a KIND_ from gfx.i), by object / 2
 Sound		rs.b	snd_SIZEOF	; the sound driver's state: see sound.i
 State_SIZEOF	rs.b	0

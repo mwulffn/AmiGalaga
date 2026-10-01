@@ -151,6 +151,8 @@ MODE_GAME	equ	0			; a game
 MODE_TITLE	equ	1			; the title, with START GAME and OPTIONS
 MODE_OPTIONS	equ	2			; the options
 MODE_SCORES	equ	3			; the best scores
+MODE_ENTRY	equ	4			; a game's score is one of them: its initials are entered
+NAME_BYTES	equ	4			; a best score's three initials and a 0
 SCORES		equ	5			; how many of those are kept
 RANKS		equ	4			; settings of the arcade's difficulty switch
 

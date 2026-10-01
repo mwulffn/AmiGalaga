@@ -39,7 +39,8 @@ METER_COLOUR	equ	$004		; the raster meter's idle colour
 
 ;--
 ; Main
-; Run the game until the left mouse button is pressed (or, in a test build, for TEST_FRAMES frames).
+; Run the game until QUIT is taken on the title or the left mouse button is pressed (or, in a
+; test build, for TEST_FRAMES frames).
 ; In:       a5 = state, a6 = CUSTOM
 ; Out:      -
 ; Clobbers: d0-d7, a0-a3
@@ -78,6 +79,8 @@ Main:	bsr	StarsInit
 	cmp.w	#TEST_FRAMES,StatFrames(a5)
 	beq	.Done
 	endc
+	tst.b	QuitWanted(a5)
+	bne	.Done
 	btst	#CIAAB_FIRE0,CIAA_PRA
 	bne	.Frame
 .Done	bsr	SoundStop

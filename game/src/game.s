@@ -50,6 +50,7 @@
 	xref	ScoresInit
 	if	REPORTING=0
 	xref	TitleShow
+	xref	EntryShow
 	xref	ScoresInsert
 	endc
 	xdef	GameStart
@@ -114,9 +115,11 @@ GameInit:
 	if	REPORTING
 	; a test build plays itself: straight into a game
 	else
-	; the game that is over may have one of the best scores; then the title
+	; the game that is over may have one of the best scores: then its initials are asked for
 	bsr	ScoresInsert
-	bra	TitleShow
+	tst.w	d0
+	bmi	TitleShow
+	bra	EntryShow
 	endc
 	; falls through
 

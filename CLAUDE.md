@@ -318,9 +318,35 @@ option is kept for later.
 - The game is called **AmiGalaga**. Namco's name and copyright line are
   not shown.
 - What shows when no game is on (`game/src/title.s`): the title with
-  START GAME and OPTIONS (stick up and down, button to take one); left
-  alone for 8 seconds it gives way to the best scores, and they to the
-  title. A game that ends comes back to the title after its results.
+  START GAME, OPTIONS and QUIT (stick up and down, button to take one);
+  left alone for 8 seconds it gives way to the best scores, and they to
+  the title. A game that ends comes back to the title after its results.
+- QUIT ends the program and gives the machine back to the system, so
+  the game is a good citizen when run from a hard disk. (The left mouse
+  button still does the same at any time.) The sound driver's CIA-B
+  timer and interrupt mask are put back as the system had them, asked
+  of `ciab.resource` beforehand.
+- Best scores: five, each with three initials (A to Z, full stop,
+  space). A game that ends with one of them goes to the list, its score
+  in as AAA in yellow: stick left and right changes the blinking
+  letter (held, it runs on), the button takes it; 20 seconds without a
+  touch takes them as they are. The arcade's tunes play: its own for
+  the best of all, a loop for the others.
+- **Saving, kept defensive** (`startup.s`, the only file that calls the
+  system): the scores are read from `AmiGalaga.scores` in the directory
+  the game was started from, before the machine is taken, and written
+  back after it has been given back, on QUIT, if they have changed. The
+  game never touches the disk while it runs, so scores are lost if the
+  machine is switched off without QUIT (the user's choice, 2026-10-01).
+  Nothing about the file can stop the game: the system's requesters
+  are off for the process (`pr_WindowPtr` = -1), a file of the wrong
+  size, mark or checksum, or with anything in it that is not a score or
+  a letter, is ignored, and a disk that cannot be written is left.
+  Tried in FS-UAE with `-DSAVE_TEST=1` (a score entered and QUIT taken
+  by themselves): from a hard-drive directory and from a floppy image
+  the file is written and read back on the next start; a damaged file
+  gives the arcade's scores; a read-only floppy image ends at the
+  AmigaDOS prompt with no requester and the image unchanged.
 - Options: FIGHTERS 3 or 6 (the user's choice; the arcade's switch has
   2 to 5) and DIFFICULTY, which is the arcade's own switch: easy (its
   default, and what the traces and tests use), medium, hard, hardest.
@@ -330,10 +356,10 @@ option is kept for later.
 - The arcade's other switches: bonus fighters (eight schedules; the
   game has the default, 20000, 70000 and every 70000), demo sounds,
   freeze, rack test (skip a stage), cabinet, coinage. None offered.
-- First pass, stubs by agreement: the best scores are five numbers
-  without names, all 20000 at the start, kept until power-off; there
-  is no attract mode that plays by itself; the title is the game's
-  font, capitals only (AMIGALAGA), not a logo.
+- Still stubs: there is no attract mode that plays by itself; the title
+  is the game's font, capitals only (AMIGALAGA), not a logo. Starting
+  from Workbench (an icon) is not handled: the game is started from the
+  shell or a startup-sequence.
 - While the title, the options or the best scores show, the stars
   drift slowly: a quarter of a line per arcade frame, 15 lines a second
   (`TITLE_SPEED` in `stars.s`). Asked for and confirmed on screen by
@@ -543,9 +569,9 @@ included, so the real figure is a little lower.
   (2026-10-01). Also open there:
   firing from inside the beam, and the captured fighter that comes back
   in a later stage.
-- **Title, second pass:** an attract mode that plays by itself, names
-  for the best scores (and whether to save them to disk), a proper
-  logo.
+- **Title, second pass:** an attract mode that plays by itself, a proper
+  logo. The menus and the initials have only been seen on screenshots:
+  nobody has worked them with a joystick yet (2026-10-01).
 - **The frame budget is thin** (see Measured budget): no late frame in
   the self-playing runs, with 8 lines to spare in the worst one. More
   to gain is listed there.
