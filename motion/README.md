@@ -72,10 +72,9 @@ To repeat it (the trace is about 17 MB):
 - Which enemy dives when, bombs, the capture sequence, escorts and the
   transforming enemies. The scripts are extracted; the logic that starts
   them is in the main CPU and has not been ported.
-- Choosing the sprite frame and flips from the heading. The arcade has
-  six rotation frames per quadrant (15 degrees each) plus the upright
-  pair, and flips by quadrant. That routine is not ported or validated
-  here, because its result goes to sprite RAM, not to the slot.
+- Choosing the sprite frame and flips from the heading is ported in the
+  game (`game/src/game.s`) but not validated against MAME: its result
+  goes to sprite RAM, not to the slot, and the trace does not record it.
 - Frame rate: see the next section.
 
 ## Running at PAL speed

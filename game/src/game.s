@@ -1,5 +1,5 @@
-; Game: one frame of the playfield. So far: the stage's enemies fly in
-; and take their places in the formation.
+; Game: one frame of the playfield. So far: the stage's enemies fly in,
+; turned the way they are heading, and take their places in the formation.
 ;
 ; Time: the arcade's own logic counts arcade frames, and a displayed frame
 ; is FIFTHS fifths of one. Clock holds how far into a displayed frame the
@@ -35,6 +35,10 @@
 STAGE_PAUSE	equ	150			; until there is a game: frames a full formation is shown
 UPRIGHT		equ	6*FRAME_SIZE		; an enemy's upright image
 FLYING_BITS	equ	1<<FLB_ACTIVE|1<<FLB_LANDED
+QUADRANT_BITS	equ	2
+QUADRANTS	equ	4
+HALF_STEP	equ	21			; half of 15 degrees, where a quadrant is 256
+FLIP_SHIFT	equ	11			; FLIP_SIZE as a shift
 POSITION_SHIFT	equ	7			; a flight's position to pixels
 X_MASK		equ	$ff			; the arcade's sprites have 8 bits of x
 FIGHTER_X	equ	17			; from the fighter's left edge to its x as the scripts see it
@@ -159,16 +163,7 @@ GameFrame:
 	bhi	.Drawn
 	cmp.w	#LAST_FLYER_Y,d1
 	bhi	.Drawn
-	; its image: upright, for now
-	moveq	#0,d2
-	move.b	fl_obj(a3),d2
-	lsr.w	#1,d2
-	lea	ObjKind(a5),a0
-	move.b	(a0,d2.w),d2
-	moveq	#KIND_SHIFT,d3
-	lsl.l	d3,d2
-	lea	Enemies+UPRIGHT,a0
-	add.l	d2,a0
+	bsr	FlightImage
 	bsr	FlyerDraw
 .Drawn	lea	fl_SIZEOF(a3),a3
 	dbf	d7,.Draw
@@ -190,6 +185,60 @@ GameFrame:
 	moveq	#1,d0
 	bra	StageInit
 .Busy	rts
+
+;--
+; FlightImage
+; Which image shows a flight: its kind of enemy, turned the way it is heading.
+; In:       a3 = its slot, a5 = state
+; Out:      a0 = the image
+; Clobbers: d2-d4
+FlightImage:
+	moveq	#0,d2
+	move.b	fl_obj(a3),d2
+	lsr.w	#1,d2
+	lea	ObjKind(a5),a0
+	move.b	(a0,d2.w),d2
+	moveq	#KIND_SHIFT,d3
+	lsl.l	d3,d2
+	lea	Enemies,a0
+	add.l	d2,a0
+	btst	#FLB_LANDED,fl_flags(a3)
+	bne	.Upright
+	; The arcade's rule, on a heading of quadrant (2 bits) and angle within it (8 bits):
+	;   a = angle, counted back from the end of the quadrant in quadrants 1 and 3
+	;   within half a step of straight up or down (a + 21 > 255): the upright frame
+	;   else frame = (a + 21) * 3 / 128: six frames, 15 degrees apart, from pointing left
+	;   flip by quadrant: its hardware mirrors the frame to get the other directions
+	move.w	fl_head(a3),d2
+	move.w	d2,d3
+	rol.w	#QUADRANT_BITS,d3
+	and.w	#QUADRANTS-1,d3
+	lsr.w	#16-QUADRANT_BITS-8,d2
+	btst	#0,d3
+	beq	.Angle
+	not.b	d2
+.Angle	move.b	FlipOf(pc,d3.w),d3
+	lsl.w	#8,d3
+	lsl.w	#FLIP_SHIFT-8,d3
+	add.w	d3,a0
+	add.b	#HALF_STEP,d2
+	bcs	.Upright
+	lsr.b	#1,d2
+	move.b	d2,d4
+	lsr.b	#1,d4
+	add.b	d4,d2
+	lsr.b	#5,d2
+	and.w	#7,d2
+	lsl.w	#8,d2				; FRAME_SIZE each
+	add.w	d2,a0
+	rts
+.Upright
+	lea	UPRIGHT(a0),a0
+	rts
+
+; which flipped copy each quadrant uses, in FLIP_SIZE steps: 1 = top to bottom, 2 = left to right.
+; The frames point left and up: heading right and up they are mirrored, and so on round.
+FlipOf:	dc.b	2,0,1,3
 
 ;--
 ; Place

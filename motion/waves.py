@@ -17,6 +17,7 @@ launch of the stages it covers.
 
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 
 import galaga_motion as G
 
@@ -90,7 +91,7 @@ def main() -> None:
     import validate as V
 
     rom = G.Rom(sys.argv[1])
-    data = open(sys.argv[2], "rb").read()
+    data = Path(sys.argv[2]).read_bytes()
     recs = [data[i : i + V.REC] for i in range(0, len(data) - V.REC + 1, V.REC)]
     slots = lambda r: [r[1 + 20 * i : 21 + 20 * i] for i in range(12)]  # noqa: E731
     stage_of = lambda r: r[V.REC - 1]  # noqa: E731
