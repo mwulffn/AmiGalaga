@@ -43,6 +43,7 @@ STAR_SPEED	equ	$40			; a line per arcade frame, in 64ths: the speed on the first
 FASTEST_STAGE	equ	16			; from this stage on they go no faster
 STAGE_STEPS	equ	$70			; stage * 4, masked with this, is added to the speed
 CARRY_BITS	equ	6
+TITLE_SPEED	equ	16			; 64ths of a line per arcade frame while no game is on: 15 lines a second
 BACK_LINES	equ	3			; lines per arcade frame when they run backwards
 CARRY_MASK	equ	(1<<CARRY_BITS)-1
 
@@ -94,7 +95,8 @@ StarsStage:
 
 ;--
 ; StarsTick
-; One arcade frame of the stars' speed, as the arcade has it: they stand still while the
+; One arcade frame of the stars' speed. While no game is on they drift slowly. In a game
+; it is as the arcade has it: they stand still while the
 ; fighter is not on the screen, and work back up to speed, a 64th of a line per frame more
 ; each frame, when it returns.
 ; In:       a5 = state
@@ -106,7 +108,11 @@ StarsTick:
 	subq.w	#BACK_LINES,StarSteps(a5)	; the fighter is being pulled up: they run backwards
 	rts
 .Forward
-	move.b	PlayerState(a5),d0
+	tst.b	Mode(a5)			; the title, the options, the best scores: slowly
+	beq	.Game
+	moveq	#TITLE_SPEED,d0
+	bra	.Steady
+.Game	move.b	PlayerState(a5),d0
 	beq	.Moving				; PS_PLAYING
 	cmp.b	#PS_READY,d0
 	beq	.Moving

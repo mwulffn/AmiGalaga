@@ -334,6 +334,10 @@ option is kept for later.
   without names, all 20000 at the start, kept until power-off; there
   is no attract mode that plays by itself; the title is the game's
   font, capitals only (AMIGALAGA), not a logo.
+- While the title, the options or the best scores show, the stars
+  drift slowly: a quarter of a line per arcade frame, 15 lines a second
+  (`TITLE_SPEED` in `stars.s`). Asked for and confirmed on screen by
+  the user (2026-10-01).
 - A test build (`TEST_FRAMES` and the like) skips all of this and goes
   straight into a game, so the tests are as they were.
 
@@ -541,8 +545,7 @@ included, so the real figure is a little lower.
   in a later stage.
 - **Title, second pass:** an attract mode that plays by itself, names
   for the best scores (and whether to save them to disk), a proper
-  logo. The stars stand still while the title shows (they follow the
-  fighter, and there is none); not decided whether they should.
+  logo.
 - **The frame budget is thin** (see Measured budget): no late frame in
   the self-playing runs, with 8 lines to spare in the worst one. More
   to gain is listed there.
