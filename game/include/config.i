@@ -16,3 +16,7 @@ BLITTER_PRIORITY equ	1		; 1: the blitter takes the bus ahead of the CPU
 	ifnd	SOUND_TEST
 SOUND_TEST	equ	0		; n: drive the sound driver from the test script for n
 	endc				;    ticks and report what it sent to Paula
+
+	ifnd	DEMO_FLYERS
+DEMO_FLYERS	equ	10		; until there is a game: how many flyers demo.s moves
+	endc

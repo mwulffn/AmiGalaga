@@ -47,7 +47,7 @@ CALLSYS	macro
 ; lint: allow a5, a6
 ; In:       -
 ; Out:      d0 = 0, the return code for the shell
-; Clobbers: d1-d4, d6-d7, a0-a2, a4-a6
+; Clobbers: d1-d7, a0-a6
 Start:	move.l	EXEC_BASE.w,a6
 	lea	GfxName(pc),a1
 	CALLSYS	OldOpenLibrary

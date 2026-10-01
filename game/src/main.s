@@ -5,12 +5,14 @@
 	include	"layout.i"
 	include	"sound.i"
 	include	"state.i"
+	include	"macros.i"
 
 	xdef	Main
 	xref	VideoInit
 	xref	VideoWaitFrame
 	xref	VideoFlip
 	xref	StarsInit
+	xref	DemoFrame
 	xref	SoundInit
 	xref	SoundStop
 	if	SOUND_TEST
@@ -26,7 +28,7 @@ METER_COLOUR	equ	$004		; the raster meter's idle colour
 ; Run the game until the left mouse button is pressed (or, in a test build, for TEST_FRAMES frames).
 ; In:       a5 = state, a6 = CUSTOM
 ; Out:      -
-; Clobbers: d0-d1, a0
+; Clobbers: d0-d7, a0-a3
 Main:	bsr	StarsInit
 	bsr	VideoInit
 	bsr	SoundInit
@@ -38,7 +40,8 @@ Main:	bsr	StarsInit
 	move.w	FrameCount(a5),FrameStart(a5)
 	endc
 
-	; the frame's work goes here
+	bsr	DemoFrame
+	WAITBLIT				; nothing may still be drawing when the screens swap
 
 	if	RASTER_METER
 	move.w	#METER_COLOUR,color(a6)	; the copper sets it back at the top of the frame
