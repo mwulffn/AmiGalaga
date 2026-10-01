@@ -12,3 +12,7 @@ TEST_FRAMES	equ	0		; n: run n frames, exit, write the report to "results"
 	ifnd	BLITTER_PRIORITY
 BLITTER_PRIORITY equ	1		; 1: the blitter takes the bus ahead of the CPU
 	endc
+
+	ifnd	SOUND_TEST
+SOUND_TEST	equ	0		; n: drive the sound driver from the test script for n
+	endc				;    ticks and report what it sent to Paula

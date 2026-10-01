@@ -3,6 +3,7 @@
 
 	include	"config.i"
 	include	"hw.i"
+	include	"sound.i"
 	include	"state.i"
 	include	"macros.i"
 

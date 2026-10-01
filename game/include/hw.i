@@ -68,6 +68,27 @@ VEC_LEVEL3	equ	$6c		; vertical blank, blitter, copper
 VEC_LEVEL6	equ	$78		; CIA-B
 VEC_COUNT	equ	7
 
+; Paula: one block per channel, AUD_SIZE apart
+aud_lc		equ	0		; sample address
+aud_len		equ	4		; length in words
+aud_per		equ	6		; period
+aud_vol		equ	8		; volume 0-64
+AUD_SIZE	equ	$10
+AUD_CHANNELS	equ	4
+AUD_MAX_VOLUME	equ	64
+PAULA_CLOCK	equ	3546895		; PAL: sample rate = PAULA_CLOCK / period
+
+; CIA-B timer A, on level 6
+CIAB_TALO	equ	$bfd400
+CIAB_TAHI	equ	$bfd500
+CIAB_ICR	equ	$bfdd00
+CIAB_CRA	equ	$bfde00
+CIA_ICR_SET	equ	$80
+CIA_ICR_TA	equ	$01
+CIA_ICR_ALL	equ	$7f
+CIA_CRA_RUN	equ	$11		; load the latch and run continuously
+CIA_E_CLOCK	equ	709379		; PAL: timer ticks per second
+
 CIAA_PRA	equ	$bfe001
 CIAAB_FIRE0	equ	6		; left mouse button, active low
 

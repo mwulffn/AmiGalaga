@@ -1,22 +1,34 @@
 # Galaga for the Amiga 500
 # make            build the executable and a bootable disk image
 # make run        boot the disk in FS-UAE (stock A500, Kickstart 1.3)
-# make test       run the test build in FS-UAE and print its report
+# make test       run the test builds in FS-UAE: frame timing, and the sound
+#                 driver against the arcade model
 # DEFS="-DRASTER_METER=1" and the like override include/config.i
 
 DEFS   ?=
+ROM    ?= ../original/galaga.zip
 KICK   ?= $(HOME)/Documents/FS-UAE/Kickstarts/kick34005.A500
 UAE     = fs-uae --amiga_model=A500 --kickstart_file=$(KICK) --slow_memory=0
 
 # startup.o must be first: the program starts at the top of the first object
-OBJECTS = build/startup.o build/main.o build/video.o build/state.o
+OBJECTS = build/startup.o build/main.o build/video.o build/sound.o build/state.o
+# built from the user's own ROM set; never committed
+GENERATED = build/snd_data.i build/snd_chip.bin build/sndtest_script.i
 INCLUDES = $(wildcard include/*.i)
 
 all: build/galaga.adf
 
-build/%.o: src/%.s $(INCLUDES) FORCE
+build/%.o: src/%.s $(INCLUDES) $(GENERATED) FORCE
 	@mkdir -p build
-	vasmm68k_mot -quiet -Fhunk -m68000 -Iinclude $(DEFS) -o $@ $<
+	vasmm68k_mot -quiet -Fhunk -m68000 -Iinclude -Ibuild $(DEFS) -o $@ $<
+
+build/snd_data.i build/snd_chip.bin: tools/make_sound_data.py $(ROM)
+	@mkdir -p build
+	python3 tools/make_sound_data.py $(ROM) build
+
+build/sndtest_script.i: tools/sndtest.py
+	@mkdir -p build
+	python3 tools/sndtest.py script $@
 
 build/galaga: $(OBJECTS)
 	vlink -bamigahunk -s -o $@ $(OBJECTS)
@@ -31,6 +43,7 @@ run: build/galaga.adf
 
 test:
 	tools/test.sh
+	tools/test_sound.sh
 
 clean:
 	rm -rf build

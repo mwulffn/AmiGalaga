@@ -2,12 +2,18 @@
 
 	include	"config.i"
 	include	"hw.i"
+	include	"sound.i"
 	include	"state.i"
 
 	xdef	Main
 	xref	VideoInit
 	xref	VideoWaitFrame
 	xref	VideoFlip
+	xref	SoundInit
+	xref	SoundStop
+	if	SOUND_TEST
+	xref	SoundLog
+	endc
 
 METER_COLOUR	equ	$004		; the raster meter's idle colour
 
@@ -20,6 +26,10 @@ METER_COLOUR	equ	$004		; the raster meter's idle colour
 ; Out:      -
 ; Clobbers: d0-d1, a0-a1
 Main:	bsr	VideoInit
+	bsr	SoundInit
+	if	SOUND_TEST=0
+	move.b	#1,Sound+SND_START(a5)	; until there is a game: the start theme
+	endc
 .Frame	bsr	VideoWaitFrame
 	if	TEST_FRAMES
 	move.w	FrameCount(a5),FrameStart(a5)
@@ -40,11 +50,16 @@ Main:	bsr	VideoInit
 	endc
 	btst	#CIAAB_FIRE0,CIAA_PRA
 	bne	.Frame
-.Done
+.Done	bsr	SoundStop
+	if	SOUND_TEST
+	move.l	#SoundLog,ReportPtr(a5)
+	move.l	#SOUND_TEST*SOUND_LOG_ENTRY,ReportLen(a5)
+	else
 	if	TEST_FRAMES
 	lea	StatWorst(a5),a0
 	move.l	a0,ReportPtr(a5)
 	move.l	#STAT_SIZE,ReportLen(a5)
+	endc
 	endc
 	rts
 
