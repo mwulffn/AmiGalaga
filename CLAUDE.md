@@ -159,13 +159,20 @@ objects are bombs and explosions.
   not measured.
 - **Game logic** is not ported or measured: formation drift and
   breathing, dive scheduling, bombs, capture, scoring.
-- **Sound cost.** At up to 19 lines a frame the driver is the largest
-  CPU item measured so far, and it lifts the worst frame with 20 flyers
-  to 294 of 313 lines. Not yet tried: testing sounds two at a time,
-  a lighter path for one-track sounds, or playing some sounds from
-  pre-computed streams.
-- **Sound by ear on the Amiga** is unchecked beyond the user listening
-  to experiment-6; the explosion's level against the tones is a guess.
+- **Sound cost: deferred, by decision.** The driver works and the user
+  has confirmed it sounds right on the emulated A500 (2026-10-01). At up
+  to 19 lines a frame it is the largest CPU item measured, and it lifts
+  the worst frame with 20 flyers to 294 of 313 lines. Make it fast later
+  ("first work, then fast"). Ideas, none tried yet:
+  - test two sounds per instruction by laying the request bytes out in
+    handling order;
+  - a lighter path for the one-voice sounds (shots, hits, dive), which
+    are most of a busy stretch;
+  - play some sounds from pre-computed per-tick streams;
+  - run two driver steps per interrupt at 60 Hz and write Paula once.
+  Any change must still pass `experiment-6/tools/measure.sh sndtest`.
+- The explosion's loudness against the tones is a guess; nobody has
+  compared it with the arcade's mix.
 - **Not drawn yet:** tractor beam, 32x32 explosions, dual fighter,
   READY/STAGE text.
 - Second star layer on sprite 6: decide once logic shows the frame time
