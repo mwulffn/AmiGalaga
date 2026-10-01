@@ -81,7 +81,12 @@ decision is made or changed.
 - **Flyers** (divers, bombs, explosions, score pop-ups): masked bobs,
   erased with a clear blit of the old position.
 - **Text:** panel text is drawn by the CPU when it changes. Text inside
-  the playfield (READY, STAGE n) will be bobs on the flyer path.
+  the playfield (PLAYER 1, STAGE n, READY, GAME OVER, a challenging
+  stage's results) is drawn as flyers of half height, two letters each,
+  built from the font when a line is set and redrawn every frame while
+  it shows (`game/src/text.s`): enemies fly through where the arcade
+  puts its text. Three lines at most. Colours as the arcade: cyan, red
+  for PERFECT, yellow for the special bonus.
 - Rejected after measuring: clearing the whole buffer per frame, clearing
   with the CPU, and unmasked per-enemy copies (neighbours at 16 px pitch
   wipe each other).
@@ -175,12 +180,28 @@ option is kept for later.
   is over and a new one starts after 6 counts. No READY or GAME OVER
   text yet.
 - Bombs are drawn as flyers of half height (their image is 8 lines).
-- A stage ends when every wave has been launched and nothing of it is
-  left; the next starts 100 frames later (no STAGE n text yet).
+- The flow between stages follows the arcade's sequence and its timer
+  of 32-frame counts (`game/src/flow.s`): a game opens with PLAYER 1 and
+  the start theme (8 counts), the first stage's splash, and the fighter
+  coming on under PLAYER 1 and STAGE 1 (3 counts); a cleared stage is
+  followed by 4 counts, then the next stage's splash (STAGE n for 3
+  counts while its badges appear one every 8 frames with a click); a
+  challenging stage has its own text and tune, a timer that spaces its
+  waves, a bonus for all eight of a wave (1000 to 3000 by stage), and
+  results (NUMBER OF HITS, BONUS at 100 a hit, or PERFECT and 10000);
+  READY shows while a fighter is replaced, GAME OVER after the last.
+  Stage badges are in the panel above SHIPS, not at the bottom right.
+- The high score follows the score. An extra fighter comes at 20000, at
+  70000 and every 70000 after (MAME's default switch setting).
+- The wave timer was found because the launcher model started a
+  challenging stage's waves too early; with it the model makes all 160
+  trace launches at the arcade's frame with no unexplained waits.
 - `test_stage.sh` runs a build that plays itself (side to side, a press
   every 16 frames) and compares every launch, landing, hit, kill, score,
-  bomb and lost fighter (through a game over into the next game) with
-  the models over 3,600 frames in both builds: identical.
+  bomb, lost fighter and stage start with the models, in both builds:
+  6,000 frames from stage 1 (through a stage change and a game over
+  into the next game) and 3,500 from stage 3 (a challenging stage, its
+  results and bonus, and stage 4). All identical.
 - The stage index row is the arcade's difficulty switch; `RANK` 3 is
   what MAME's default (and the trace) uses.
 - A flying enemy is turned the way it is heading by the arcade's rule
@@ -314,6 +335,12 @@ positions need a one-word blit, not two.
 The user keeps the arcade's 8 and accepts the thin margin for now
 (2026-10-01).
 
+With the stage flow in, a self-playing run averages 158 lines. Its
+worst frame, 292, is the one that sets a game's first stage up: the
+stage's tables, five strips and a line of text are all built in that
+frame, with nothing else on screen. Building a line of text is slow (a
+byte at a time); if that frame ever matters, start there.
+
 A flyer costs about 6.4 lines to draw, the starfield 11-14. The arcade
 never has more than 12 enemies flying at once; the rest of its
 off-formation objects are bombs and explosions.
@@ -325,22 +352,22 @@ included, so the real figure is a little lower.
 
 ## Open
 
-- **The game** (`game/`) so far: startup and shutdown, video, sound,
-  starfield, flyers, formation strips, score panel, the flight stepper,
-  the stage entrance, the formation's movement, dives, bombs, and the
-  player: joystick in port 2, shots, hits, explosions, score, lives, the
-  fighter's loss and return, game over into a new game, and stages that
-  end. All to the style guide and linted.
+- **The game** (`game/`) so far plays from PLAYER 1 to GAME OVER and
+  round again: startup and shutdown, video, sound, starfield, flyers,
+  formation strips, the panel (score, high score, stage badges, spare
+  fighters), the flight stepper, the stage entrance, the formation's
+  movement, dives, bombs, the player (joystick in port 2, shots, hits,
+  explosions, score, lives, extra fighters), the flow between stages
+  with its text, and challenging stages with their results. All to the
+  style guide and linted.
 - **Not in the entrance yet:** the enemies that fly through without
-  joining (stage 4 on; needs the arcade's random numbers), the wait
-  before the first wave (READY, STAGE n), and holding waves back while
-  the fighter is replaced.
+  joining (stage 4 on; needs the arcade's random numbers).
 - **Not in the dives yet:** capture attempts (no tractor beam: until
   there is one, `Capturing` stays set and every boss dive is the
   ordinary one, which makes boss dives more repetitive than the
   arcade's), and transforming enemies and their convoys.
-- **Game logic** not ported yet: capture, the high score, extra fighters by score, the bonus for
-  all 8 of a challenging stage's wave and that stage's results.
+- **Game logic** not ported yet: capture; the results after GAME OVER
+  (shots, hits, ratio); title, attract mode and high score entry.
 - **Sound cost: deferred, by decision.** The driver works and the user
   has confirmed it sounds right on the emulated A500 (2026-10-01). At up
   to 19 lines a frame it is the largest CPU item measured, and it lifts
@@ -367,8 +394,9 @@ included, so the real figure is a little lower.
   the 256-line display and its 32x32 explosion (233 to 264) loses its
   bottom 8 lines. The user has seen the clipping; not decided yet
   (2026-10-01).
-- **Not drawn yet:** tractor beam, dual fighter, READY / STAGE n /
-  GAME OVER text.
+- **Not drawn yet:** tractor beam, dual fighter, and the two-tile score
+  pop-ups (2000 and 3000 for a challenging stage's wave from stage 19:
+  the points are given, nothing shows).
 - Second star layer on sprite 6: decide once logic shows the frame time
   left.
 

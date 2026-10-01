@@ -2,6 +2,7 @@
 
 	xdef	Enemies
 	xdef	Font
+	xdef	Badges
 
 	section	chip_data,data_c
 
@@ -15,3 +16,8 @@ Enemies:	incbin	"enemies.bin"
 
 ; 8x8 glyphs for ASCII 32 to 90, one byte a row
 Font:	incbin	"font.bin"
+
+; the stage badge tiles, 8 rows of 4 plane bytes each: 1, 5 (a tile above a tile),
+; 10, 20, 30, 50 (two such columns)
+Badges:	incbin	"badges.bin"
+	even

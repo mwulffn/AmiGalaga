@@ -24,15 +24,17 @@ DISPLAY_TOP	equ	44			; raster line of the first displayed line
 ; What goes with a screen buffer. FrontScreen and BackScreen in the state
 ; point at one of these each.
 MAX_FLYERS	equ	48
-MAX_BOMBS	equ	8
+MAX_SMALLS	equ	8+3*12			; 8 bombs and three lines of text, two letters a flyer
 	rsreset
 scr_bitmap	rs.l	1			; the buffer, in chip RAM
 scr_score	rs.l	1			; the score its panel shows
 scr_flyers	rs.w	1			; flyers drawn in it, to erase next time
 scr_erase	rs.l	MAX_FLYERS		;   and where
-scr_bombs	rs.w	1			; bombs drawn in it: half-height flyers, erased likewise
-scr_bomb_erase	rs.l	MAX_BOMBS
+scr_smalls	rs.w	1			; half-height flyers drawn in it (bombs, text), erased likewise
+scr_small_erase	rs.l	MAX_SMALLS
 scr_ships	rs.w	1			; how many spare fighters its panel shows
+scr_high	rs.l	1			; the high score its panel shows
+scr_badges	rs.w	1			; the stage and how many of its badges its panel shows
 scr_SIZEOF	rs.b	0
 
 ; the formation, and the arcade's two tables that place it (HomeX, HomeLoc):

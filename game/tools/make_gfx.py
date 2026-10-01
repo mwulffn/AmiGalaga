@@ -16,6 +16,7 @@ Reads the arcade ROM zip and writes:
                pop-ups, one image each.
   sprites.bin  fighter + bullet as 2-plane hardware sprite image words
   font.bin     1-bit 8x8 glyphs for ASCII 32..90 (space, digits, A-Z)
+  badges.bin   the stage badge tiles: 8 rows of 4 plane bytes each
   gfx.i        vasm include with frame offsets and the palettes
   sheet.png    contact sheet for eyeballing (optional, needs pillow)
 """
@@ -48,8 +49,9 @@ ENEMIES = [
 # sprite: tile n is top right, n+1 bottom right, n+2 top left, n+3 bottom left on the upright
 # screen), listed here top left, top right, bottom left, bottom right.
 BLAST = [(t, 10) for t in (0x41, 0x42, 0x43, 0x46, 0x44, 0x47, 0x45, 0x4A, 0x48, 0x4B, 0x49)]
-# Score pop-ups for a boss shot while diving: 400, 800, 1600; and 1000.
-POINTS = [(0x35, 10), (0x37, 13), (0x3A, 14), (0x38, 13)]
+# Score pop-ups for a boss shot while diving: 400, 800, 1600; and for all eight of a
+# challenging stage's wave: 1000, 1500.
+POINTS = [(0x35, 10), (0x37, 13), (0x3A, 14), (0x38, 13), (0x39, 13)]
 BOMB = (0x30, 11)  # the fighter's bullet, upside down in another colour set
 # The fighter's explosion: four 32x32 frames in colour set 11, shown on hardware sprites 0 and 1
 # (left and right halves). Their colour registers hold the fighter's colours, so each of the
@@ -105,13 +107,35 @@ def font(rom: bytes) -> bytes:
     return bytes(out)
 
 
+BADGE_TILES = range(0x36, 0x4A)  # stage badges: 1, 5 (a column each), 10, 20, 30, 50 (two columns)
+
+
+def badges(rom: bytes, lut: bytes, pal: bytes) -> bytes:
+    """The stage badge tiles in the playfield palette: 8 rows of 4 plane bytes each."""
+    out = bytearray()
+    for tile in BADGE_TILES:
+        code = 1 if tile < 0x3A or tile >= 0x46 else 2  # the arcade's colour set for the tile
+        raster = [[0] * 8 for _ in range(8)]
+        for y in range(8):
+            for x in range(8):
+                byte = rom[tile * 16 + y + (8 if x < 4 else 0)]
+                raster[y][x] = (byte >> (7 - x % 4) & 1) << 1 | (byte >> (3 - x % 4) & 1)
+        for y in range(8):
+            row = [PALETTE.index(ocs(pal[(lut[code * 4 + raster[7 - x][y]] & 15) | 0x10])) for x in range(8)]
+            out += bytes(sum(1 << (7 - x) for x in range(8) if row[x] >> plane & 1) for plane in range(4))
+    return bytes(out)
+
+
 def main() -> None:
     zip_path, out = Path(sys.argv[1]), Path(sys.argv[2])
     out.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(zip_path) as z:
         rom = z.read("gg1_11.4d") + z.read("gg1_10.4f")
         pal, lut = z.read("prom-5.5n"), z.read("prom-3.1c")
-        (out / "font.bin").write_bytes(font(z.read("gg1_9.4l")))
+        char_rom, char_lut = z.read("gg1_9.4l"), z.read("prom-4.2n")
+        (out / "font.bin").write_bytes(font(char_rom))
+        pal = z.read("prom-5.5n")
+        (out / "badges.bin").write_bytes(badges(char_rom, char_lut, pal))
 
     def colours(code: int) -> list[int | None]:
         """Pen -> OCS colour, None where transparent."""

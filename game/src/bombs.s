@@ -22,12 +22,14 @@
 	include	"sound.i"
 	include	"state.i"
 	include	"macros.i"
+	include	"gfx.i"
 
 	xdef	BombsDrop
 	xdef	BombsFall
 	xdef	BombsDraw
 	xref	FlightPlace
-	xref	BombDraw
+	xref	SmallDraw
+	xref	Enemies
 
 MIN_HEIGHT	equ	$4c			; an enemy lower than this (y in two-pixel units) drops nothing
 FIGHTER_HALF_Y	equ	SHIP_SY/2+1		; the arcade's constant for the fighter's y, halved: $95
@@ -41,6 +43,8 @@ STEP_FRAMES	equ	4			; arcade frames between tests for having left the screen
 OFF_X		equ	$f4			; a bomb at or past this x,
 OFF_TOP		equ	22/2			;   above this y, halved,
 OFF_BOTTOM	equ	330/2			;   or at or below this one, is gone
+BOMB_TOP	equ	4			; the first row of its image that the bomb fills
+IMAGE_ROW	equ	PLANES*2		; bytes in one row of an image
 STRESS_WAIT	equ	4			; BOMB_STRESS: arcade frames between an enemy's bombs
 
 	section	code,code
@@ -205,7 +209,9 @@ BombsDraw:
 	bhi	.Next
 	cmp.w	#LAST_FLYER_Y,d1
 	bhi	.Next
-	bsr	BombDraw
+	addq.w	#BOMB_TOP,d1			; the 8 rows of its 16x16 image that it fills
+	lea	Enemies+GFX_BOMB+BOMB_TOP*IMAGE_ROW,a0
+	bsr	SmallDraw
 .Next	addq.l	#bm_SIZEOF,a3
 	dbf	d4,.Bomb
 	rts

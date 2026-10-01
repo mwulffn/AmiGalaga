@@ -12,13 +12,13 @@ KICK   ?= $(HOME)/Documents/FS-UAE/Kickstarts/kick34005.A500
 UAE     = fs-uae --amiga_model=A500 --kickstart_file=$(KICK) --slow_memory=0
 
 # startup.o must be first: the program starts at the top of the first object
-OBJECTS = build/startup.o build/main.o build/game.o build/stage.o build/dives.o build/player.o build/blasts.o build/bombs.o build/video.o build/stars.o \
+OBJECTS = build/startup.o build/main.o build/game.o build/stage.o build/dives.o build/player.o build/blasts.o build/bombs.o build/text.o build/flow.o build/video.o build/stars.o \
 	build/formation.o build/flyers.o build/flight.o build/flighttest.o build/panel.o build/sprites.o build/sound.o \
 	build/gfx.o build/state.o
 # built from the user's own ROM set; never committed
 GENERATED = build/snd_data.i build/snd_chip.bin build/sndtest_script.i \
 	build/stars.bin build/starev.bin \
-	build/gfx.i build/enemies.bin build/sprites.bin build/font.bin \
+	build/gfx.i build/enemies.bin build/sprites.bin build/font.bin build/badges.bin \
 	build/motion_data.s build/flight_cases.i
 INCLUDES = $(wildcard include/*.i)
 
@@ -32,7 +32,7 @@ build/snd_data.i build/snd_chip.bin: tools/make_sound_data.py $(ROM)
 	@mkdir -p build
 	python3 tools/make_sound_data.py $(ROM) build
 
-build/gfx.i build/enemies.bin build/sprites.bin build/font.bin: tools/make_gfx.py $(ROM)
+build/gfx.i build/enemies.bin build/sprites.bin build/font.bin build/badges.bin: tools/make_gfx.py $(ROM)
 	@mkdir -p build
 	python3 tools/make_gfx.py $(ROM) build
 

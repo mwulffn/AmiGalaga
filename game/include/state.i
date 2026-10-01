@@ -37,6 +37,23 @@ GameTimer	rs.b	1		;   counts down, one every 32 arcade frames: the pauses around
 BombReload	rs.b	1		; bombs: fl_wait after each chance, from the stage's row
 EntryBombs	rs.b	1		;   the chances of an enemy that may bomb on its way in
 NewGame		rs.b	1		; nonzero: the game is over and the next frame starts a new one
+FlowState	rs.b	1		; flow: where the game is between stages, an FL_ value
+FlowTimer	rs.b	1		;   counts down, one every 32 arcade frames
+FlowStep	rs.b	1		;   how far a challenging stage's results have got
+FlowText	rs.b	1		;   which of the fighter's messages shows: 0 none, 1 READY, 2 GAME OVER
+FirstStage	rs.b	1		;   nonzero until a game's first stage is running
+FlyingHits	rs.b	1		; stage: enemies shot while flying: a challenging stage's "number of hits"
+WaveHits	rs.b	1		;   challenging stage: enemies of the wave still to shoot for its bonus
+WaveTimer	rs.b	1		; launcher: counts down every 32 arcade frames; spaces a challenging stage's waves
+BadgeCount	rs.b	1		; panel: columns of stage badges in BadgeList,
+BadgeShown	rs.b	1		;   how many of them are showing yet,
+BadgeWait	rs.b	1		;   and arcade frames to the next one
+BadgePad	rs.b	1
+BadgeList	rs.b	BADGE_PLACES	;   per column: its top tile; bit 7 set on a badge's first column
+HighScore	rs.l	1		; as Score
+NextBonus	rs.l	1		; the score that brings the next extra fighter
+TextLines	rs.b	TEXT_LINES*ts_SIZEOF	; text in the playfield
+TextBuf		rs.b	2*TEXT_CELLS+2	; scratch for a line with a number in it
 TicksNow	rs.w	1
 TickFrame	rs.w	1		; which arcade frame the shots, bombs and collisions are at		; arcade frames that began in this displayed frame
 ScoreStep	rs.l	1		; scratch for adding to the score

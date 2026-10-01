@@ -16,6 +16,8 @@
 	xdef	PanelInit
 	xdef	PanelScore
 	xdef	PanelShips
+	xdef	PanelStage
+	xref	Badges
 	xref	Font
 	xref	Enemies
 
@@ -27,7 +29,11 @@ WHITE		equ	1				; palette entries
 RED		equ	2
 YELLOW		equ	3
 SCORE_AT	equ	PANEL+50*ROW_BYTES+2
+HIGH_AT		equ	PANEL+18*ROW_BYTES+2
 SHIPS_AT	equ	PANEL+232*ROW_BYTES
+BADGES_AT	equ	PANEL+192*ROW_BYTES
+FIRST_BADGE	equ	$36				; the arcade's number of the first badge tile
+BADGE_BYTES	equ	GLYPH_ROWS*PLANES		; a tile: 8 rows of 4 plane bytes
 NO_SCORE	equ	-1				; scr_score: nothing drawn yet
 ASCII_ZERO	equ	'0'
 SHIP_PLACES	equ	5				; spare fighters the panel has room for
@@ -55,7 +61,9 @@ PanelInit:
 PanelDraw:
 	moveq	#NO_SCORE,d0
 	move.l	d0,scr_score(a3)
+	move.l	d0,scr_high(a3)
 	move.w	d0,scr_ships(a3)
+	move.w	d0,scr_badges(a3)
 	move.l	scr_bitmap(a3),a3
 	lea	Labels(pc),a0
 .Label	move.w	(a0)+,d0			; colour; 0 ends the list
@@ -105,35 +113,96 @@ PanelShips:
 
 ;--
 ; PanelScore
-; Bring the back screen's score up to date, if it is not.
+; Bring the back screen's score and high score up to date, if they are not.
 ; In:       a5 = state
 ; Out:      -
-; Clobbers: d0-d3, a0-a2
+; Clobbers: d0-d3, a0-a3
 PanelScore:
-	move.l	BackScreen(a5),a2
+	move.l	BackScreen(a5),a3
 	move.l	Score(a5),d0
-	cmp.l	scr_score(a2),d0
+	cmp.l	scr_score(a3),d0
+	beq	.High
+	move.l	d0,scr_score(a3)
+	lea	Score+1(a5),a0
+	move.l	#SCORE_AT,d2
+	bsr	Number
+.High	move.l	HighScore(a5),d0
+	cmp.l	scr_high(a3),d0
 	beq	.Fresh
-	move.l	d0,scr_score(a2)
-	lea	Score+1(a5),a0			; three bytes of two decimal digits each
-	lea	ScoreText(a5),a1
+	move.l	d0,scr_high(a3)
+	lea	HighScore+1(a5),a0
+	move.l	#HIGH_AT,d2
+	bsr	Number
+.Fresh	rts
+
+;--
+; Number
+; Print a score in the panel.
+; In:       a0 = its three bytes of two decimal digits each, d2.l = where in a buffer,
+;           a3 = the screen (a scr_ structure), a5 = state
+; Out:      -
+; Clobbers: d0-d3, a0-a2
+Number:	lea	ScoreText(a5),a1
 	moveq	#3-1,d1
-.Digits	move.b	(a0)+,d2
-	move.b	d2,d3
-	lsr.b	#4,d2
+.Digits	move.b	(a0)+,d0
+	move.b	d0,d3
+	lsr.b	#4,d0
 	and.b	#15,d3
-	add.b	#ASCII_ZERO,d2
+	add.b	#ASCII_ZERO,d0
 	add.b	#ASCII_ZERO,d3
-	move.b	d2,(a1)+
+	move.b	d0,(a1)+
 	move.b	d3,(a1)+
 	dbf	d1,.Digits
 	clr.b	(a1)
 	lea	ScoreText(a5),a0
-	move.l	scr_bitmap(a2),a1
-	add.l	#SCORE_AT,a1
+	move.l	scr_bitmap(a3),a1
+	add.l	d2,a1
 	moveq	#WHITE,d0
-	bsr	TextPrint
+	bra	TextPrint
+
+;--
+; PanelStage
+; Bring the back screen's row of stage badges up to date, if it is not. The game reveals
+; a new stage's badges one at a time (BadgeShown).
+; In:       a5 = state
+; Out:      -
+; Clobbers: d0-d2, d4, a0-a3
+PanelStage:
+	move.l	BackScreen(a5),a3
+	move.w	Stage(a5),d0
+	lsl.w	#8,d0
+	move.b	BadgeShown(a5),d0
+	cmp.w	scr_badges(a3),d0
+	beq	.Fresh
+	move.w	d0,scr_badges(a3)
+	move.l	scr_bitmap(a3),a3
+	add.l	#BADGES_AT,a3
+	lea	BadgeList(a5),a2
+	moveq	#0,d4				; which column
+.Column	lea	NoBadge(pc),a0			; a badge's two tiles, one above the other, or nothing
+	cmp.b	BadgeShown(a5),d4
+	bcc	.Draw
+	moveq	#(1<<BADGEB_FIRST)-1,d0
+	and.b	(a2,d4.w),d0
+	sub.w	#FIRST_BADGE,d0
+	mulu.w	#BADGE_BYTES,d0
+	lea	Badges,a0
+	add.w	d0,a0
+.Draw	lea	(a3,d4.w),a1
+	moveq	#2*GLYPH_ROWS-1,d1
+.Row	moveq	#PLANES-1,d2
+.Plane	move.b	(a0)+,(a1)
+	lea	PLANE_BYTES(a1),a1
+	dbf	d2,.Plane
+	dbf	d1,.Row
+	addq.w	#1,d4
+	cmp.w	#BADGE_PLACES,d4
+	bne	.Column
 .Fresh	rts
+
+; two blank tiles
+NoBadge:
+	dcb.b	2*BADGE_BYTES,0
 
 ;--
 ; TextPrint
@@ -175,7 +244,6 @@ LABEL	macro
 	endm
 
 Labels:	LABEL	RED,8,0,"HIGH SCORE"
-	LABEL	WHITE,18,2,"020000"
 	LABEL	RED,40,0,"1UP"
 	LABEL	YELLOW,216,0,"SHIPS"
 	dc.w	0

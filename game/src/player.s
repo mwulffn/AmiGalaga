@@ -29,6 +29,8 @@
 	xdef	PlayerTick
 	xdef	ShotsTick
 	xdef	FighterHits
+	xdef	PlayerEnter
+	xdef	ScoreAdd
 	xref	FlightPlace
 	xref	FlightImage
 	xref	Enemies
@@ -58,6 +60,8 @@ TOUCH_ASIDE	equ	6			; the fighter is hit by anything within this many pixels to 
 TOUCH_UP_DOWN	equ	3			;   and this many two-line steps above or below
 SHIP_HALF_Y	equ	SHIP_SY/2
 NO_OBJECT	equ	$7f			; above every object number
+CHALLENGE_MASK	equ	3			; a stage whose number ends in these two bits set is a challenging stage
+WAVE_BONUSES	equ	4
 ; the arcade's colour sets, which decide an enemy's sound and score
 BLUE_BOSS	equ	1
 RED_FIGHTER	equ	7
@@ -89,6 +93,18 @@ PlayerInit:
 	else
 	clr.b	PadRight(a5)
 	endc
+	rts
+
+;--
+; PlayerEnter
+; A game's first fighter comes on: it can move, and after the pause it is in play.
+; In:       a5 = state
+; Out:      -
+; Clobbers: -
+PlayerEnter:
+	move.w	#RETURN_SX-DISPLAY_SX,ShipX(a5)
+	move.b	#READY_PAUSE,GameTimer(a5)
+	move.b	#PS_READY,PlayerState(a5)
 	rts
 
 ;--
@@ -153,6 +169,8 @@ PlayerTick:
 	subq.b	#PS_READY,d0
 	beq	.Ready
 	bcs	.Away
+	subq.b	#PS_OVER-PS_READY,d0
+	bne	.Done				; PS_ABSENT: not there yet
 	; PS_OVER: after the pause, a new game
 	tst.b	GameTimer(a5)
 	bne	.Done
@@ -558,7 +576,27 @@ Destroy:
 	tst.b	ShotFlying(a5)
 	beq	.Scored
 	bsr	ScoreAdd
-	cmp.b	#BLUE_BOSS,d3
+	addq.b	#1,FlyingHits(a5)
+	; a challenging stage: the eighth of a wave shot while flying brings the wave's bonus
+	subq.b	#1,WaveHits(a5)
+	bne	.Boss
+	moveq	#CHALLENGE_MASK,d2
+	and.w	Stage(a5),d2
+	subq.w	#CHALLENGE_MASK,d2
+	bne	.Boss
+	move.w	Stage(a5),d2			; the bonus grows every eight stages, up to stage 32
+	lsr.w	#3,d2
+	cmp.w	#WAVE_BONUSES-1,d2
+	bls	.Wave
+	moveq	#WAVE_BONUSES-1,d2
+.Wave	lea	WavePopups(pc),a0
+	move.b	(a0,d2.w),d4
+	add.w	d2,d2
+	lea	WavePoints(pc),a0
+	move.w	(a0,d2.w),d2
+	bsr	ScoreAdd
+	bra	.Scored
+.Boss	cmp.b	#BLUE_BOSS,d3
 	bne	.Scored
 	; a boss shot while diving: more for the escorts it set off with, and the total pops up
 	moveq	#BOSS_MASK,d2
@@ -597,6 +635,12 @@ Destroy:
 ; points by the arcade's colour set, as decimal digits: green boss (not destroyed by one
 ; hit), blue boss 150, butterfly 80, bee 50, the challenging stages' three 80, red fighter 500
 Points:	dc.w	0,$0150,$0080,$0050,$0080,$0080,$0080,$0500
+; a challenging stage's bonus for all eight of a wave, by stage / 8: 1000, 1500, 2000, 3000
+WavePoints:
+	dc.w	$1000,$1500,$2000,$3000
+; and the pop-up that shows it (the 2000 and 3000 ones are two tiles wide: not drawn yet)
+WavePopups:
+	dc.b	3,4,POPUP_NONE,POPUP_NONE
 ; and what a boss shot while diving adds for 0, 1 or 2 escorts: 400, 800, 1600 in all
 BonusPoints:
 	dc.w	$0100,$0500,$1300
@@ -608,13 +652,12 @@ KindColour:
 ;--
 ; ScoreAdd
 ; Add to the score.
-; In:       d2.w = points, as four decimal digits, a5 = state
+; In:       d2.l = points, as decimal digits, a5 = state
 ; Out:      -
 ; Clobbers: -
 ScoreAdd:
 	movem.l	a0-a1,-(sp)
-	clr.w	ScoreStep(a5)
-	move.w	d2,ScoreStep+2(a5)
+	move.l	d2,ScoreStep(a5)
 	lea	Score+4(a5),a0
 	lea	ScoreStep+4(a5),a1
 	and.b	#$ef,ccr			; no carry in

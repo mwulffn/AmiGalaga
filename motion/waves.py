@@ -5,7 +5,8 @@
 A stage row (see extract.py) is turned into a table of five waves, each a
 list of (control byte, object) pairs: first half and second half of the wave
 alternately. A task then launches one enemy per frame at most: a wave starts
-once nothing is flying (it hears of a landing one frame late), an enemy whose control byte has bit 7 clear waits for
+once nothing is flying (it hears of a landing one frame late; on a challenging
+stage a timer adds one to two counts of 32 frames after that), an enemy whose control byte has bit 7 clear waits for
 the frame counter to reach a multiple of 8, and one with bit 7 set follows
 the frame after its partner. Ported from the main CPU ($25A2 and $2916).
 
@@ -67,6 +68,9 @@ class Launcher:
         self.entries, self.starts = rom.entry_paths(), rom.start_positions()
         self.flying = 0  # how many were flying a frame ago: the arcade hears of a landing a frame late
         self.all_in = False  # every wave launched, and nothing flying since
+        self.challenge = stage & 3 == 3
+        self.timer = 2  # the arcade's game timer 0: on a challenging stage it spaces the waves
+        self.wave_hits = 0  # challenging stage: enemies of this wave still to shoot for its bonus
         self.heard = 0
 
     def done(self) -> bool:
@@ -77,11 +81,20 @@ class Launcher:
         c = self.table[self.at]
         flying, self.flying = self.flying, flying
         self.heard = flying  # what the arcade's logic takes the number flying to be this frame
+        timer = self.timer
+        if frame & 31 == 0 and self.timer:  # the timers count after the launcher has had its turn
+            self.timer -= 1
         if c == WAVE_END:
             self.all_in = self.all_in or not flying
             return None
         if c == WAVE_START:
-            if not flying and enabled:
+            if not enabled:
+                return None
+            if flying:
+                self.timer = 2
+            elif self.challenge and timer == 1:
+                self.wave_hits = 8  # the next wave's eight count for its bonus
+            elif not (self.challenge and timer):
                 self.at += 1
             return None
         if (not c & 0x80 and frame & 7) or not free_slot:
@@ -117,6 +130,7 @@ def main() -> None:
             waiting = not any(launched(u) for u in range(t, min(t + 8, len(recs))))
             if waiting:
                 continue
+            launcher.timer = 0  # the trace is joined at the first wave: its wait is over
         before = slots(recs[t - 1])
         flying = sum(s[0x13] & 1 for s in before)
         want = launcher.tick(recs[t][0], flying, any(not s[0x13] & 1 for s in before))
@@ -125,7 +139,7 @@ def main() -> None:
             continue
         if want and not seen and launcher.table[launcher.at - 3] == WAVE_START:
             launcher.at -= 2  # the arcade is holding the wave back (the fighter was lost): try again
-            held.add(t // 600)
+            held.add((t // 600, stage & 3 == 3))
             continue
         covered.add(stage)
         got = (seen[0][0x10], bool(seen[0][0x13] & 0x80)) if len(seen) == 1 else None
@@ -136,7 +150,10 @@ def main() -> None:
             if bad <= 10:
                 print(f"frame {t} (counter {recs[t][0]}), stage {stage}: model {want}, trace {got}")
     print(f"launcher: stages {sorted(covered)}, {ok} launches at the frame the arcade made them, {bad} not")
-    print(f"  ({len(held)} waves were held back by the arcade, as it does while the fighter is replaced)")
+    print(
+        f"  ({len(held)} waves were held back by the arcade, as it does while the fighter is replaced;"
+        f" {sum(c for _, c in held)} of them on challenging stages)"
+    )
 
 
 if __name__ == "__main__":

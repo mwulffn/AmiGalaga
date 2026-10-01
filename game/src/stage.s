@@ -24,6 +24,7 @@
 
 	xdef	StageInit
 	xdef	StageTick
+	xdef	StageIdle
 	xref	FormationInit
 	xref	DivesInit
 	xref	FlightLaunch
@@ -51,6 +52,10 @@ BEES		equ	$08/2
 BOSSES		equ	$30/2
 BUTTERFLIES	equ	$40/2
 FIRST_ENEMY	equ	$08			; the first object that is a stage's enemy
+TIMER_FRAMES	equ	32			; arcade frames per count of WaveTimer
+WAVE_GAP	equ	2			; WaveTimer while anything is flying
+WAVE_SIZE	equ	8
+CHALLENGE_MASK	equ	3			; a stage whose number ends in these two bits set is a challenging stage
 
 	section	code,code
 
@@ -153,6 +158,29 @@ ChallengeKinds:
 	dc.b	KIND_SATELLITE,KIND_GALAXIAN,KIND_SCORPION,KIND_ENTERPRISE
 
 ;--
+; StageIdle
+; No stage: nothing flying, nothing to launch, the formation empty. For a game's opening.
+; In:       a5 = state, a6 = CUSTOM
+; Out:      -
+; Clobbers: d0-d7, a0-a3
+StageIdle:
+	move.b	#WAVE_END,WaveTable(a5)
+	clr.w	WaveAt(a5)
+	clr.w	WasFlying(a5)
+	clr.b	WavesIn(a5)
+	clr.b	Alive(a5)
+	clr.b	FormDirty(a5)
+	if	SOUND_TEST=0
+	clr.b	Sound+SND_PULSE(a5)
+	endc
+	lea	Flights(a5),a0
+	moveq	#FLIGHT_SLOTS-1,d0
+.Slot	clr.b	fl_flags(a0)
+	lea	fl_SIZEOF(a0),a0
+	dbf	d0,.Slot
+	bra	FormationInit
+
+;--
 ; StageTick
 ; One arcade frame of the launcher: send the next enemy in if it is time.
 ; In:       d6.w = when in this displayed frame the arcade frame begins, in fifths,
@@ -181,17 +209,39 @@ StageTick:
 	move.w	WasFlying(a5),d1
 	move.w	d0,WasFlying(a5)
 	move.w	d1,Flying(a5)
+	; the timer that spaces a challenging stage's waves counts down every 32 arcade frames
+	move.b	WaveTimer(a5),d5		; as it was: what this frame goes by
+	moveq	#TIMER_FRAMES-1,d0
+	and.w	ArcadeFrame(a5),d0
+	bne	.Timed
+	tst.b	d5
+	beq	.Timed
+	subq.b	#1,WaveTimer(a5)
+.Timed
 
 	lea	WaveTable(a5),a2
 	add.w	WaveAt(a5),a2
 	move.b	(a2)+,d0
 	cmp.b	#WAVE_START,d0
 	bne	.Enemy
-	tst.w	d1				; a wave starts once nothing is flying
-	bne	.Wait
-	tst.b	InPlay(a5)			; and not while the fighter is being replaced
+	tst.b	InPlay(a5)			; no wave starts while the fighter is being replaced,
 	beq	.Wait
-	addq.w	#1,WaveAt(a5)
+	tst.w	d1				; or while anything is flying
+	beq	.Clear
+	move.b	#WAVE_GAP,WaveTimer(a5)
+	bra	.Wait
+	; a challenging stage waits the timer out as well, and sets the wave's count for its bonus
+.Clear	moveq	#CHALLENGE_MASK,d0
+	and.w	Stage(a5),d0
+	subq.w	#CHALLENGE_MASK,d0
+	bne	.Start
+	cmp.b	#1,d5
+	bne	.Gap
+	move.b	#WAVE_SIZE,WaveHits(a5)
+	bra	.Wait
+.Gap	tst.b	d5
+	bne	.Wait
+.Start	addq.w	#1,WaveAt(a5)
 .Wait	moveq	#1,d0
 	rts
 .Enemy	cmp.b	#WAVE_END,d0

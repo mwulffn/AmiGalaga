@@ -33,7 +33,8 @@ FLIGHT_GONE	equ	2		; its script ended
 
 ; a STAGE_TEST build logs these two, launches, a checksum of the formation's table each frame,
 ; a boss's first hit, every enemy destroyed and the score's last four digits after it,
-; every bomb dropped (with its rate) and every fighter lost (with the reserve)
+; every bomb dropped (with its rate), every fighter lost (with the reserve) and every
+; stage set up (with its number)
 STAGE_LAUNCHED	equ	0
 STAGE_FORMATION	equ	3
 STAGE_KILLED	equ	4
@@ -42,6 +43,7 @@ STAGE_SCORE_HI	equ	6
 STAGE_SCORE_LO	equ	7
 STAGE_FIGHTER_LOST equ	8
 STAGE_BOMB	equ	9
+STAGE_BEGUN	equ	10
 STAGE_LOG_BYTES	equ	4*12288
 
 ; fl_flags bits
@@ -94,7 +96,7 @@ bl_image	rs.l	1			; what it looked like, shown until the blast starts
 bl_live		rs.b	1
 bl_obj		rs.b	1			; which enemy: decides on which frames it steps
 bl_step		rs.b	1
-bl_popup	rs.b	1			; which score follows: 0 = 400, 1 = 800, 2 = 1600; negative: none
+bl_popup	rs.b	1			; which score follows: 0 = 400, 1 = 800, 2 = 1600, 3 = 1000, 4 = 1500; negative: none
 bl_SIZEOF	rs.b	0
 POPUP_NONE	equ	-1
 
@@ -118,4 +120,28 @@ PS_BLOWN	equ	1			; exploding, then gone, until GameTimer runs out
 PS_RETURNING	equ	2			; waiting for the divers to go home
 PS_READY	equ	3			; back, and can move, but not fire or be hit, until GameTimer runs out
 PS_OVER		equ	4			; no fighters left: until GameTimer runs out, then a new game
+PS_ABSENT	equ	5			; not there yet: a new game's opening
 RESERVE		equ	2			; fighters in reserve at the start
+
+; a line of text in the playfield (text.s)
+TEXT_LINES	equ	3
+TEXT_CELLS	equ	12			; flyers a line: two letters each
+	rsreset
+ts_cells	rs.w	1			; flyers showing; 0: the line is not shown
+ts_x		rs.w	1			; in buffer pixels and rows
+ts_y		rs.w	1
+ts_SIZEOF	rs.b	0
+; the palette entries text is written in
+TEXT_CYAN	equ	5
+TEXT_RED	equ	2
+TEXT_YELLOW	equ	3
+
+; where the game is between stages (FlowState)
+FL_PLAY		equ	0			; a stage is running
+FL_INTRO	equ	1			; a new game: PLAYER 1 and the start theme
+FL_CLEARED	equ	2			; the stage is cleared: a pause
+FL_RESULTS	equ	3			; a challenging stage's results
+FL_SPLASH	equ	4			; STAGE n and its badges
+FL_ENTER	equ	5			; the first stage: the fighter comes on
+BADGE_PLACES	equ	10			; badge columns the panel has room for
+BADGEB_FIRST	equ	7			; BadgeList: the first column of a badge

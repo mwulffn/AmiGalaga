@@ -47,8 +47,9 @@ is picked by rank and stage number through an index table.
 `waves.py` is the model of that set-up and of the launcher that sends
 the enemies in (one per frame at most; a wave starts once nothing is
 flying; enemies in a line are 8 frames apart). Against the trace it
-makes all 160 launches of stages 1, 2, 3 and 7 at the arcade's frame.
-Enemies that only fly through (stage 4 on) are not modelled yet.
+makes all 160 launches of stages 1, 2, 3 and 7 at the arcade's frame,
+including the timer that spaces a challenging stage's waves. Enemies
+that only fly through (stage 4 on) are not modelled yet.
 
 `formation.py` is the model of the formation's own movement: the drift
 from side to side while waves arrive and the breathing afterwards. Its

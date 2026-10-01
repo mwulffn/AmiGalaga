@@ -18,6 +18,7 @@
 	xref	PanelInit
 	xref	PanelScore
 	xref	PanelShips
+	xref	PanelStage
 	xref	SpritesInit
 	xref	SpritesUpdate
 	xref	SoundInit
@@ -44,16 +45,13 @@ METER_COLOUR	equ	$004		; the raster meter's idle colour
 ; Clobbers: d0-d7, a0-a3
 Main:	bsr	StarsInit
 	bsr	VideoInit
+	bsr	SoundInit
 	bsr	GameInit
 	bsr	PanelInit
 	bsr	SpritesInit
-	bsr	SoundInit
 	if	FLIGHT_TEST
 	bsr	FlightTest
 	bra	.Done
-	endc
-	if	SOUND_TEST=0
-	move.b	#1,Sound+SND_START(a5)	; until there is a game: the start theme
 	endc
 .Frame	bsr	VideoWaitFrame
 	if	TEST_FRAMES
@@ -63,6 +61,7 @@ Main:	bsr	StarsInit
 	bsr	SpritesUpdate
 	bsr	PanelScore
 	bsr	PanelShips
+	bsr	PanelStage
 	bsr	GameFrame
 	WAITBLIT				; nothing may still be drawing when the screens swap
 

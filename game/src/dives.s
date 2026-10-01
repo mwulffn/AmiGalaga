@@ -61,6 +61,9 @@ TIME_MID	equ	40			; below this, and at 0, the timers restart lower
 DIVE_FRAMES	equ	16			; arcade frames per count of the dive timers
 LAST_RELOAD	equ	2			; every timer's restart value when few are left
 TEN		equ	10
+FIRST_WAVE_GAP	equ	2			; WaveTimer at the start of a stage
+WAVE_SIZE	equ	8
+CHALLENGE_MASK	equ	3			; a stage whose number ends in these two bits set is a challenging stage
 
 ; index of each kind's timer, and of its script in DiveScripts
 KIND_OF_BOSS	equ	0
@@ -115,6 +118,16 @@ DivesInit:
 	move.b	StageParms+PARM_HARDER(a5),StageHarder(a5)
 	move.b	#STAGE_TIME,StageTime(a5)
 	clr.b	Alive(a5)
+	clr.b	FlyingHits(a5)
+	move.b	#FIRST_WAVE_GAP,WaveTimer(a5)
+	; a challenging stage's first wave counts for its bonus from the start
+	clr.b	WaveHits(a5)
+	moveq	#CHALLENGE_MASK,d0
+	and.w	Stage(a5),d0
+	subq.w	#CHALLENGE_MASK,d0
+	bne	.Counted
+	move.b	#WAVE_SIZE,WaveHits(a5)
+.Counted
 	clr.b	BossToggle(a5)
 	clr.l	BossBonus(a5)			; a boss shot on its way in scores as one diving alone
 	st	Capturing(a5)			; until there is a tractor beam: no boss tries to capture
@@ -145,9 +158,13 @@ DivesTick:
 	tst.b	StageTime(a5)
 	beq	.Timed
 	subq.b	#1,StageTime(a5)
-.Timed	move.b	Alive(a5),d0
+.Timed	; few enough left, and the fighter in play: they attack without pause. Without the
+	; fighter they go home, which is what lets the next one come on.
+	move.b	Alive(a5),d0
 	cmp.b	StageParms+PARM_LAST(a5),d0
 	scs	d1
+	and.b	InPlay(a5),d1
+	sne	d1
 	neg.b	d1
 	move.b	d1,LastStand(a5)
 

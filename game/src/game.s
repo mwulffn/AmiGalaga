@@ -21,7 +21,6 @@
 	xdef	GameFrame
 	xdef	FlightPlace
 	xdef	FlightImage
-	xref	StageInit
 	xref	StageTick
 	xref	FlightStep
 	xref	FlyersErase
@@ -41,13 +40,16 @@
 	xref	BombsFall
 	xref	BombsDraw
 	xref	FighterHits
+	xref	FlowInit
+	xref	FlowTick
+	xref	TextDraw
+	xref	StageIdle
 	xref	HomeRc
 	xref	Enemies
 	if	STAGE_TEST
 	xdef	StageLog
 	endc
 
-STAGE_GAP	equ	100			; frames between one stage's end and the next one's start
 FIRST_ENEMY	equ	$08			; objects below this are captured fighters
 TRANSIENT_MASK	equ	$38			; objects $38-$3f only fly through
 UPRIGHT		equ	6*FRAME_SIZE		; an enemy's upright image
@@ -63,7 +65,7 @@ X_MASK		equ	$ff			; the arcade's sprites have 8 bits of x
 
 ;--
 ; GameInit
-; Start a game at the first stage.
+; Start a game: its opening, then the first stage (flow.s).
 ; In:       a5 = state, a6 = CUSTOM
 ; Out:      -
 ; Clobbers: d0-d7, a0-a3
@@ -91,8 +93,8 @@ GameInit:
 .Bomb	clr.w	bm_x(a0)
 	addq.l	#bm_SIZEOF,a0
 	dbf	d0,.Bomb
-	moveq	#1,d0
-	bra	StageInit
+	bsr	StageIdle
+	bra	FlowInit
 
 ;--
 ; GameFrame
@@ -120,6 +122,7 @@ GameFrame:
 	bsr	PlayerTick
 	bsr	BombsDrop
 	bsr	BlastsTick
+	bsr	FlowTick
 	addq.w	#1,TicksNow(a5)
 	addq.w	#1,ArcadeFrame(a5)
 	addq.w	#FRAME_FIFTHS,Clock(a5)
@@ -231,30 +234,11 @@ GameFrame:
 	dbf	d7,.Draw
 	bsr	BlastsDraw
 	bsr	BombsDraw
+	bsr	TextDraw
 	move.w	(sp)+,d6
 
-	; the stage is over once every wave is in and nothing of it is left: on to the next
-	tst.b	WavesIn(a5)
-	beq	.Busy
-	tst.b	Alive(a5)
-	bne	.Busy
-	tst.b	InPlay(a5)			; not while the fighter is being replaced
-	beq	.Busy
-	lea	Blasts(a5),a0
-	moveq	#BLASTS-1,d0
-.Blast	tst.b	bl_live(a0)
-	bne	.Busy
-	lea	bl_SIZEOF(a0),a0
-	dbf	d0,.Blast
-	tst.w	d6
-	bne	.Busy
-	addq.w	#1,StageWait(a5)
-	cmp.w	#STAGE_GAP,StageWait(a5)
-	bcs	.Busy
-	move.w	Stage(a5),d0
-	addq.w	#1,d0
-	bra	StageInit
-.Busy	rts
+	rts
+
 
 ;--
 ; Rebuild

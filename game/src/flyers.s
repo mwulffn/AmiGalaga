@@ -12,13 +12,11 @@
 	include	"sound.i"
 	include	"state.i"
 	include	"macros.i"
-	include	"gfx.i"
 
 	xdef	FlyersErase
 	xdef	FlyersBegin
 	xdef	FlyerDraw
-	xdef	BombDraw
-	xref	Enemies
+	xdef	SmallDraw
 
 FLYER_ROWS	equ	16
 BLIT_WORDS	equ	2				; the image's word, and one for its shift
@@ -30,17 +28,15 @@ CLEAR		equ	$0100				; bltcon0: D only, all zeros
 COOKIE_CUT	equ	$0fca				; bltcon0: A = mask, B = image, C = D = screen
 FIRST_WORD_ONLY	equ	$ffff0000			; bltafwm:bltalwm, masks out the mask's second word
 LAST_UNCLIPPED	equ	GUARD+PLAY_WIDTH-16		; furthest right a flyer fits whole
-; a bomb is drawn as the 8 rows of its 16x16 image that it fills: half the blit
-BOMB_TOP	equ	4
-BOMB_ROWS	equ	8
-BOMB_SIZE	equ	(BOMB_ROWS*PLANES)<<6|BLIT_WORDS
-IMAGE_ROW	equ	PLANES*2			; bytes in one row of an image
+; a flyer of half height: half the blit
+SMALL_ROWS	equ	8
+SMALL_SIZE	equ	(SMALL_ROWS*PLANES)<<6|BLIT_WORDS
 
 	section	code,code
 
 ;--
 ; FlyersErase
-; Clear the flyers and bombs that were drawn into the back screen the last time it was drawn.
+; Clear the flyers, whole and half height, that were drawn into the back screen the last time it was drawn.
 ; In:       a5 = state, a6 = CUSTOM
 ; Out:      -
 ; Clobbers: d0-d1, a0-a1
@@ -59,16 +55,16 @@ FlyersErase:
 	move.l	d1,bltdpt(a6)
 	move.w	#BLIT_SIZE,bltsize(a6)
 	dbf	d0,.Erase
-.Bombs	move.w	scr_bombs(a0),d0
+.Bombs	move.w	scr_smalls(a0),d0
 	beq	.None
-	clr.w	scr_bombs(a0)
-	lea	scr_bomb_erase(a0),a1
+	clr.w	scr_smalls(a0)
+	lea	scr_small_erase(a0),a1
 	subq.w	#1,d0
-.Bomb	move.l	(a1)+,d1
+.Small	move.l	(a1)+,d1
 	WAITBLIT
 	move.l	d1,bltdpt(a6)
-	move.w	#BOMB_SIZE,bltsize(a6)
-	dbf	d0,.Bomb
+	move.w	#SMALL_SIZE,bltsize(a6)
+	dbf	d0,.Small
 .None	rts
 
 ;--
@@ -131,15 +127,15 @@ FlyerDraw:
 .Full	rts
 
 ;--
-; BombDraw
-; Draw one bomb into the back screen and remember it for erasing. Call it between
-; FlyersBegin and the next other blit, as FlyerDraw.
-; In:       d0.w = x in buffer pixels, d1.w = y in buffer rows, of its 16x16 cell
-;           (within the same limits as a flyer's), a5 = state, a6 = CUSTOM
+; SmallDraw
+; Draw a flyer of half height (8 rows: a bomb, a pair of letters) into the back screen and
+; remember it for erasing. Call it between FlyersBegin and the next other blit, as FlyerDraw.
+; In:       d0.w = x in buffer pixels (0 to GUARD+PLAY_WIDTH-1), d1.w = y in buffer rows
+;           (0 to SCREEN_ROWS-8), a0 = image: 8 rows in a flyer's layout, its mask
+;           MASK_OFFSET after it, a5 = state, a6 = CUSTOM
 ; Out:      -
 ; Clobbers: d0-d3, a0-a2
-BombDraw:
-	addq.w	#BOMB_TOP,d1
+SmallDraw:
 	mulu.w	#ROW_BYTES,d1
 	moveq	#15,d2
 	and.w	d0,d2				; shift
@@ -154,18 +150,17 @@ BombDraw:
 	move.l	BackScreen(a5),a2
 	move.l	scr_bitmap(a2),a1
 	add.l	d1,a1				; destination word
-	move.w	scr_bombs(a2),d0
-	cmp.w	#MAX_BOMBS,d0
+	move.w	scr_smalls(a2),d0
+	cmp.w	#MAX_SMALLS,d0
 	bcc	.Full
-	addq.w	#1,scr_bombs(a2)
+	addq.w	#1,scr_smalls(a2)
 	lsl.w	#2,d0
-	lea	scr_bomb_erase(a2),a0
-	move.l	a1,(a0,d0.w)
+	lea	scr_small_erase(a2),a2
+	move.l	a1,(a2,d0.w)
 	move.w	d2,d0
 	or.w	#COOKIE_CUT,d0
 	swap	d0
 	move.w	d2,d0				; bltcon0:bltcon1
-	lea	Enemies+GFX_BOMB+BOMB_TOP*IMAGE_ROW,a0
 	WAITBLIT
 	move.l	d0,bltcon0(a6)
 	move.w	d3,bltafwm(a6)
@@ -174,5 +169,5 @@ BombDraw:
 	move.l	a0,bltapt(a6)
 	move.l	a1,bltcpt(a6)
 	move.l	a1,bltdpt(a6)
-	move.w	#BOMB_SIZE,bltsize(a6)
+	move.w	#SMALL_SIZE,bltsize(a6)
 .Full	rts

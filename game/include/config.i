@@ -33,6 +33,10 @@ STAGE_TEST	equ	0		; 1: with TEST_FRAMES, report every launch and landing
 RANK		equ	3		; the arcade's difficulty switch: which row of the stage
 	endc				;    index it uses. 3 is the arcade's (and MAME's) default
 
+	ifnd	FIRST_STAGE
+FIRST_STAGE	equ	1		; the stage a game starts at; tests start elsewhere
+	endc
+
 	ifnd	BOMB_STRESS
 BOMB_STRESS	equ	0		; 1: a timing test: every flying enemy bombs as fast as there
 	endc				;    are free bombs, and nothing hurts the fighter
