@@ -1,0 +1,39 @@
+# Galaga for the Amiga 500
+# make            build the executable and a bootable disk image
+# make run        boot the disk in FS-UAE (stock A500, Kickstart 1.3)
+# make test       run the test build in FS-UAE and print its report
+# DEFS="-DRASTER_METER=1" and the like override include/config.i
+
+DEFS   ?=
+KICK   ?= $(HOME)/Documents/FS-UAE/Kickstarts/kick34005.A500
+UAE     = fs-uae --amiga_model=A500 --kickstart_file=$(KICK) --slow_memory=0
+
+# startup.o must be first: the program starts at the top of the first object
+OBJECTS = build/startup.o build/main.o build/video.o build/state.o
+INCLUDES = $(wildcard include/*.i)
+
+all: build/galaga.adf
+
+build/%.o: src/%.s $(INCLUDES) FORCE
+	@mkdir -p build
+	vasmm68k_mot -quiet -Fhunk -m68000 -Iinclude $(DEFS) -o $@ $<
+
+build/galaga: $(OBJECTS)
+	vlink -bamigahunk -s -o $@ $(OBJECTS)
+
+build/galaga.adf: build/galaga
+	@printf 'galaga\n' > build/startup-sequence
+	xdftool $@ format galaga + boot install + makedir S \
+		+ write build/startup-sequence S/startup-sequence + write build/galaga
+
+run: build/galaga.adf
+	$(UAE) --floppy_drive_0=$(CURDIR)/build/galaga.adf
+
+test:
+	tools/test.sh
+
+clean:
+	rm -rf build
+
+FORCE:
+.PHONY: all run test clean FORCE

@@ -215,6 +215,7 @@ objects are bombs and explosions.
 
 | Path | Contents |
 |---|---|
+| `game/` | the game itself, written to the style guide: `make`, `make run`, `make test` (runs a test build in FS-UAE and prints its report) |
 | `experiment-1` .. `experiment-7` | the experiments (1-5 rendering, 6 adds sound, 7 compares blit scheduling); each has `make run`, and `tools/measure.sh` for timing |
 | `experiment-1/tools/extract_gfx.py` | sprites, font and palette from the ROM to Amiga bitplanes |
 | `analysis/` | MAME Lua trace scripts and results (colours, sprite load, positions) |
