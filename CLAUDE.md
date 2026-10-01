@@ -86,6 +86,25 @@ Sprites pair up and each pair shares three colours.
   step routine. `motion/galaga_motion.py` is the reference port and is
   byte-identical to MAME (see `motion/README.md`).
 
+### Timing on PAL (approved 2026-10-01)
+- The game runs at arcade speed on a 50 Hz display by advancing 1.2
+  arcade frames per PAL frame. The arcade's scripts and tables are used
+  untouched; nothing is hand-tuned.
+- Time is counted in fifths of an arcade frame: a step lasting n arcade
+  frames holds 5n, and each PAL frame uses up 6. A test build that uses
+  up 5 must reproduce the arcade byte for byte, which keeps the check
+  against MAME.
+- Heading is 32 bits (2^32 = a full turn). Turn and distance per frame
+  come from small tables; a step that ends part-way through a frame
+  contributes only its share.
+- "Reached home" accepts +-2 units and "reached dive depth" accepts
+  having passed it, because the per-frame move is larger.
+- Every other frame-counted timer (bombs, dive scheduling, formation
+  drift) runs off the same fifths clock.
+- Prototype and evidence: `motion/pal_scale.py`, 636 runs, always the
+  same outcome as the arcade and within 9 pixels of it;
+  `motion/render_compare.py` shows it side by side.
+
 ## Measured budget
 
 A PAL frame is 313 raster lines. Drawing time, blitter priority on:
@@ -103,8 +122,9 @@ objects are bombs and explosions.
 
 ## Open
 
-- **Speed on PAL.** The scripts count 60 Hz arcade frames. Six logic
-  steps per five frames keeps arcade speed; one per frame is 17% slow.
+- **The 68000 flight stepper** (both the PAL and the exact build) is not
+  written; its cost, estimated at about 8 raster lines for 12 flyers, is
+  not measured.
 - **Game logic** is not ported or measured: formation drift and
   breathing, dive scheduling, bombs, capture, scoring.
 - **Sound** has not been looked at.
