@@ -30,3 +30,8 @@ scr_score	rs.l	1			; the score its panel shows
 scr_flyers	rs.w	1			; flyers drawn in it, to erase next time
 scr_erase	rs.l	MAX_FLYERS		;   and where
 scr_SIZEOF	rs.b	0
+
+; the formation
+FORM_ROWS	equ	5
+FORM_SWAY	equ	16			; FormSway runs from 0 to this
+FORM_SPREAD_MAX	equ	4			; FormSpread runs from 0 to this: column pitch 16 to 20

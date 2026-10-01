@@ -15,5 +15,8 @@ StatWorst	rs.w	1		; test builds: most raster lines a frame's work took
 StatTotal	rs.l	1		;   their sum
 StatFrames	rs.w	1		;   and how many frames
 STAT_SIZE	equ	8
+FormSway	rs.w	1		; formation: pixels right of its leftmost position
+FormSpread	rs.w	1		;   how far it has spread: 0 closed
+FormRows	rs.w	2*FORM_ROWS	;   per row: x and y of its strip, set when composed
 Sound		rs.b	snd_SIZEOF	; the sound driver's state: see sound.i
 State_SIZEOF	rs.b	0

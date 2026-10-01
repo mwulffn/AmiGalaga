@@ -13,6 +13,8 @@
 	xref	FlyersErase
 	xref	FlyersBegin
 	xref	FlyerDraw
+	xref	FormationCompose
+	xref	FormationDraw
 	xref	Enemies
 
 ; a demo flyer
@@ -27,6 +29,7 @@ df_SIZEOF	rs.b	0
 X_RANGE		equ	GUARD+PLAY_WIDTH-1	; fully hidden at the left to fully in the gap
 Y_RANGE		equ	GUARD+DISPLAY_LINES	; fully hidden above to fully hidden below
 FLAP_FRAMES	equ	16
+BREATHE_FRAMES	equ	8			; the formation's spread changes this often
 
 	section	code,code
 
@@ -37,7 +40,36 @@ FLAP_FRAMES	equ	16
 ; Out:      -
 ; Clobbers: d0-d7, a0-a3
 DemoFrame:
+	; the formation sways every frame and breathes every eighth; one strip is rebuilt a frame
+	lea	DemoForm,a3
+	move.w	FormSway(a5),d0
+	add.w	(a3),d0
+	cmp.w	#FORM_SWAY,d0
+	bls	.Sway
+	neg.w	(a3)
+	add.w	(a3),d0
+.Sway	move.w	d0,FormSway(a5)
+	moveq	#BREATHE_FRAMES-1,d0
+	and.w	FrameCount(a5),d0
+	bne	.Breathed
+	move.w	FormSpread(a5),d0
+	add.w	2(a3),d0
+	cmp.w	#FORM_SPREAD_MAX,d0
+	bls	.Spread
+	neg.w	2(a3)
+	add.w	2(a3),d0
+.Spread	move.w	d0,FormSpread(a5)
+.Breathed
+	move.w	4(a3),d0
+	addq.w	#1,d0
+	cmp.w	#FORM_ROWS,d0
+	bne	.Row
+	moveq	#0,d0
+.Row	move.w	d0,4(a3)
+	bsr	FormationCompose
+
 	bsr	FlyersErase
+	bsr	FormationDraw
 	if	DEMO_FLYERS
 	bsr	FlyersBegin
 	moveq	#0,d6				; which of the two images: 0 or 4
@@ -87,7 +119,9 @@ FLYER	macro
 	dc.l	Enemies+\1+\2*FRAME_SIZE,Enemies+\1+\3*FRAME_SIZE
 	endm
 
-Count	set	0
+DemoForm:
+	dc.w	1,1,0				; sway direction, spread direction, next row to rebuild
+
 DemoFlyers:
 	rept	(DEMO_FLYERS+9)/10
 	FLYER	GFX_BOSS,6,7

@@ -13,7 +13,7 @@ UAE     = fs-uae --amiga_model=A500 --kickstart_file=$(KICK) --slow_memory=0
 
 # startup.o must be first: the program starts at the top of the first object
 OBJECTS = build/startup.o build/main.o build/demo.o build/video.o build/stars.o \
-	build/flyers.o build/sound.o build/gfx.o build/state.o
+	build/formation.o build/flyers.o build/sound.o build/gfx.o build/state.o
 # built from the user's own ROM set; never committed
 GENERATED = build/snd_data.i build/snd_chip.bin build/sndtest_script.i \
 	build/stars.bin build/starev.bin \

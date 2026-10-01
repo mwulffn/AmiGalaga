@@ -13,6 +13,7 @@
 	xref	VideoFlip
 	xref	StarsInit
 	xref	DemoFrame
+	xref	FormationInit
 	xref	SoundInit
 	xref	SoundStop
 	if	SOUND_TEST
@@ -31,6 +32,7 @@ METER_COLOUR	equ	$004		; the raster meter's idle colour
 ; Clobbers: d0-d7, a0-a3
 Main:	bsr	StarsInit
 	bsr	VideoInit
+	bsr	FormationInit
 	bsr	SoundInit
 	if	SOUND_TEST=0
 	move.b	#1,Sound+SND_START(a5)	; until there is a game: the start theme
