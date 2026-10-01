@@ -86,10 +86,16 @@ it next to the reference for comparison (`build/noise/compare.wav`):
 
     uv run --with numpy python3 noise_match.py build/noise
 
-It makes two Amiga versions at 4 kHz, 8 bits: the whole sound as one
-sample (about 11 KB), and a 2 KB loop whose decay is done with Paula's
-volume register once per frame. Both come out within a few percent of
-the reference in spectrum and loudness over time.
+It makes Amiga versions as 8-bit samples: the whole sound as one sample
+at 4 kHz (about 11 KB), and a half-second loop at 4, 8 and 12 kHz whose
+decay is done with Paula's volume register once per frame.
+
+The 4 kHz versions sounded tinny: Paula's stepped output puts mirror
+images of the rumble around the sample rate, and at 4 kHz they land where
+hearing is sharpest (about 1% of the energy above 2 kHz, against 0.07%
+in the reference). At 8 kHz that drops to 0.18% and at 12 kHz to 0.09%.
+The user could not tell 8 from 12 kHz on desktop speakers, so the choice
+is the 8 kHz loop: `build/noise/explosion_loop_8000.raw`, 4000 bytes.
 
 ## Not done yet
 

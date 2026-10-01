@@ -111,7 +111,10 @@ Sprites pair up and each pair shares three colours.
   channel is for noise. Only the fighter's own explosion uses the
   arcade's noise chip (enemy hits are tones); it will be noise of our
   own, matched to MAME's output: about 2.7 s, 100-800 Hz, full level
-  for 0.2 s then halving every half second. Sampling everything was rejected: about 36 s of
+  for 0.2 s then halving every half second. Approved by ear
+  (2026-10-01): a half-second noise loop at 8 kHz (4000 bytes), with the
+  decay set through Paula's volume once per frame. 4 kHz sounded tinny;
+  12 kHz was not distinguishable from 8 on desktop speakers. Sampling everything was rejected: about 36 s of
   one-shot sounds will not fit 512K at a decent rate, and recordings
   could not ship.
 - The sound driver runs at the arcade's 121 Hz from a CIA timer, not
