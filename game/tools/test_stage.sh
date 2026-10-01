@@ -30,5 +30,5 @@ run() {  # first stage, frames
     done
 }
 run 1 ${1:-6000}
-run 3 ${2:-3500}
+run 3 ${2:-5500}
 make -s build/galaga >/dev/null   # leave the normal build in place

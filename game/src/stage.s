@@ -10,8 +10,10 @@
 ; one with bit 7 set follows on the next frame. So a wave arrives as four
 ; pairs side by side, or as eight in a line. The model is motion/waves.py.
 ;
-; Not built yet: the extra enemies that fly through without joining the
-; formation, from stage 4 on.
+; From stage 4 on a wave can have two or four extra enemies that fly through
+; without joining the formation (objects $38 to $3e). They get random places
+; among the wave's eight, half of them in each half of the wave. The arcade's
+; random numbers come from the Z80's refresh register; ours are our own.
 
 	include	"config.i"
 	include	"hw.i"
@@ -56,6 +58,16 @@ FIRST_ENEMY	equ	$08			; the first object that is a stage's enemy
 TIMER_FRAMES	equ	32			; arcade frames per count of WaveTimer
 WAVE_GAP	equ	2			; WaveTimer while anything is flying
 WAVE_SIZE	equ	8
+EXTRAS_MASK	equ	$0f			; a wave's first byte: how many only fly through,
+					;   and from bit 7 down, one bit for each: it looks like a butterfly
+EXTRA_OBJECTS	equ	$38			; the objects that only fly through are this and the next 7
+EXTRA_NUMBER	equ	6			;   which of them, in an object number
+EXB_BUTTERFLY	equ	6			; in the wave table: the extra enemy looks like a butterfly
+BOSS_WAVE	equ	2			; in this wave the others look like bosses, else like bees
+NO_PLACE	equ	-1			; in WavePlaces: free
+SECOND_HALF	equ	8			; in WavePlaces: where the second half's places start
+RANDOM_MUL	equ	25173			; the random numbers: seed = seed * this + RANDOM_ADD
+RANDOM_ADD	equ	13849
 CHALLENGE_MASK	equ	3			; a stage whose number ends in these two bits set is a challenging stage
 
 	section	code,code
@@ -125,20 +137,68 @@ StageInit:
 	lea	WaveObjects(pc),a2
 	moveq	#STAGE_WAVES-1,d0
 .Wave	move.b	#WAVE_START,(a1)+
-	addq.l	#1,a0				; enemies that only fly through: not built yet
+	lea	WavePlaces(a5),a3
+	moveq	#NO_PLACE,d1
+	rept	WAVE_PLACES/4
+	move.l	d1,(a3)+
+	endr
+	lea	-WAVE_PLACES(a3),a3
+	; those that only fly through take their places first:
+	;   place = random mod (4 + half their number), in the second half for the odd ones
+	move.b	(a0)+,d7
+	moveq	#EXTRAS_MASK,d6
+	and.w	d7,d6				; how many, and which one is being placed
+	beq	.Own
+	move.w	d6,d5
+	lsr.w	#1,d5
+	addq.w	#HALF_WAVE,d5
+.Extra	bsr	Random
+	divu.w	d5,d1
+	swap	d1				; the remainder
+	btst	#0,d6
+	beq	.Half
+	addq.w	#SECOND_HALF,d1
+.Half	cmp.b	#NO_PLACE,(a3,d1.w)
+	bne	.Extra				; taken: try again
+	move.w	d6,d2
+	add.w	d2,d2
+	and.w	#EXTRA_NUMBER,d2
+	or.w	#EXTRA_OBJECTS,d2
+	add.b	d7,d7				; its bit of the row's byte
+	bcc	.Placed
+	bset	#EXB_BUTTERFLY,d2
+.Placed	move.b	d2,(a3,d1.w)
+	subq.w	#1,d6
+	bne	.Extra
+	; the wave's own eight take the places left, in order, four in each half
+.Own	moveq	#0,d1
+	moveq	#WAVE_SIZE-1,d2
+.Fill	cmp.b	#NO_PLACE,(a3,d1.w)
+	beq	.Free
+	addq.w	#1,d1
+	bra	.Fill
+.Free	move.b	(a2)+,(a3,d1.w)
+	addq.w	#1,d1
+	cmp.w	#HALF_WAVE,d2
+	bne	.Filled
+	moveq	#SECOND_HALF,d1
+.Filled	dbf	d2,.Fill
+	; and the table gets them in pairs: one of the first half, one of the second
 	move.b	(a0)+,d1
 	move.b	(a0)+,d2
-	moveq	#HALF_WAVE-1,d3
-.Pair	move.b	d1,(a1)+
-	move.b	(a2),(a1)+
+.Pair	move.b	(a3),d3
+	cmp.b	#NO_PLACE,d3
+	beq	.Paired
+	move.b	d1,(a1)+
+	move.b	d3,(a1)+
 	move.b	d2,(a1)+
-	move.b	HALF_WAVE(a2),(a1)+
-	addq.l	#1,a2
-	dbf	d3,.Pair
-	addq.l	#HALF_WAVE,a2
-	dbf	d0,.Wave
+	move.b	SECOND_HALF(a3),(a1)+
+	addq.l	#1,a3
+	bra	.Pair
+.Paired	dbf	d0,.Wave
 	move.b	#WAVE_END,(a1)
 	clr.w	WaveAt(a5)
+	clr.b	WaveCount(a5)
 	clr.w	WasFlying(a5)
 	clr.w	StageWait(a5)
 	clr.b	WavesIn(a5)
@@ -158,6 +218,24 @@ StageInit:
 ChallengeKinds:
 	dc.b	KIND_BEE,KIND_BUTTERFLY,KIND_DRAGONFLY,KIND_BOSCONIAN
 	dc.b	KIND_SATELLITE,KIND_GALAXIAN,KIND_SCORPION,KIND_ENTERPRISE
+
+;--
+; Random
+; A random byte. A test build leaves the beam's position out of it, so that its
+; model can make the same numbers.
+; In:       a5 = state, a6 = CUSTOM
+; Out:      d1.l = 0 to 255
+; Clobbers: -
+Random:	move.w	RandomSeed(a5),d1
+	if	REPORTING=0
+	add.w	vhposr(a6),d1
+	endc
+	mulu.w	#RANDOM_MUL,d1
+	add.w	#RANDOM_ADD,d1
+	move.w	d1,RandomSeed(a5)
+	lsr.w	#8,d1
+	and.l	#$ff,d1
+	rts
 
 ;--
 ; StageIdle
@@ -244,6 +322,7 @@ StageTick:
 .Gap	tst.b	d5
 	bne	.Wait
 .Start	addq.w	#1,WaveAt(a5)
+	addq.b	#1,WaveCount(a5)
 .Wait	moveq	#1,d0
 	rts
 .Enemy	cmp.b	#WAVE_END,d0
@@ -267,6 +346,24 @@ StageTick:
 	move.b	(a2),d4				; the object
 	move.b	d0,d7				; the control byte, for after the launch
 	addq.b	#1,Alive(a5)
+	; one that only flies through gets its looks now: a butterfly, or a bee, or a boss
+	; in the wave the bosses come in
+	moveq	#EXTRA_OBJECTS,d1
+	and.w	d4,d1
+	cmp.w	#EXTRA_OBJECTS,d1
+	bne	.Known
+	moveq	#KIND_BUTTERFLY,d1
+	bclr	#EXB_BUTTERFLY,d4
+	bne	.Look
+	moveq	#KIND_BEE,d1
+	cmp.b	#BOSS_WAVE,WaveCount(a5)
+	bne	.Look
+	moveq	#KIND_BOSS,d1
+.Look	lea	ObjKind(a5),a1
+	move.w	d4,d2
+	lsr.w	#1,d2
+	move.b	d1,(a1,d2.w)
+.Known
 	LOG	#STAGE_LAUNCHED,d4
 	; EntryPaths[path] = script, pair of start positions; a pair is plain then mirrored
 	moveq	#PATH_MASK,d1
@@ -299,7 +396,12 @@ StageTick:
 	beq	.Top
 	moveq	#SIDE_WAIT,d0
 .Top	move.b	d0,fl_wait(a0)
-	; may it bomb on its way in? The arcade's table has a bit per enemy, the first in bit 7
+	; may it bomb on its way in? The arcade's table has a bit per enemy, the first in bit 7.
+	; Those that only fly through never do.
+	moveq	#EXTRA_OBJECTS,d0
+	and.w	d4,d0
+	cmp.w	#EXTRA_OBJECTS,d0
+	beq	.Quiet
 	move.w	d4,d0
 	subq.w	#FIRST_ENEMY,d0
 	lsr.w	#1,d0

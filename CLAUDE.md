@@ -141,9 +141,18 @@ option is kept for later.
 
 - Waves are sent in as the arcade does it: a table of (path, enemy)
   pairs built from the stage's row, and a launcher that runs once per
-  arcade frame. `motion/waves.py` is the model: all 160 launches of the
-  trace's stages without fly-through enemies (1, 2, 3, 7) happen at the
-  frame the arcade made them. The 68000 version is `game/src/stage.s`,
+  arcade frame. `motion/waves.py` is the model: all 396 launches of the
+  trace's stages 1 to 9 happen at the frame the arcade made them.
+- From stage 4 on a wave can have two or four extra enemies that fly
+  through without joining the formation (objects $38 to $3E): random
+  places among the wave's eight, half in each half of the wave; a
+  butterfly, a bee, or in the second wave a boss; they never bomb on the
+  way in, and count as alive while they fly. The arcade's random numbers
+  come from the Z80's refresh register and cannot be reproduced, so the
+  game has its own (`Random` in `stage.s`: a 16-bit multiply-and-add,
+  with the beam position mixed in except in test builds, whose model
+  makes the same numbers). For the check against the trace the places
+  are read from the trace's own order of launches. The 68000 version is `game/src/stage.s`,
   checked by `game/tools/test_stage.sh` (see below).
 - Dives are scheduled as the arcade does it (`game/src/dives.s`, model
   `motion/dives.py`): three timers (boss, butterfly, bee) counted every
@@ -239,8 +248,9 @@ option is kept for later.
   every 16 frames) and compares every launch, landing, hit, kill, score,
   bomb, lost fighter and stage start with the models, in both builds:
   6,000 frames from stage 1 (through a stage change and a game over
-  into the next game) and 3,500 from stage 3 (a challenging stage, its
-  results and bonus, and stage 4). All identical.
+  into the next game) and 5,500 from stage 3 (a challenging stage, its
+  results and bonus, and stage 4 with its fly-through enemies, some
+  shot and some gone). All identical.
 - The stage index row is the arcade's difficulty switch; `RANK` 3 is
   what MAME's default (and the trace) uses.
 - A flying enemy is turned the way it is heading by the arcade's rule
@@ -415,12 +425,12 @@ included, so the real figure is a little lower.
   with its text, challenging stages with their results, and capture,
   rescue and the dual fighter. All to the
   style guide and linted.
-- **Not in the entrance yet:** the enemies that fly through without
-  joining (stage 4 on; needs the arcade's random numbers).
 - **Not in the dives yet:** transforming enemies and their convoys.
 - **Capture has no model.** A Python model of the beam, the rescue and
   the dual fighter, checked against a MAME trace with a capture in it,
-  would let `test_stage.sh` run with capture on. Also open there:
+  would let `test_stage.sh` run with capture on. The user knows of the
+  gap and has put it off: fix it if something turns out to be amiss
+  (2026-10-01). Also open there:
   firing from inside the beam, and the captured fighter that comes back
   in a later stage.
 - **Game logic** not ported yet: the results after GAME OVER

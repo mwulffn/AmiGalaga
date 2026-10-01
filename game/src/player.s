@@ -41,6 +41,7 @@ SHIP_RIGHT	equ	$e1
 SHIP_RIGHT_DUAL	equ	$d1			;   and the left one of two within this
 DUAL_STEP	equ	15			; the second fighter is this far right of the first
 BOSS_OBJECTS	equ	$30			; the bosses' object numbers are this and the next 7
+EXTRA_OBJECTS	equ	$38			; and those that only fly through are this and the next 7
 OBJECT_GROUP	equ	$f8
 SHOT_SPEED	equ	6			; lines per arcade frame
 SHOT_TOP	equ	40			; a shot above this sprite y is gone
@@ -774,6 +775,10 @@ Destroy:
 	bra	.Scored
 .Blue	cmp.b	#BLUE_BOSS,d3
 	bne	.Scored
+	moveq	#EXTRA_OBJECTS,d2		; not one that only flies through: it set off with nobody
+	and.w	d5,d2
+	cmp.w	#EXTRA_OBJECTS,d2
+	beq	.Scored
 	; a boss shot while diving: more for the escorts it set off with, and the total pops up
 	moveq	#BOSS_MASK,d2
 	and.w	d5,d2

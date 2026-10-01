@@ -55,7 +55,6 @@
 	endc
 
 FIRST_ENEMY	equ	$08			; objects below this are captured fighters
-TRANSIENT_MASK	equ	$38			; objects $38-$3f only fly through
 UPRIGHT_FRAME	equ	6			; an enemy's upright frame
 FLYING_BITS	equ	1<<FLB_ACTIVE|1<<FLB_LANDED
 QUADRANT_BITS	equ	2
@@ -176,9 +175,6 @@ GameFrame:
 	subq.b	#1,Alive(a5)
 	bra	.Flown
 .Enemy
-	and.b	#TRANSIENT_MASK,d0
-	cmp.b	#TRANSIENT_MASK,d0
-	beq	.Flown
 	subq.b	#1,Alive(a5)
 .Flown	lea	fl_SIZEOF(a0),a0
 	cmp.l	a3,a0

@@ -62,12 +62,16 @@ def model(rom: G.Rom, fifths: int, frames: int, first: int = 1) -> list[tuple[in
     row_of = lambda obj: (rc(obj)[0] - 22) // 2  # noqa: E731
     at = {(row_of(obj), rc(obj)[1] // 2): obj for obj in range(0, 0x60, 2) if rc(obj)[0] >= 22}
 
+    rnd = W.Random()
+    looks = {"butterfly": 2, "bee": 3, "boss": S.GREEN_BOSS}
+
     def start(stage: int) -> tuple:
         parms = D.stage_parms(rom, stage)
         dives = D.Dives(rom, parms, max_flying=parms[4], capturing=1, special=0xFF)
         env.stage_parms = bytes(parms) + b"\0"
         row = W.stage_row(rom, stage)
-        return stage, W.Launcher(rom, stage), F.Formation(rom), dives, parms, S.colours(stage), row[0], row[1]
+        launcher = W.Launcher(rom, stage, rnd=rnd)
+        return stage, launcher, F.Formation(rom), dives, parms, S.colours(stage), row[0], row[1]
 
     def idle() -> tuple:
         """No stage yet (src/stage.s StageIdle): nothing to launch, the formation empty."""
@@ -109,7 +113,7 @@ def model(rom: G.Rom, fifths: int, frames: int, first: int = 1) -> list[tuple[in
             if not launcher.wave_hits and stage & 3 == 3:  # all eight of a challenging stage's wave
                 score += WAVE_POINTS[min(stage >> 3, 3)]
                 popup = WAVE_POPUPS[min(stage >> 3, 3)]
-            elif colour[obj] == S.BLUE_BOSS:
+            elif colour[obj] == S.BLUE_BOSS and obj & 0x38 != 0x38:
                 popup = dives.bonus[(obj & 7) >> 1]
                 score += S.BOSS_BONUS[popup]
         alive -= 1
@@ -156,8 +160,10 @@ def model(rom: G.Rom, fifths: int, frames: int, first: int = 1) -> list[tuple[in
                     y=y << 8, x=x << 8, h=head << 30 & 0xFFFFFFFF, ptr=go.script,
                     obj=go.obj, mirror=go.mirror, left=clock, pause=True,
                     bomb_timer=B.SIDE_TIMER if go.path & 1 else B.ENTRY_TIMER,
-                    bomb_bits=entry_bombs if B.entry_bomber(rom, go.obj) else 0,
+                    bomb_bits=entry_bombs if not go.look and B.entry_bomber(rom, go.obj) else 0,
                 )  # fmt: skip
+                if go.look:  # one that only flies through gets its looks now
+                    colour[go.obj] = looks[go.look]
                 alive += 1
                 log.append((frame, LAUNCHED, go.obj))
             if arcade & 31 == 0 and stage_time:
@@ -312,7 +318,7 @@ def model(rom: G.Rom, fifths: int, frames: int, first: int = 1) -> list[tuple[in
             elif event == "end":
                 slots[i] = None
                 log.append((frame, GONE, st.obj))
-                if st.obj >= 0x08 and st.obj & 0x38 != 0x38:
+                if st.obj >= 0x08:
                     alive -= 1
         for tick in range(ticks):  # the shots move and hit once for each arcade frame
             for shot in shots:

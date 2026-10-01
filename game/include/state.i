@@ -145,6 +145,10 @@ HomeX		rs.b	32		; formation: pixel x of each column, low byte, in even entries
 HomeLoc		rs.b	32		;   per column, then per row: its offset, its origin
 Flights		rs.b	FLIGHT_SLOTS*fl_SIZEOF
 WaveTable	rs.b	WAVE_BYTES	; launcher: the stage's waves, see stage.s
+WavePlaces	rs.b	WAVE_PLACES	;   a wave being put together
+RandomSeed	rs.w	1		; the random numbers' state
+WaveCount	rs.b	1		; launcher: which wave is coming in, 1 to 5
+WavePad		rs.b	1
 ObjKind		rs.b	OBJECTS/2	; what each enemy looks like (a KIND_ from gfx.i), by object / 2
 Sound		rs.b	snd_SIZEOF	; the sound driver's state: see sound.i
 State_SIZEOF	rs.b	0
