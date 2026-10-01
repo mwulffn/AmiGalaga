@@ -144,10 +144,18 @@ PS_OVER		equ	4			; no fighters left: until GameTimer runs out, then a new game
 PS_ABSENT	equ	5			; not there yet: a new game's opening
 PS_TAKEN	equ	6			; in the tractor beam, or carried off
 PS_RESULTS	equ	7			;   the game is over: its results show
-RESERVE		equ	2			; fighters in reserve at the start
+RESERVE		equ	2			; fighters in reserve at the start: three in all
+RESERVE_MORE	equ	5			;   or, by the options, six
+; what is on: Mode
+MODE_GAME	equ	0			; a game
+MODE_TITLE	equ	1			; the title, with START GAME and OPTIONS
+MODE_OPTIONS	equ	2			; the options
+MODE_SCORES	equ	3			; the best scores
+SCORES		equ	5			; how many of those are kept
+RANKS		equ	4			; settings of the arcade's difficulty switch
 
 ; a line of text in the playfield (text.s)
-TEXT_LINES	equ	4
+TEXT_LINES	equ	6
 TEXT_CELLS	equ	12			; flyers a line: two letters each
 	rsreset
 ts_cells	rs.w	1			; flyers showing; 0: the line is not shown

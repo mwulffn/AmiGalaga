@@ -33,7 +33,7 @@ DISPLAY_TOP	equ	44			; raster line of the first displayed line
 ; What goes with a screen buffer. FrontScreen and BackScreen in the state
 ; point at one of these each.
 MAX_FLYERS	equ	48
-MAX_SMALLS	equ	8+3*12			; 8 bombs and three lines of text, two letters a flyer
+MAX_SMALLS	equ	8+4*12			; 8 bombs and four full lines of text, two letters a flyer
 	rsreset
 scr_bitmap	rs.l	1			; the buffer, in chip RAM
 scr_score	rs.l	1			; the score its panel shows

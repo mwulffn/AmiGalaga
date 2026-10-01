@@ -46,6 +46,13 @@
 	xref	StageIdle
 	xref	StarsTick
 	xref	CaptureInit
+	xref	TitleTick
+	xref	ScoresInit
+	if	REPORTING=0
+	xref	TitleShow
+	xref	ScoresInsert
+	endc
+	xdef	GameStart
 	xref	FormationInit
 	xref	TransformTick
 	xref	TransformHome
@@ -71,7 +78,8 @@ X_MASK		equ	$ff			; the arcade's sprites have 8 bits of x
 
 ;--
 ; GameInit
-; Start a game: its opening, then the first stage (flow.s).
+; At the start, and when a game is over: nothing on the playfield, then the title (a test
+; build goes straight into a game).
 ; In:       a5 = state, a6 = CUSTOM
 ; Out:      -
 ; Clobbers: d0-d7, a0-a3
@@ -86,10 +94,12 @@ GameInit:
 	move.l	#StageLog,StageLogPtr(a5)
 	endc
 	bsr	FormationInit			; from then on a stage's start puts the formation at rest
+	move.b	#RANK,Rank(a5)			; the options as they are until someone changes them
+	clr.b	OptRank(a5)
+	move.b	#RESERVE,OptLives(a5)
+	bsr	ScoresInit
 .Again
 	clr.b	NewGame(a5)
-	clr.l	Score(a5)
-	bsr	PlayerInit
 	lea	Blasts(a5),a0
 	moveq	#BLASTS-1,d0
 .Blast	clr.b	bl_live(a0)
@@ -100,8 +110,26 @@ GameInit:
 .Bomb	clr.w	bm_x(a0)
 	addq.l	#bm_SIZEOF,a0
 	dbf	d0,.Bomb
-	bsr	CaptureInit
 	bsr	StageIdle
+	if	REPORTING
+	; a test build plays itself: straight into a game
+	else
+	; the game that is over may have one of the best scores; then the title
+	bsr	ScoresInsert
+	bra	TitleShow
+	endc
+	; falls through
+
+;--
+; GameStart
+; A game begins: its fighters and score, then its opening (flow.s).
+; In:       a5 = state
+; Out:      -
+; Clobbers: d0-d5, a0-a3
+GameStart:
+	clr.l	Score(a5)
+	bsr	PlayerInit
+	bsr	CaptureInit
 	bra	FlowInit
 
 ;--
@@ -114,7 +142,10 @@ GameFrame:
 	tst.b	NewGame(a5)
 	beq	.Play
 	bsr	GameInit
-.Play	move.w	ShipX(a5),d0
+.Play	tst.b	Mode(a5)			; the title or the options: the stick works them
+	beq	.Game
+	bsr	TitleTick
+.Game	move.w	ShipX(a5),d0
 	add.w	#DISPLAY_SX,d0
 	move.b	d0,FighterX(a5)
 	bsr	PlayerInput

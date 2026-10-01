@@ -90,7 +90,7 @@ PlayerInit:
 	st	InPlay(a5)
 	clr.b	FighterStep(a5)
 	clr.b	GameTimer(a5)
-	move.b	#RESERVE,Lives(a5)
+	move.b	OptLives(a5),Lives(a5)
 	bsr	Upright
 	if	DUAL_START
 	st	Dual(a5)

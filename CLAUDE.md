@@ -93,7 +93,8 @@ decision is made or changed.
   stage's results) is drawn as flyers of half height, two letters each,
   built from the font when a line is set and redrawn every frame while
   it shows (`game/src/text.s`): enemies fly through where the arcade
-  puts its text. Four lines at most. Colours as the arcade: cyan, red
+  puts its text. Six lines at most, and 56 flyers of text and bombs on
+  screen at once. Colours as the arcade: cyan, red
   for PERFECT, yellow for the special bonus.
 - Rejected after measuring: clearing the whole buffer per frame, clearing
   with the CPU, and unmasked per-enemy copies (neighbours at 16 px pitch
@@ -311,6 +312,31 @@ option is kept for later.
 - A landed enemy is drawn as a flyer at its place until its row's strip
   is next rebuilt (at most 5 frames), then it is part of the strip.
 
+### Title, options, best scores (decided by the user, 2026-10-01)
+- The arcade's coins, credits and second player are dropped. So is its
+  table of what each enemy scores.
+- The game is called **AmiGalaga**. Namco's name and copyright line are
+  not shown.
+- What shows when no game is on (`game/src/title.s`): the title with
+  START GAME and OPTIONS (stick up and down, button to take one); left
+  alone for 8 seconds it gives way to the best scores, and they to the
+  title. A game that ends comes back to the title after its results.
+- Options: FIGHTERS 3 or 6 (the user's choice; the arcade's switch has
+  2 to 5) and DIFFICULTY, which is the arcade's own switch: easy (its
+  default, and what the traces and tests use), medium, hard, hardest.
+  It picks the rank's row of the stage index and of the stage settings
+  at run time (`Rank` in the state; `RANK` in `config.i` is only the
+  value it starts with). Settings last until power-off.
+- The arcade's other switches: bonus fighters (eight schedules; the
+  game has the default, 20000, 70000 and every 70000), demo sounds,
+  freeze, rack test (skip a stage), cabinet, coinage. None offered.
+- First pass, stubs by agreement: the best scores are five numbers
+  without names, all 20000 at the start, kept until power-off; there
+  is no attract mode that plays by itself; the title is the game's
+  font, capitals only (AMIGALAGA), not a logo.
+- A test build (`TEST_FRAMES` and the like) skips all of this and goes
+  straight into a game, so the tests are as they were.
+
 ### Timing on PAL (approved 2026-10-01)
 - The game runs at arcade speed on a 50 Hz display by advancing 1.2
   arcade frames per PAL frame. The arcade's scripts and tables are used
@@ -513,8 +539,10 @@ included, so the real figure is a little lower.
   (2026-10-01). Also open there:
   firing from inside the beam, and the captured fighter that comes back
   in a later stage.
-- **Game logic** not ported yet: title, attract mode and high score
-  entry.
+- **Title, second pass:** an attract mode that plays by itself, names
+  for the best scores (and whether to save them to disk), a proper
+  logo. The stars stand still while the title shows (they follow the
+  fighter, and there is none); not decided whether they should.
 - **The frame budget is thin** (see Measured budget): no late frame in
   the self-playing runs, with 8 lines to spare in the worst one. More
   to gain is listed there.

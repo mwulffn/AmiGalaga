@@ -105,12 +105,12 @@ FlowInit:
 	move.l	#FIRST_SCORE,HighScore(a5)
 .High	move.b	#PS_ABSENT,PlayerState(a5)
 	clr.b	InPlay(a5)
-	moveq	#1,d0
+LINE	set	1
+	rept	TEXT_LINES-1
+	moveq	#LINE,d0
 	bsr	TextHide
-	moveq	#2,d0
-	bsr	TextHide
-	moveq	#3,d0
-	bsr	TextHide
+LINE	set	LINE+1
+	endr
 	lea	PlayerText(pc),a0
 	moveq	#OPENING_AT,d1
 	moveq	#MESSAGE_ROW,d2

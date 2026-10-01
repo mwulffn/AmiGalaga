@@ -98,7 +98,11 @@ StageInit:
 	move.w	d1,d3
 	lsr.w	#2,d3
 	sub.w	d3,d1
-	lea	StageIndex+RANK*STAGE_SLOTS-1(pc),a0
+	moveq	#0,d3
+	move.b	Rank(a5),d3
+	mulu.w	#STAGE_SLOTS,d3
+	lea	StageIndex-1(pc),a0
+	add.w	d3,a0
 	move.b	(a0,d1.w),d2
 	lea	StageData(pc),a0
 	moveq	#KIND_BEE,d4

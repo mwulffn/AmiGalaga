@@ -103,7 +103,11 @@ DivesInit:
 	bra	.Wrap
 .Known	subq.w	#1,d0
 	mulu.w	#CONFIG_BYTES,d0
-	lea	StageConfig+RANK*CONFIG_STAGES*CONFIG_BYTES(pc),a0
+	moveq	#0,d1
+	move.b	Rank(a5),d1
+	mulu.w	#CONFIG_STAGES*CONFIG_BYTES,d1
+	lea	StageConfig(pc),a0
+	add.w	d1,a0
 	add.w	d0,a0
 	lea	StageParms(a5),a1
 	moveq	#CONFIG_BYTES-1,d0

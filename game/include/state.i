@@ -170,6 +170,14 @@ HitCount	rs.w	1		;   and how many times one hit
 ResultLine	rs.b	26		;   a line of the results being put together
 ResultStep	rs.b	1		;   how much of the results is set up: 0 nothing yet, then a line a frame
 ResultPad	rs.b	1
+Mode		rs.b	1		; what is on: a MODE_ value
+MenuItem	rs.b	1		; title and options: the line the stick is on
+OptLives	rs.b	1		; options: fighters in reserve when a game starts
+OptRank		rs.b	1		;   difficulty, 0 easy to 3 hardest
+Rank		rs.b	1		;   and the arcade's switch value for it: which rank's tables a stage uses
+PadWas		rs.b	1		; title and options: the stick and button as they were last frame
+MenuTimer	rs.w	1		;   frames since the stick or button was last used
+Scores		rs.l	SCORES		; the best scores, highest first, as Score has them
 ObjKind		rs.b	OBJECTS/2	; what each enemy looks like (a KIND_ from gfx.i), by object / 2
 Sound		rs.b	snd_SIZEOF	; the sound driver's state: see sound.i
 State_SIZEOF	rs.b	0
