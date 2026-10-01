@@ -9,7 +9,9 @@
 	xdef	VideoInit
 	xdef	VideoWaitFrame
 	xdef	VideoFlip
+	xdef	VideoSetSprite
 	xref	State
+	xref	StarsVBlank
 
 ; display window: 320 x 256 low resolution, PAL
 DIW_START	equ	$2c81
@@ -19,6 +21,9 @@ DDF_STOP	equ	$00d0
 BPLCON0_4PLANES	equ	$4200		; 4 bitplanes, colour burst on
 PRIORITY	equ	$001b		; sprites 0-5 in front of the bitplanes, 6-7 behind
 COPPER_END	equ	$fffffffe
+STAR_LINE	equ	DISPLAY_TOP-1		; the star table takes over at the end of this line
+END_OF_LINE	equ	$df			; copper wait: horizontal position
+STAR_PIXEL	equ	$8000			; sprite 7's image: its leftmost pixel
 
 	section	code,code
 
@@ -33,8 +38,12 @@ VideoInit:
 	move.w	#2*SCREEN_SIZE/4-1,d0
 .Clear	clr.l	(a0)+
 	dbf	d0,.Clear
-	move.l	#Screen1,FrontBuffer(a5)
-	move.l	#Screen2,BackBuffer(a5)
+	lea	ScreenInfo1,a0
+	move.l	#Screen1,scr_bitmap(a0)
+	move.l	a0,FrontScreen(a5)
+	lea	ScreenInfo2,a0
+	move.l	#Screen2,scr_bitmap(a0)
+	move.l	a0,BackScreen(a5)
 	bsr	ShowFront
 
 	lea	CopperSprites+2,a0	; every sprite starts on the empty one
@@ -57,6 +66,23 @@ VideoInit:
 	rts
 
 ;--
+; VideoSetSprite
+; Point one of the eight hardware sprites at its data.
+; In:       d0 = sprite 0-7, a0 = sprite data in chip RAM
+; Out:      -
+; Clobbers: d0-d1, a1
+VideoSetSprite:
+	lsl.w	#3,d0
+	lea	CopperSprites+2,a1
+	add.w	d0,a1
+	move.l	a0,d1
+	swap	d1
+	move.w	d1,(a1)
+	swap	d1
+	move.w	d1,4(a1)
+	rts
+
+;--
 ; VideoWaitFrame
 ; Wait for the next vertical blank.
 ; In:       a5 = state
@@ -75,9 +101,9 @@ VideoWaitFrame:
 ; Out:      -
 ; Clobbers: d0-d1, a0
 VideoFlip:
-	move.l	BackBuffer(a5),d0
-	move.l	FrontBuffer(a5),BackBuffer(a5)
-	move.l	d0,FrontBuffer(a5)
+	move.l	BackScreen(a5),d0
+	move.l	FrontScreen(a5),BackScreen(a5)
+	move.l	d0,FrontScreen(a5)
 	; falls through
 
 ;--
@@ -87,7 +113,8 @@ VideoFlip:
 ; Out:      -
 ; Clobbers: d0-d1, a0
 ShowFront:
-	move.l	FrontBuffer(a5),d0
+	move.l	FrontScreen(a5),a0
+	move.l	scr_bitmap(a0),d0
 	add.l	#VISIBLE,d0
 	lea	CopperPlanes+2,a0
 	moveq	#PLANES-1,d1
@@ -102,16 +129,18 @@ ShowFront:
 
 ;--
 ; VBlank
-; Level 3 interrupt: count the frame.
-; lint: allow a5
+; Level 3 interrupt: count the frame and move the stars.
+; lint: allow a5, a6
 ; In:       -
 ; Out:      -
 ; Clobbers: -
-VBlank:	move.l	a5,-(sp)
+VBlank:	movem.l	d0-d2/a0-a2/a5-a6,-(sp)
 	lea	State,a5
+	lea	CUSTOM,a6
 	addq.w	#1,FrameCount(a5)
-	move.w	#INT_VERTB,CUSTOM+intreq
-	move.l	(sp)+,a5
+	bsr	StarsVBlank
+	move.w	#INT_VERTB,intreq(a6)
+	movem.l	(sp)+,d0-d2/a0-a2/a5-a6
 	rte
 
 	section	chip_data,data_c
@@ -133,10 +162,22 @@ CopperSprites:
 	dc.w	color+8,$06f,color+10,$0ff,color+12,$f0f,color+14,$0f0
 	dc.w	color+16,$d40,color+18,$09a,color+20,$90f,color+22,$00f
 	dc.w	color+24,$fb0,color+26,$f90,color+28,$0bf,color+30,$b0f
-	dc.l	COPPER_END
+	; sprites 0-1 and 2-3: the fighter and its bullets; 4-5: the captured fighter
+	dc.w	color+34,$f00,color+36,$06f,color+38,$ddf
+	dc.w	color+42,$f00,color+44,$06f,color+46,$ddf
+	dc.w	color+50,$bbf,color+52,$06f,color+54,$f00
+	; Sprite 7 is the stars: one pixel, armed by hand once sprite DMA has
+	; had its turn, then moved and coloured line by line by the star table.
+	dc.w	STAR_LINE<<8|END_OF_LINE,$fffe
+	dc.w	spr7datb,0,spr7data,STAR_PIXEL
+	dc.w	copjmp2,0
 
 NullSprite:
 	dc.w	0,0
+
+	section	bss,bss
+ScreenInfo1:	ds.b	scr_SIZEOF
+ScreenInfo2:	ds.b	scr_SIZEOF
 
 	section	chip_bss,bss_c
 

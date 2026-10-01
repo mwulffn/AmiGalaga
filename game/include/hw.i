@@ -40,6 +40,10 @@ bplcon2		equ	$104
 bpl1mod		equ	$108
 bpl2mod		equ	$10a
 sprpt		equ	$120
+spr7pos		equ	$178
+spr7ctl		equ	$17a
+spr7data	equ	$17c
+spr7datb	equ	$17e
 color		equ	$180
 
 ; dmacon / dmaconr

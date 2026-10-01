@@ -1,6 +1,7 @@
 ; The game state's storage. See include/state.i for the layout.
 
 	include	"config.i"
+	include	"layout.i"
 	include	"sound.i"
 	include	"state.i"
 

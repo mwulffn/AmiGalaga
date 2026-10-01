@@ -18,3 +18,15 @@ PLAY_WIDTH	equ	224
 SCREEN_ROWS	equ	DISPLAY_LINES+2*GUARD
 SCREEN_SIZE	equ	ROW_BYTES*SCREEN_ROWS
 VISIBLE		equ	GUARD*ROW_BYTES+GUARD/8	; first displayed byte of a buffer
+
+DISPLAY_TOP	equ	44			; raster line of the first displayed line
+
+; What goes with a screen buffer. FrontScreen and BackScreen in the state
+; point at one of these each.
+MAX_FLYERS	equ	32
+	rsreset
+scr_bitmap	rs.l	1			; the buffer, in chip RAM
+scr_score	rs.l	1			; the score its panel shows
+scr_flyers	rs.w	1			; flyers drawn in it, to erase next time
+scr_erase	rs.l	MAX_FLYERS		;   and where
+scr_SIZEOF	rs.b	0

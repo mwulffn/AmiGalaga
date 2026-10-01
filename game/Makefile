@@ -12,9 +12,10 @@ KICK   ?= $(HOME)/Documents/FS-UAE/Kickstarts/kick34005.A500
 UAE     = fs-uae --amiga_model=A500 --kickstart_file=$(KICK) --slow_memory=0
 
 # startup.o must be first: the program starts at the top of the first object
-OBJECTS = build/startup.o build/main.o build/video.o build/sound.o build/state.o
+OBJECTS = build/startup.o build/main.o build/video.o build/stars.o build/sound.o build/state.o
 # built from the user's own ROM set; never committed
-GENERATED = build/snd_data.i build/snd_chip.bin build/sndtest_script.i
+GENERATED = build/snd_data.i build/snd_chip.bin build/sndtest_script.i \
+	build/stars.bin build/starev.bin
 INCLUDES = $(wildcard include/*.i)
 
 all: build/galaga.adf
@@ -26,6 +27,10 @@ build/%.o: src/%.s $(INCLUDES) $(GENERATED) FORCE
 build/snd_data.i build/snd_chip.bin: tools/make_sound_data.py $(ROM)
 	@mkdir -p build
 	python3 tools/make_sound_data.py $(ROM) build
+
+build/stars.bin build/starev.bin: tools/make_stars.py
+	@mkdir -p build
+	python3 tools/make_stars.py build
 
 build/sndtest_script.i: tools/sndtest.py
 	@mkdir -p build

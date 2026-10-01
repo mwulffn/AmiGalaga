@@ -2,6 +2,7 @@
 
 	include	"config.i"
 	include	"hw.i"
+	include	"layout.i"
 	include	"sound.i"
 	include	"state.i"
 
@@ -9,6 +10,7 @@
 	xref	VideoInit
 	xref	VideoWaitFrame
 	xref	VideoFlip
+	xref	StarsInit
 	xref	SoundInit
 	xref	SoundStop
 	if	SOUND_TEST
@@ -25,7 +27,8 @@ METER_COLOUR	equ	$004		; the raster meter's idle colour
 ; In:       a5 = state, a6 = CUSTOM
 ; Out:      -
 ; Clobbers: d0-d1, a0
-Main:	bsr	VideoInit
+Main:	bsr	StarsInit
+	bsr	VideoInit
 	bsr	SoundInit
 	if	SOUND_TEST=0
 	move.b	#1,Sound+SND_START(a5)	; until there is a game: the start theme

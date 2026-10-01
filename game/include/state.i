@@ -1,10 +1,13 @@
 ; The game state. A5 holds its address everywhere; fields are used as Name(a5).
-; Include config.i and sound.i first.
+; Include config.i, layout.i and sound.i first.
 
 	rsreset
 FrameCount	rs.w	1		; vertical blanks since start
-FrontBuffer	rs.l	1		; the screen being shown
-BackBuffer	rs.l	1		; the screen being drawn
+FrontScreen	rs.l	1		; the screen being shown (a scr_ structure)
+BackScreen	rs.l	1		; the screen being drawn
+StarFirst	rs.w	1		; star table entry shown on the first line, 0-255
+StarSpeed	rs.w	1		; lines the stars scroll per frame
+StarFade	rs.l	1		; next entry of the fade schedule
 ReportPtr	rs.l	1		; test builds: what to write to "results"
 ReportLen	rs.l	1
 FrameStart	rs.w	1		; test builds: FrameCount when this frame's work began
