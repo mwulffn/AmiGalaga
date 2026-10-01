@@ -173,10 +173,11 @@ objects are bombs and explosions.
   Any change must still pass `experiment-6/tools/measure.sh sndtest`.
 - Loudness balance: in MAME's mix the explosion is 10.5 dB louder than
   the start theme. The first Amiga build had it 5 dB quieter (the user
-  heard it as muted). Now the noise loop has its peaks flattened (rms 64
+  heard it as muted). Now the noise loop has its peaks flattened (rms 79
   of 127, same spectrum) and tones play at 1.5 x their arcade level
-  (Paula volume 0-23), which puts the explosion 8.9 dB above the theme.
-  Not yet judged by ear. Paula's channels are hard-panned (0 and 3 left,
+  (Paula volume 0-23), which puts the explosion 10.7 dB above the theme.
+  That is as loud as the loop gets without changing its spectrum; any
+  more has to come from turning the tones down. Paula's channels are hard-panned (0 and 3 left,
   1 and 2 right) while the arcade is mono; nothing is done about that.
 - **Not drawn yet:** tractor beam, 32x32 explosions, dual fighter,
   READY/STAGE text.

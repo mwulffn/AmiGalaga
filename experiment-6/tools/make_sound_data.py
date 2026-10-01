@@ -25,7 +25,7 @@ import native as N  # noqa: E402
 
 PAULA_CLOCK = 3546895  # PAL
 NOISE_RATE, NOISE_LEN = 8000, 4000
-NOISE_ROUNDS, NOISE_CREST = 6, 1.6  # peak flattening: rounds, clip level in rms
+NOISE_ROUNDS, NOISE_CREST = 12, 1.15  # peak flattening: rounds, clip level in rms
 # Relative power of the arcade's fighter explosion at these frequencies (Hz).
 SPECTRUM = [
     (40, 0.0186), (46, 0.0250), (53, 0.0260), (62, 0.0422), (71, 0.0685), (83, 0.1006), (95, 0.1240),
@@ -61,7 +61,7 @@ def noise_loop() -> bytes:
     Plain random-phase noise has rare tall peaks, so scaled to fit 8 bits it
     is quiet on average. A few rounds of "clip the peaks, then put the
     spectrum back" keep the same spectrum but flatten the peaks, which makes
-    the loop about 5 dB louder at Paula's full volume.
+    the loop about 7 dB louder at Paula's full volume.
     """
     rng = random.Random(1981)
     n = NOISE_LEN

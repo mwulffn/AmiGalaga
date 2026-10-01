@@ -270,7 +270,7 @@ handle:	tst.b	d6
 
 ; Paula volume for the arcade's 16 levels. The explosion plays at 64; in
 ; the arcade it is about 10 dB louder than the start theme, and tones at
-; 1.5 x level leave it about 9 dB louder here.
+; 1.5 x level leave it about 10.7 dB louder here.
 tonevol: dc.b	0,2,3,5,6,8,9,11,12,14,15,17,18,20,21,23
 
 ; write the three voices and the explosion to Paula
