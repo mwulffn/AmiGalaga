@@ -1,0 +1,26 @@
+[project]
+name = "asmlint"
+version = "0.1.0"
+description = "Lint 68000 assembly routine headers against what the code does to registers"
+readme = "README.md"
+authors = [
+    { name = "Michael Wulff Nielsen", email = "mwulff@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = []
+
+[project.scripts]
+asmlint = "asmlint.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.12.11,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.16.9",
+]
+
+[tool.ruff]
+line-length = 88
