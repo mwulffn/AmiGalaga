@@ -177,7 +177,8 @@ objects are bombs and explosions.
   of 127, same spectrum) and tones play at 1.5 x their arcade level
   (Paula volume 0-23), which puts the explosion 10.7 dB above the theme.
   That is as loud as the loop gets without changing its spectrum; any
-  more has to come from turning the tones down. Paula's channels are hard-panned (0 and 3 left,
+  more has to come from turning the tones down. The user approved this
+  balance by ear (2026-10-01). Paula's channels are hard-panned (0 and 3 left,
   1 and 2 right) while the arcade is mono; nothing is done about that.
 - **Not drawn yet:** tractor beam, 32x32 explosions, dual fighter,
   READY/STAGE text.
