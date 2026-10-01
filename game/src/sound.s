@@ -134,6 +134,7 @@ SoundStop:
 ;--
 ; SoundInterrupt
 ; Level 6 interrupt: the CIA timer. One driver tick.
+; lint: allow a5, a6
 ; In:       -
 ; Out:      -
 ; Clobbers: -

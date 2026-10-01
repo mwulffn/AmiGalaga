@@ -69,6 +69,11 @@ Every routine starts with a header like this:
   drifted out of date breaks the build. It follows calls (a routine
   inherits the clobbers of what it calls) and sees through macros. It is
   conservative: any register written and not declared is an error.
+- The linter is `asmlint/`. Where it cannot know, say so with a comment:
+  `; lint: clobbers d0-d1/a0-a1` on a call it cannot follow (a library
+  call, a jump through a register), `; lint: targets A, B` for a jump
+  table, and `; lint: allow a5, a6` in the header of a routine that may
+  write a reserved register. See its README.
 
 ## Surface style
 - Follow current practice rather than period habits: named constants,

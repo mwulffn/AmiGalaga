@@ -24,7 +24,7 @@ METER_COLOUR	equ	$004		; the raster meter's idle colour
 ; Run the game until the left mouse button is pressed (or, in a test build, for TEST_FRAMES frames).
 ; In:       a5 = state, a6 = CUSTOM
 ; Out:      -
-; Clobbers: d0-d1, a0-a1
+; Clobbers: d0-d1, a0
 Main:	bsr	VideoInit
 	bsr	SoundInit
 	if	SOUND_TEST=0

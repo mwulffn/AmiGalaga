@@ -31,30 +31,38 @@ Close		equ	-36
 Write		equ	-48
 MODE_NEWFILE	equ	1006
 
+; Call a library routine through its base in a6. The system's convention:
+; d0-d1 and a0-a1 are scratch, everything else is preserved.
+CALLSYS	macro
+	jsr	\1(a6)			; lint: clobbers d0-d1/a0-a1
+	endm
+
 	section	code,code
 
 ;--
 ; Start
 ; The program's entry point: must stay first in the first object linked.
+; It owns a5 and a6 until it hands them to Main as the two reserved registers.
+; lint: allow a5, a6
 ; In:       -
 ; Out:      d0 = 0, the return code for the shell
-; Clobbers: d1-d7, a0-a6
+; Clobbers: d1-d4, d6-d7, a0-a2, a4-a6
 Start:	move.l	EXEC_BASE.w,a6
 	lea	GfxName(pc),a1
-	jsr	OldOpenLibrary(a6)
+	CALLSYS	OldOpenLibrary
 	move.l	d0,a6
 	move.l	gb_ActiView(a6),-(sp)
 	move.l	a6,-(sp)
 	sub.l	a1,a1
-	jsr	LoadView(a6)		; no view: the system's display is off
-	jsr	WaitTOF(a6)
-	jsr	WaitTOF(a6)
+	CALLSYS	LoadView		; no view: the system's display is off
+	CALLSYS	WaitTOF
+	CALLSYS	WaitTOF
 	move.l	EXEC_BASE.w,a6
-	jsr	Forbid(a6)
+	CALLSYS	Forbid
 	; Stay in supervisor mode on this stack. Interrupts then push their
 	; frames here, not on the system's supervisor stack in chip RAM, where
 	; every access waits while the blitter has priority.
-	jsr	SuperState(a6)
+	CALLSYS	SuperState
 	move.l	d0,-(sp)
 
 	lea	CUSTOM,a6
@@ -65,8 +73,9 @@ Start:	move.l	EXEC_BASE.w,a6
 	move.w	#INT_ALL,intreq(a6)
 	move.w	#DMA_ALL,dmacon(a6)
 	lea	VEC_LEVEL1.w,a0		; subsystems install their own handlers
+	lea	SavedVectors,a1
 	moveq	#VEC_COUNT-1,d0
-.Save	move.l	(a0)+,-(sp)
+.Save	move.l	(a0)+,(a1)+
 	dbf	d0,.Save
 
 	lea	State,a5
@@ -77,16 +86,17 @@ Start:	move.l	EXEC_BASE.w,a6
 	move.w	#INT_ALL,intena(a6)
 	move.w	#INT_ALL,intreq(a6)
 	move.w	#DMA_ALL,dmacon(a6)
-	lea	VEC_LEVEL1+VEC_COUNT*4.w,a0
+	lea	VEC_LEVEL1.w,a0
+	lea	SavedVectors,a1
 	moveq	#VEC_COUNT-1,d0
 .Restore
-	move.l	(sp)+,-(a0)
+	move.l	(a1)+,(a0)+
 	dbf	d0,.Restore
 	move.w	(sp)+,d6		; dmacon and intena as the system had them,
 	move.w	(sp)+,d7		; kept clear of the library calls' scratch registers
 	move.l	(sp)+,d0
 	move.l	EXEC_BASE.w,a6
-	jsr	UserState(a6)
+	CALLSYS	UserState
 
 	move.l	(sp)+,a4		; graphics.library
 	lea	CUSTOM,a6
@@ -98,30 +108,30 @@ Start:	move.l	EXEC_BASE.w,a6
 	move.w	d7,intena(a6)
 	move.l	a4,a6
 	move.l	(sp)+,a1
-	jsr	LoadView(a6)
-	jsr	WaitTOF(a6)
-	jsr	WaitTOF(a6)
+	CALLSYS	LoadView
+	CALLSYS	WaitTOF
+	CALLSYS	WaitTOF
 	move.l	a4,a1
 	move.l	EXEC_BASE.w,a6
-	jsr	CloseLibrary(a6)
-	jsr	Permit(a6)
+	CALLSYS	CloseLibrary
+	CALLSYS	Permit
 
 	if	TEST_FRAMES
 	lea	DosName(pc),a1		; test build: leave the report for the host to read
-	jsr	OldOpenLibrary(a6)
+	CALLSYS	OldOpenLibrary
 	move.l	d0,a6
 	lea	ReportName(pc),a0
 	move.l	a0,d1
 	move.l	#MODE_NEWFILE,d2
-	jsr	Open(a6)
+	CALLSYS	Open
 	move.l	d0,d4
 	lea	State,a2
 	move.l	d4,d1
 	move.l	ReportPtr(a2),d2
 	move.l	ReportLen(a2),d3
-	jsr	Write(a6)
+	CALLSYS	Write
 	move.l	d4,d1
-	jsr	Close(a6)
+	CALLSYS	Close
 	endc
 	moveq	#0,d0
 	rts
@@ -132,3 +142,6 @@ DosName:	dc.b	"dos.library",0
 ReportName:	dc.b	"results",0
 	endc
 	even
+
+	section	bss,bss
+SavedVectors:	ds.l	VEC_COUNT

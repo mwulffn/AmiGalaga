@@ -182,6 +182,9 @@ objects are bombs and explosions.
 - **The 68000 flight stepper** (both the PAL and the exact build) is not
   written; its cost, estimated at about 8 raster lines for 12 flyers, is
   not measured.
+- **The game** (`game/`) so far: startup and shutdown, video, the sound
+  driver. Next: the display pieces from the experiments (starfield, blit
+  primitives, formation strips, flyers), then the 68000 flight stepper.
 - **Game logic** is not ported or measured: formation drift and
   breathing, dive scheduling, bombs, capture, scoring.
 - **Sound cost: deferred, by decision.** The driver works and the user
@@ -207,7 +210,6 @@ objects are bombs and explosions.
   1 and 2 right) while the arcade is mono; nothing is done about that.
 - **Not drawn yet:** tractor beam, 32x32 explosions, dual fighter,
   READY/STAGE text.
-- **The header linter** the style guide calls for is not written.
 - Second star layer on sprite 6: decide once logic shows the frame time
   left.
 
@@ -222,6 +224,7 @@ objects are bombs and explosions.
 | `motion/` | movement extraction, reference stepper, validation against MAME |
 | `sound/` | sound extraction, driver and chip model, validation against MAME |
 | `docs/style.md` | assembly style guide for the game's code |
+| `asmlint/` | the header linter the style guide requires: a standalone Python tool (`uv run pytest` in its directory); the game's build runs it |
 | `reference/` | local-only reading material, ignored by git |
 | `original/` | the user's ROM set, ignored by git |
 

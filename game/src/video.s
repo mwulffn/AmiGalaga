@@ -27,7 +27,7 @@ COPPER_END	equ	$fffffffe
 ; Clear both screens, show the first, start the display and the vertical blank interrupt.
 ; In:       a5 = state, a6 = CUSTOM
 ; Out:      -
-; Clobbers: d0-d1, a0-a1
+; Clobbers: d0-d1, a0
 VideoInit:
 	lea	Screens,a0
 	move.w	#2*SCREEN_SIZE/4-1,d0
@@ -103,6 +103,7 @@ ShowFront:
 ;--
 ; VBlank
 ; Level 3 interrupt: count the frame.
+; lint: allow a5
 ; In:       -
 ; Out:      -
 ; Clobbers: -

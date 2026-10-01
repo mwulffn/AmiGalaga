@@ -1,6 +1,7 @@
 # Galaga for the Amiga 500
 # make            build the executable and a bootable disk image
 # make run        boot the disk in FS-UAE (stock A500, Kickstart 1.3)
+# make lint       check every routine's header against its code (also part of the build)
 # make test       run the test builds in FS-UAE: frame timing, and the sound
 #                 driver against the arcade model
 # DEFS="-DRASTER_METER=1" and the like override include/config.i
@@ -30,8 +31,12 @@ build/sndtest_script.i: tools/sndtest.py
 	@mkdir -p build
 	python3 tools/sndtest.py script $@
 
-build/galaga: $(OBJECTS)
+build/galaga: $(OBJECTS) lint
 	vlink -bamigahunk -s -o $@ $(OBJECTS)
+
+# a header that has drifted from its code breaks the build
+lint: $(GENERATED)
+	uv run -q --project ../asmlint asmlint -I include -I build src/*.s
 
 build/galaga.adf: build/galaga
 	@printf 'galaga\n' > build/startup-sequence
@@ -49,4 +54,4 @@ clean:
 	rm -rf build
 
 FORCE:
-.PHONY: all run test clean FORCE
+.PHONY: all run test lint clean FORCE
