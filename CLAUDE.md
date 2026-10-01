@@ -20,7 +20,8 @@ decision is made or changed.
 - **Target machine:** stock A500: 68000 at 7 MHz, OCS, 512K chip RAM,
   PAL, Kickstart 1.3. Do not rely on slow RAM or fast RAM.
 - **Assembler:** vasm (`vasmm68k_mot`), Motorola syntax. Keep the code
-  tight.
+  tight. The game's code follows the style guide: @docs/style.md
+  (the experiments predate it and do not).
 - **Measure, don't estimate.** Timing claims come from `tools/measure.sh`
   (FS-UAE as an A500). Things only visible on the display (hardware
   sprites, copper effects) are checked by capturing the FS-UAE window
@@ -182,6 +183,10 @@ objects are bombs and explosions.
   1 and 2 right) while the arcade is mono; nothing is done about that.
 - **Not drawn yet:** tractor beam, 32x32 explosions, dual fighter,
   READY/STAGE text.
+- **Blit queue driven by the blitter interrupt:** not tried; the
+  experiments wait for the blitter in a loop. To be measured before it is
+  adopted (see the style guide).
+- **The header linter** the style guide calls for is not written.
 - Second star layer on sprite 6: decide once logic shows the frame time
   left.
 
@@ -194,6 +199,7 @@ objects are bombs and explosions.
 | `analysis/` | MAME Lua trace scripts and results (colours, sprite load, positions) |
 | `motion/` | movement extraction, reference stepper, validation against MAME |
 | `sound/` | sound extraction, driver and chip model, validation against MAME |
+| `docs/style.md` | assembly style guide for the game's code |
 | `reference/` | local-only reading material, ignored by git |
 | `original/` | the user's ROM set, ignored by git |
 
