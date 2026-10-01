@@ -73,12 +73,11 @@ decision is made or changed.
   row can be up to 5 frames (2 pixels) behind. When breathing starts
   the pulse sound starts, and follows its direction. The user has
   confirmed the breathing looks right (2026-10-01).
-- A strip only wipes its own old image if it moves a line or two. The
-  demo jumps from a full, spread formation straight to the next stage's
-  rest position, which leaves pieces behind. In the game a stage ends
-  with the formation empty, so there is nothing to leave; if anything
-  else ever resets a formation that still has enemies in it, the
-  playfield has to be cleared then.
+- A strip only wipes its own old image if it moves a line or two. A
+  stage now ends with the formation empty, so the jump back to the rest
+  position leaves nothing behind (the earlier demo, which changed stage
+  with a full formation, did). If anything else ever resets a formation
+  that still has enemies in it, the playfield has to be cleared then.
 - **Flyers** (divers, bombs, explosions, score pop-ups): masked bobs,
   erased with a clear blit of the old position.
 - **Text:** panel text is drawn by the CPU when it changes. Text inside
