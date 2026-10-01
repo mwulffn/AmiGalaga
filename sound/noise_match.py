@@ -12,6 +12,7 @@ random noise of our own (nothing from the recording is copied):
   match_amiga_loop.wav    a 2 KB looped noise sample with the decay done by
                           Paula's volume register, set once per frame
   compare.wav             reference, then the three candidates, 0.6 s apart
+  compare_rates.wav       reference then loop, for each loop sample rate tried
 
 and the two Amiga samples themselves as raw signed 8-bit files.
 """
@@ -24,7 +25,7 @@ import numpy as np
 
 RATE = 48000
 AMIGA_RATE = 4000  # sample rate of the Amiga versions
-LOOP = 2048  # bytes in the looped sample
+LOOP_RATES = (4000, 8000, 12000)  # sample rates tried for the looped version
 
 
 def load(path: Path) -> np.ndarray:
@@ -72,7 +73,8 @@ def bands(x: np.ndarray) -> str:
     spec = np.abs(np.fft.rfft(x * np.hanning(len(x)))) ** 2
     f = np.fft.rfftfreq(len(x), 1 / RATE)
     edges = [0, 100, 200, 400, 800, 1600, 24000]
-    return " ".join(f"{100 * spec[(f >= lo) & (f < hi)].sum() / spec.sum():4.0f}" for lo, hi in zip(edges, edges[1:]))
+    high = 100 * spec[f >= 2000].sum() / spec.sum()
+    return f"[above 2 kHz {high:5.2f}%] " + " ".join(f"{100 * spec[(f >= lo) & (f < hi)].sum() / spec.sum():4.0f}" for lo, hi in zip(edges, edges[1:]))
 
 
 def main() -> None:
@@ -123,15 +125,19 @@ def main() -> None:
     (out / "explosion_whole.raw").write_bytes(whole.tobytes())
     amiga_sample = scale(paula(whole, AMIGA_RATE, length + 0.05))
 
-    # Amiga version 2: a short loop, Paula's 0-64 volume stepped down each level.
-    loop = shaped_noise(LOOP, AMIGA_RATE, freqs, smooth, rng)
-    loop8 = np.round(loop / np.abs(loop).max() * 127).astype(np.int8)
-    (out / "explosion_loop.raw").write_bytes(loop8.tobytes())
-    reps = int(np.ceil((length + 0.05) * AMIGA_RATE / LOOP))
-    held = paula(np.tile(loop8, reps), AMIGA_RATE, length + 0.05)
-    frame = np.arange(len(held)) // (RATE // 50) / 50  # volume set once per 50 Hz frame
-    vol = np.round(64 * gain_at(frame))
-    amiga_loop = scale(held * vol / 64)
+    # Amiga version 2: a half-second loop, Paula's 0-64 volume set once per 50 Hz frame.
+    # Higher sample rates cost memory but move the stepped output's mirror images
+    # (which sit around the sample rate) further above what the ear picks out.
+    loops = {}
+    for rate in LOOP_RATES:
+        loop = shaped_noise(rate // 2, rate, freqs, smooth, rng)
+        loop8 = np.round(loop / np.abs(loop).max() * 127).astype(np.int8)
+        (out / f"explosion_loop_{rate}.raw").write_bytes(loop8.tobytes())
+        reps = int(np.ceil((length + 0.05) * rate / len(loop8)))
+        held = paula(np.tile(loop8, reps), rate, length + 0.05)
+        frame = np.arange(len(held)) // (RATE // 50) / 50
+        loops[rate] = scale(held * np.round(64 * gain_at(frame)) / 64)
+    amiga_loop = loops[AMIGA_RATE]
 
     save(out / "match_ideal.wav", ideal)
     save(out / "match_amiga_sample.wav", amiga_sample)
@@ -139,10 +145,16 @@ def main() -> None:
     gap = np.zeros(int(0.6 * RATE))
     ref = refs[0][: int((length + 0.1) * RATE)]
     save(out / "compare.wav", np.concatenate([ref, gap, ideal, gap, amiga_sample, gap, amiga_loop]))
+    for rate, x in loops.items():
+        save(out / f"match_amiga_loop_{rate}.wav", x)
+    save(out / "compare_rates.wav", np.concatenate([p for r in LOOP_RATES for p in (ref, gap, loops[r], gap)]))
 
-    print(f"Amiga samples: whole sound {len(whole)} bytes, loop {len(loop8)} bytes, both at {AMIGA_RATE} Hz")
+    print(f"Amiga samples: whole sound {len(whole)} bytes at {AMIGA_RATE} Hz; loops "
+          + ", ".join(f"{r // 2} bytes at {r} Hz" for r in LOOP_RATES))
     print("\nshare of energy (%) in 0-100, 100-200, 200-400, 400-800, 800-1600, above 1600 Hz:")
-    for name, x in (("MAME reference", ref), ("ideal", ideal), ("Amiga whole sample", amiga_sample), ("Amiga loop", amiga_loop)):
+    rows = [("MAME reference", ref), ("ideal", ideal), ("Amiga whole sample", amiga_sample)]
+    rows += [(f"Amiga loop {r} Hz", x) for r, x in loops.items()]
+    for name, x in rows:
         e = envelope(x, 300)
         print(f"  {name:19} {bands(x[:RATE])}   loudness per 0.3 s: " + " ".join(f"{v / e[0] * 100:3.0f}" for v in e[:9]))
 
