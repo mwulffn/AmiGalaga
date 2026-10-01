@@ -15,9 +15,8 @@ StatWorst	rs.w	1		; test builds: most raster lines a frame's work took
 StatTotal	rs.l	1		;   their sum
 StatFrames	rs.w	1		;   and how many frames
 STAT_SIZE	equ	8
-FormSway	rs.w	1		; formation: pixels right of its leftmost position
-FormSpread	rs.w	1		;   how far it has spread: 0 closed
-FormRows	rs.w	2*FORM_ROWS	;   per row: x and y of its strip, set when composed
+FormRows	rs.w	2*FORM_ROWS	; formation: per row, x and y of its strip, set when composed
+FormPresent	rs.w	FORM_ROWS	;   per row: bit n set if the enemy in column n is there
 Score		rs.l	1		; six decimal digits, two to a byte, in the low three bytes
 ScoreText	rs.b	8		; scratch for printing it
 ShipX		rs.w	1		; the fighter, in playfield pixels

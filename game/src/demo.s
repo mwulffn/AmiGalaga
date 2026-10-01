@@ -30,8 +30,7 @@ df_SIZEOF	rs.b	0
 X_RANGE		equ	GUARD+PLAY_WIDTH-1	; fully hidden at the left to fully in the gap
 Y_RANGE		equ	GUARD+DISPLAY_LINES	; fully hidden above to fully hidden below
 FLAP_FRAMES	equ	16
-BREATHE_FRAMES	equ	8			; the formation's spread changes this often
-SCORE_FRAMES	equ	8			; and so does the score
+SCORE_FRAMES	equ	8			; the score changes this often
 BULLET_SPEED	equ	6
 BULLET_START	equ	SHIP_Y-16
 
@@ -71,32 +70,18 @@ DemoFrame:
 	abcd	-(a1),-(a0)
 	abcd	-(a1),-(a0)
 .Scored
-	; the formation sways every frame and breathes every eighth; one strip is rebuilt a frame
+	; everyone is in the formation; one strip is rebuilt a frame
+	lea	FormPresent(a5),a0
+	moveq	#FORM_ROWS-1,d0
+.Full	move.w	#-1,(a0)+
+	dbf	d0,.Full
 	lea	DemoForm,a3
-	move.w	FormSway(a5),d0
-	add.w	(a3),d0
-	cmp.w	#FORM_SWAY,d0
-	bls	.Sway
-	neg.w	(a3)
-	add.w	(a3),d0
-.Sway	move.w	d0,FormSway(a5)
-	moveq	#BREATHE_FRAMES-1,d0
-	and.w	FrameCount(a5),d0
-	bne	.Breathed
-	move.w	FormSpread(a5),d0
-	add.w	2(a3),d0
-	cmp.w	#FORM_SPREAD_MAX,d0
-	bls	.Spread
-	neg.w	2(a3)
-	add.w	2(a3),d0
-.Spread	move.w	d0,FormSpread(a5)
-.Breathed
-	move.w	4(a3),d0
+	move.w	(a3),d0
 	addq.w	#1,d0
 	cmp.w	#FORM_ROWS,d0
 	bne	.Row
 	moveq	#0,d0
-.Row	move.w	d0,4(a3)
+.Row	move.w	d0,(a3)
 	bsr	FormationCompose
 
 	bsr	FlyersErase
@@ -156,7 +141,7 @@ DemoPoints:
 	dc.b	0,0,0,$30
 
 DemoForm:
-	dc.w	1,1,0				; sway direction, spread direction, next row to rebuild
+	dc.w	0				; next row to rebuild
 
 DemoFlyers:
 	rept	(DEMO_FLYERS+9)/10

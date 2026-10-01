@@ -33,8 +33,7 @@ scr_SIZEOF	rs.b	0
 
 ; the formation
 FORM_ROWS	equ	5
-FORM_SWAY	equ	16			; FormSway runs from 0 to this
-FORM_SPREAD_MAX	equ	4			; FormSpread runs from 0 to this: column pitch 16 to 20
+FORM_SPREAD	equ	64			; how much further apart the outer columns get at most
 
 ; the player's fighter
 SHIP_Y		equ	240			; its display line

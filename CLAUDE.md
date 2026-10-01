@@ -50,6 +50,15 @@ decision is made or changed.
 - **Formation:** not 40 bobs. Each of its 5 rows is a pre-composed strip
   copied with one plain blit per frame; one strip is rebuilt per frame.
   No erase, no mask, and it repairs damage from flyer erases.
+  The formation is where the arcade's is, read from the arcade's own
+  two tables (`HomeLoc`, `HomeX` in the state), which the flights read
+  too. At rest the rows' tops are at 36 (bosses), 52, 64, 76 and 88, 12
+  pixels apart below the bosses, and the columns 16 apart from x = 32.
+  The arcade moves the columns up to 32 pixels either way and the bottom
+  row up to 32 down (measured over the MAME trace); strips are sized for
+  that. Butterflies and bees are 10 rows tall upright, so their strips
+  are 12 lines; the boss strip is 18 with a blank line above and below.
+  A mask per row (`FormPresent`) says who is there.
 - **Flyers** (divers, bombs, explosions, score pop-ups): masked bobs,
   erased with a clear blit of the old position.
 - **Text:** panel text is drawn by the CPU when it changes. Text inside
@@ -196,20 +205,13 @@ included, so the real figure is a little lower.
   sprites, all to the style guide and linted. `demo.s` stands in for the
   game and moves things; it is to be replaced. With it, formation + 10
   flyers + stars + panel + sprites + the start theme take 170 raster
-  lines (worst 197); with 20 flyers 245 (worst 273). The flight stepper
+  lines (worst 197); with 20 flyers 245 (worst 273). With the formation
+  at the arcade's layout (shorter strips) the 10-flyer scene is 158
+  (worst 182). The flight stepper
   is written and checked but nothing launches flights yet. Next: game
   state.
 - **Game logic** is not ported or measured: formation drift and
   breathing, dive scheduling, bombs, capture, scoring.
-- **The formation's layout does not match the arcade's yet.** In the
-  arcade at rest the rows' tops are at 36 (bosses), 52, 64 (butterflies),
-  76 and 88 (bees): 12 pixels apart below the bosses, opening to about
-  16 when it breathes, with a row of places for captured fighters above
-  at 20. Columns are 16 pixels apart from x = 32, opening to about 19.
-  `formation.s` has rows 16 apart from 20. Butterflies and bees are 10
-  rows tall upright, so their strips can be 12 lines. Flights head for
-  the arcade's places (`HomeLoc`, `HomeX`), so the formation has to move
-  there before flights can land in it.
 - Sprite frame and flips from a flight's heading: the rule is known
   (six 15-degree frames per quadrant plus upright), not ported.
 - **Sound cost: deferred, by decision.** The driver works and the user
