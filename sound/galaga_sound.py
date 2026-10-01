@@ -29,7 +29,8 @@ ACTIVE = 0x9AC0  # one byte per sound, set by the driver while it plays
 CREDITS = 0x9A79
 FORMATION_DIR = 0x9211  # the pulsing formation sound follows this
 
-# Request numbers, named from the reference disassembly and from listening.
+# Request numbers, named from the reference disassembly and from where the
+# main CPU sets them. The user has listened to all of them and found them right.
 SOUNDS = {
     0x00: "formation_pulse",  # on/off; pitch follows the formation breathing
     0x01: "hit_boss_second",
@@ -40,7 +41,7 @@ SOUNDS = {
     0x06: "tractor_beam_capture",  # on/off
     0x07: "fighter_destroyed",
     0x08: "coin",
-    0x09: "sound_09",  # on/off
+    0x09: "fighter_captured",  # on/off; set by the main CPU's fighter-captured task
     0x0A: "extra_fighter",
     0x0B: "start_theme",
     0x0C: "name_entry_theme_a",

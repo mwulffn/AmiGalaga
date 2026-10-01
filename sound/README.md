@@ -64,7 +64,7 @@ sound stays between 94 and 2143 Hz. Paula tops out near 28 kHz, so the
 - The Amiga player, and the choice between porting the driver logic and
   playing back streams.
 - The sound names are from the reference disassembly's comments and from
-  when each request appears in a game; they have not been confirmed by
-  listening. `sound_09` is unidentified.
+  where the main CPU sets each request. The user has listened to all 23
+  and they sound right; the names themselves are not all confirmed.
 - Each one-shot is recorded with a count of 1, so repeating sounds are
   shorter here than in the game.
