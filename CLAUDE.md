@@ -149,6 +149,30 @@ cycles when silent, 2,400 with the start theme, 3,500 in a busy stretch
 (pulse, shots, hits, dives), at 121 ticks a second. That is 5, 13 and 19
 raster lines per frame.
 
+### Wait loop or blit queue (experiment-7)
+
+The same scene with sound and a stand-in for game logic (25,000 CPU
+cycles a frame), drawn with the wait loop or with a queue that a
+blitter-finished interrupt feeds. Average lines, worst frame in brackets:
+
+| Machine, flyers | Wait, priority on | Queue, priority on | Wait, priority off | Queue, priority off |
+|---|---|---|---|---|
+| Stock A500, 10 | 238 (269) | 267 (301) | 268 (305) | 230 (254) |
+| Stock A500, 20 | 301 (325) | 352 (379) | 340 (376) | 317 (625) |
+| 1 MB fast RAM, 10 | 214 (241) | 185 (208) | 222 (250) | 179 (207) |
+| 1 MB fast RAM, 20 | 279 (310) | 261 (292) | 291 (324) | 256 (288) |
+
+- On a stock A500 the queue is no clear win: slightly better at 10
+  flyers with priority off, worse at 20, and much worse with priority on
+  (an interrupt per blit and nothing running in parallel).
+- With fast RAM the queue wins by 20 to 40 lines, because the logic runs
+  while the blitter works.
+- That only happens if interrupt frames are off chip RAM. The system's
+  supervisor stack is in chip RAM, where every access waits for the
+  blitter; experiment-7 runs in supervisor mode on its own stack.
+- With 25,000 cycles of logic, 20 full-size flyers do not hold 50 fps on
+  a stock A500 in any of the four set-ups.
+
 A flyer costs about 6.4 lines, the starfield 11-14. The arcade never has
 more than 12 enemies flying at once; the rest of its off-formation
 objects are bombs and explosions.
@@ -183,9 +207,6 @@ objects are bombs and explosions.
   1 and 2 right) while the arcade is mono; nothing is done about that.
 - **Not drawn yet:** tractor beam, 32x32 explosions, dual fighter,
   READY/STAGE text.
-- **Blit queue driven by the blitter interrupt:** not tried; the
-  experiments wait for the blitter in a loop. To be measured before it is
-  adopted (see the style guide).
 - **The header linter** the style guide calls for is not written.
 - Second star layer on sprite 6: decide once logic shows the frame time
   left.
@@ -194,7 +215,7 @@ objects are bombs and explosions.
 
 | Path | Contents |
 |---|---|
-| `experiment-1` .. `experiment-6` | the experiments (1-5 rendering, 6 adds sound); each has `make run`, and `tools/measure.sh` for timing |
+| `experiment-1` .. `experiment-7` | the experiments (1-5 rendering, 6 adds sound, 7 compares blit scheduling); each has `make run`, and `tools/measure.sh` for timing |
 | `experiment-1/tools/extract_gfx.py` | sprites, font and palette from the ROM to Amiga bitplanes |
 | `analysis/` | MAME Lua trace scripts and results (colours, sprite load, positions) |
 | `motion/` | movement extraction, reference stepper, validation against MAME |
