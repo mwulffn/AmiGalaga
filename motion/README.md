@@ -73,6 +73,12 @@ hit, and what it scores. Its hit box, tested on every shot, enemy and
 frame of the firing trace, finds 333 of the arcade's 336 hits and 3 the
 arcade did not have (positions that changed within the frame).
 
+`bombs.py` is the model of the enemies' bombs (when one is dropped, how
+it is aimed, how it falls) and of what destroys the fighter. Against the
+two traces: 533 of 535 bombs aimed as the arcade's, all 45,745 frames of
+falling the same, and all 66 lost fighters explained by its collision
+box.
+
 ## Validation
 
 `validate.py` against 38,600 frames of MAME (stages 1 to about 9, bot

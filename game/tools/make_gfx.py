@@ -50,6 +50,13 @@ ENEMIES = [
 BLAST = [(t, 10) for t in (0x41, 0x42, 0x43, 0x46, 0x44, 0x47, 0x45, 0x4A, 0x48, 0x4B, 0x49)]
 # Score pop-ups for a boss shot while diving: 400, 800, 1600; and 1000.
 POINTS = [(0x35, 10), (0x37, 13), (0x3A, 14), (0x38, 13)]
+BOMB = (0x30, 11)  # the fighter's bullet, upside down in another colour set
+# The fighter's explosion: four 32x32 frames in colour set 11, shown on hardware sprites 0 and 1
+# (left and right halves). Their colour registers hold the fighter's colours, so each of the
+# explosion's colours is given the pen whose register has it; its cyan takes the place of the
+# fighter's blue, which the game swaps in the copper list while the explosion shows.
+BANG = (0x20, 0x24, 0x28, 0x2C)
+BANG_PENS = {0xDDF: 3, 0xF00: 1, 0x0FF: 2}
 FIGHTER = (9, 0x06)  # colour code, tile
 BULLET = (9, 0x30)
 
@@ -142,11 +149,13 @@ def main() -> None:
                         data += w.to_bytes(2, "big")
                         mask += m.to_bytes(2, "big")
                 frames += data + mask
-    for label, tiles in (("BLAST", BLAST), ("POINTS", POINTS)):
+    for label, tiles in (("BLAST", BLAST), ("POINTS", POINTS), ("BOMB", [BOMB])):
         inc.append(f"GFX_{label}\tequ\t{len(frames)}")
         for t, code in tiles:
             cols = colours(code)
             pix = [[0 if cols[p] is None else PALETTE.index(cols[p]) for p in r] for r in tile_pens(rom, t)]
+            if label == "BOMB":
+                pix = pix[::-1]
             sheet.append(pix)
             for row in pix:
                 m = sum(1 << (15 - x) for x in range(16) if row[x])
@@ -164,6 +173,15 @@ def main() -> None:
             for plane in range(2):
                 w = sum(1 << (15 - x) for x in range(16) if row[x] >> plane & 1)
                 spr += w.to_bytes(2, "big")
+    inc.append(f"SPR_BANG\tequ\t{len(spr)}\t; 4 frames x left half, right half x 32 lines")
+    cols = colours(11)
+    for tile in BANG:
+        # tile n is top right, n+1 bottom right, n+2 top left, n+3 bottom left on the upright screen
+        for top, bottom in ((tile + 2, tile + 3), (tile, tile + 1)):
+            for row in tile_pens(rom, top) + tile_pens(rom, bottom):
+                pens = [0 if cols[p] is None else BANG_PENS[cols[p]] for p in row]
+                for plane in range(2):
+                    spr += sum(1 << (15 - x) for x in range(16) if pens[x] >> plane & 1).to_bytes(2, "big")
     (out / "sprites.bin").write_bytes(spr)
 
     spr_cols = colours(FIGHTER[0])[1:]

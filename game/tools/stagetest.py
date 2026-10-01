@@ -16,6 +16,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "motion"))
+import bombs as B  # noqa: E402
 import dives as D  # noqa: E402
 import formation as F  # noqa: E402
 import galaga_motion as G  # noqa: E402
@@ -26,10 +27,13 @@ import waves as W  # noqa: E402
 SLOTS, FORM_ROWS, BLASTS, STAGE_GAP = 12, 5, 8, 100  # as in the game's sources
 SHIP_START, SHIP_SX, SHIP_SY, SHIP_LEFT, SHIP_RIGHT = 104, 17, 297, 0x12, 0xE1
 AUTO_FIRE, SHOT_GAP, BLAST_STEPS, POPUP_STEPS = 16, 9, 6, 19
-LAUNCHED, HOME, GONE, FORMATION, KILLED, BOSS_HIT, SCORE_HI, SCORE_LO = range(8)
+LAUNCHED, HOME, GONE, FORMATION, KILLED, BOSS_HIT, SCORE_HI, SCORE_LO, FIGHTER_LOST, BOMB = range(10)
+PLAYING, BLOWN, RETURNING, READY, OVER = range(5)  # what the fighter is doing
+RESERVE, BLOWN_STEPS, BLOWN_PAUSE, READY_PAUSE, OVER_PAUSE, RETURN_SX, TIME_BACK = 2, 15, 4, 3, 6, 0x7A, 30
 NAMES = {
     LAUNCHED: "launch", HOME: "home", GONE: "gone", FORMATION: "formation",
     KILLED: "destroyed", BOSS_HIT: "boss hit", SCORE_HI: "score", SCORE_LO: "score",
+    FIGHTER_LOST: "fighter lost", BOMB: "bomb",
 }  # fmt: skip
 
 
@@ -47,7 +51,9 @@ def model(rom: G.Rom, fifths: int, frames: int) -> list[tuple[int, int, int]]:
     ship, pad_right, move_flag, fire_pending = SHIP_START, True, 0, False
     shots = [[0, 0], [0, 0]]  # sprite x, y; x = 0: not in flight
     blasts: list[list[int]] = []  # object, step, pop-up
+    bombs = [[0, 0, 0, 0] for _ in range(B.BOMBS)]  # sprite x (0: free), y, rate, carry
     score = 0
+    state, in_play, lives, game_timer, fighter_step, new_game = PLAYING, True, RESERVE, 0, 0, False
     rc = lambda obj: rom.sub[G.HOME_RC + obj : G.HOME_RC + obj + 2]  # noqa: E731
     row_of = lambda obj: (rc(obj)[0] - 22) // 2  # noqa: E731
     at = {(row_of(obj), rc(obj)[1] // 2): obj for obj in range(0, 0x60, 2) if rc(obj)[0] >= 22}
@@ -56,9 +62,10 @@ def model(rom: G.Rom, fifths: int, frames: int) -> list[tuple[int, int, int]]:
         parms = D.stage_parms(rom, stage)
         dives = D.Dives(rom, parms, max_flying=parms[4], capturing=1, special=0xFF)
         env.stage_parms = bytes(parms) + b"\0"
-        return stage, W.Launcher(rom, stage), F.Formation(rom), dives, parms, S.colours(stage)
+        row = W.stage_row(rom, stage)
+        return stage, W.Launcher(rom, stage), F.Formation(rom), dives, parms, S.colours(stage), row[0], row[1]
 
-    stage, launcher, form, dives, parms, colour = start(1)
+    stage, launcher, form, dives, parms, colour, bomb_reload, entry_bombs = start(1)
     present: set[int] = set()
     dirty: set[int] = set()
     wait, alive, stage_time = 0, 0, D.STAGE_TIME
@@ -97,6 +104,15 @@ def model(rom: G.Rom, fifths: int, frames: int) -> list[tuple[int, int, int]]:
         return True
 
     for frame in range(frames):
+        if new_game:  # src/game.s GameInit: everything but the clocks
+            score, ship, pad_right, move_flag, fire_pending = 0, SHIP_START, True, 0, False
+            state, in_play, lives, game_timer, fighter_step, new_game = PLAYING, True, RESERVE, 0, 0, False
+            shots, blasts = [[0, 0], [0, 0]], []
+            bombs = [[0, 0, 0, 0] for _ in range(B.BOMBS)]
+            stage, launcher, form, dives, parms, colour, bomb_reload, entry_bombs = start(1)
+            present, dirty, wait, alive, stage_time = set(), set(), 0, 0, D.STAGE_TIME
+            slots, landed = [None] * SLOTS, [False] * SLOTS
+            env.home_loc, env.home_x = form.home_loc, form.home_x
         env.fighter_x = env.fighter_x_hw = (ship + SHIP_SX) & 0xFF
         # the test build plays itself (src/player.s PlayerInput)
         if ship + SHIP_SX >= SHIP_RIGHT:
@@ -109,12 +125,14 @@ def model(rom: G.Rom, fifths: int, frames: int) -> list[tuple[int, int, int]]:
         while clock < fifths:
             flying = sum(s is not None and not landed[i] for i, s in enumerate(slots))
             free = next((i for i, s in enumerate(slots) if s is None), None)
-            go = launcher.tick(arcade, flying, free is not None)
+            go = launcher.tick(arcade, flying, free is not None, in_play)
             if go:
                 y, x, head = go.start
                 slots[free] = P.State(
                     y=y << 8, x=x << 8, h=head << 30 & 0xFFFFFFFF, ptr=go.script,
                     obj=go.obj, mirror=go.mirror, left=clock, pause=True,
+                    bomb_timer=B.SIDE_TIMER if go.path & 1 else B.ENTRY_TIMER,
+                    bomb_bits=entry_bombs if B.entry_bomber(rom, go.obj) else 0,
                 )  # fmt: skip
                 alive += 1
                 log.append((frame, LAUNCHED, go.obj))
@@ -122,7 +140,8 @@ def model(rom: G.Rom, fifths: int, frames: int) -> list[tuple[int, int, int]]:
                 stage_time -= 1
             env.last_stand = int(alive < parms[7])
             dives.settings(stage_time, alive, bool(env.last_stand))
-            if launcher.all_in:
+            env.bomb_bits = dives.bomb_flags
+            if launcher.all_in and in_play:
                 state = {obj: int(obj in present) for obj in range(0, 0x80, 2)}
                 free = next((i for i, s in enumerate(slots) if s is None), None)
                 go = dives.tick(arcade, state, launcher.heard, free is not None)
@@ -131,26 +150,65 @@ def model(rom: G.Rom, fifths: int, frames: int) -> list[tuple[int, int, int]]:
                     slots[free] = P.State(
                         y=(352 - env.home_x[row]) << 7, x=env.home_x[col] << 7, h=1 << 30, ptr=go.script,
                         obj=go.obj, mirror=go.mirror, left=clock, pause=True,
+                        bomb_timer=B.DIVE_TIMER, bomb_bits=dives.bomb_flags,
                     )  # fmt: skip
                     present.discard(go.obj)
                     dirty.add(row_of(go.obj))
                     log.append((frame, LAUNCHED, go.obj))
             form.tick(arcade, launcher.all_in, not present)
             env.home_loc, env.home_x = form.home_loc, form.home_x
-            # the fighter: a pixel and two pixels on alternate frames, then a waiting press fires
-            sx = ship + SHIP_SX
-            step, move_flag = 1 + move_flag, move_flag ^ 1
-            if pad_right and sx < SHIP_RIGHT:
-                sx += step
-            elif not pad_right and sx >= SHIP_LEFT:
-                sx -= step
-            ship = sx - SHIP_SX
-            if fire_pending:
-                mine, other = (shots[0], shots[1]) if not shots[0][0] else (shots[1], shots[0])
-                if mine[0]:
-                    fire_pending = False  # both in flight: the press is lost
-                elif not other[0] or SHIP_SY - other[1] >= SHOT_GAP:
-                    mine[0], mine[1], fire_pending = sx, SHIP_SY, False
+            # the fighter (src/player.s PlayerTick)
+            if arcade & 31 == 0 and game_timer:
+                game_timer -= 1
+            if state == OVER:
+                new_game = new_game or not game_timer
+            elif state == BLOWN:
+                if arcade & 3 == 3 and fighter_step:
+                    fighter_step -= 1
+                if not game_timer:
+                    if lives:
+                        lives, state = lives - 1, RETURNING
+                    else:
+                        state, game_timer = OVER, OVER_PAUSE
+            elif state == RETURNING:
+                if not launcher.heard:  # the divers are home: the next fighter comes on
+                    ship, stage_time = RETURN_SX - SHIP_SX, min(stage_time + TIME_BACK, D.STAGE_TIME)
+                    state, game_timer = READY, READY_PAUSE
+            else:
+                if state == READY and not game_timer:
+                    state, in_play = PLAYING, True
+                # a pixel and two pixels on alternate frames, then a waiting press fires
+                sx = ship + SHIP_SX
+                step, move_flag = 1 + move_flag, move_flag ^ 1
+                if pad_right and sx < SHIP_RIGHT:
+                    sx += step
+                elif not pad_right and sx >= SHIP_LEFT:
+                    sx -= step
+                ship = sx - SHIP_SX
+                if not in_play:
+                    fire_pending = False
+                elif fire_pending:
+                    mine, other = (shots[0], shots[1]) if not shots[0][0] else (shots[1], shots[0])
+                    if mine[0]:
+                        fire_pending = False  # both in flight: the press is lost
+                    elif not other[0] or SHIP_SY - other[1] >= SHOT_GAP:
+                        mine[0], mine[1], fire_pending = sx, SHIP_SY, False
+            # the enemies' bomb timers (src/bombs.s BombsDrop)
+            for i, st in enumerate(slots):
+                if st is None or landed[i] or st.pause:
+                    continue
+                st.bomb_timer = (st.bomb_timer - 1) & 0xFF
+                if st.bomb_timer:
+                    continue
+                st.bomb_timer, chance, st.bomb_bits = bomb_reload, st.bomb_bits & 1, st.bomb_bits >> 1
+                if not chance or not in_play or st.y >> 8 < B.MIN_HEIGHT:
+                    continue
+                x, y = place(i)
+                x, y = (x + 1) & 0xFF, (y + 40) & 0x1FF
+                n = next((n for n, b in enumerate(bombs) if not b[0]), None)
+                if n is not None:
+                    bombs[n] = [x, y, B.aim(ship + SHIP_SX, x, y, n), 0]
+                    log.append((frame, BOMB, bombs[n][2]))
             for blast in list(blasts):
                 if arcade & 3 == (3 if blast[0] & 2 else 1):
                     blast[1] += 1
@@ -177,7 +235,7 @@ def model(rom: G.Rom, fifths: int, frames: int) -> list[tuple[int, int, int]]:
                 log.append((frame, GONE, st.obj))
                 if st.obj >= 0x08 and st.obj & 0x38 != 0x38:
                     alive -= 1
-        for _ in range(ticks):  # the shots move and hit once for each arcade frame
+        for tick in range(ticks):  # the shots move and hit once for each arcade frame
             for shot in shots:
                 if not shot[0]:
                     continue
@@ -206,6 +264,32 @@ def model(rom: G.Rom, fifths: int, frames: int) -> list[tuple[int, int, int]]:
                             destroy(st.obj, was_flying)
                 if hit:
                     shot[0] = 0
+            tick_frame = arcade - ticks + tick
+            for n, bomb in enumerate(bombs):  # src/bombs.s BombsFall
+                if bomb[0]:
+                    bomb[0], bomb[1], bomb[3] = B.fall(bomb[0], bomb[1], bomb[2], bomb[3], tick_frame)
+                    if tick_frame & 3 == (3 if n & 1 else 1) and B.off_screen(bomb[0], bomb[1]):
+                        bomb[0] = 0
+            if in_play:  # src/player.s FighterHits
+                fx, touched = ship + SHIP_SX, False
+                if launcher.all_in:
+                    near = [
+                        i for i, st in enumerate(slots)
+                        if st is not None and not landed[i] and B.touches(place(i)[0] + 1, (place(i)[1] + 40) & 0x1FF, fx, SHIP_SY)
+                    ]  # fmt: skip
+                    if near:
+                        i = min(near, key=lambda i: slots[i].obj)
+                        touched = True
+                        if struck(slots[i].obj):
+                            obj, slots[i] = slots[i].obj, None
+                            destroy(obj, True)
+                for bomb in bombs:
+                    if bomb[0] and B.touches(bomb[0], bomb[1], fx, SHIP_SY):
+                        bomb[0], touched = 0, True
+                        break
+                if touched:
+                    state, in_play, fighter_step, game_timer, fire_pending = BLOWN, False, BLOWN_STEPS, BLOWN_PAUSE, False
+                    log.append((frame, FIGHTER_LOST, lives))
         busy = sum(s is not None for s in slots)
         rows = dirty or {form_next}
         if not dirty:
@@ -215,10 +299,10 @@ def model(rom: G.Rom, fifths: int, frames: int) -> list[tuple[int, int, int]]:
                 present.add(st.obj)
                 slots[i], landed[i] = None, False
         dirty = set()
-        if launcher.all_in and not alive and not blasts and not busy:
+        if launcher.all_in and not alive and in_play and not blasts and not busy:
             wait += 1
             if wait >= STAGE_GAP:
-                stage, launcher, form, dives, parms, colour = start(stage + 1)
+                stage, launcher, form, dives, parms, colour, bomb_reload, entry_bombs = start(stage + 1)
                 present, wait, alive, stage_time = set(), 0, 0, D.STAGE_TIME
                 slots, landed = [None] * SLOTS, [False] * SLOTS
                 env.home_loc, env.home_x = form.home_loc, form.home_x

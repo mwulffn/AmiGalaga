@@ -5,7 +5,8 @@
 ; vertical blank: the hardware reads the control words near the top of
 ; the frame.
 ;
-; Sprite 0 is the fighter. Sprite 2 shows both bullets, one below the
+; Sprite 0 is the fighter; when it blows up, sprites 0 and 1 show the two
+; halves of the explosion. Sprite 2 shows both bullets, one below the
 ; other: a sprite can be reused further down the screen as long as there
 ; is a line between the two images. The bullet's image is 8 lines tall,
 ; and the game does not fire a second shot until the first is 9 lines up
@@ -22,6 +23,7 @@
 	xdef	SpritesInit
 	xdef	SpritesUpdate
 	xref	VideoSetSprite
+	xref	FighterColour
 
 FIGHTER_SPRITE	equ	0
 BULLET_SPRITE	equ	2
@@ -32,6 +34,15 @@ BULLET_LINES	equ	8
 LINE_WORDS	equ	2			; a sprite line is two words
 CONTROL_WORDS	equ	2
 NOT_SHOWN	equ	-$4000			; a display line no shot can have
+; The fighter's explosion: 32x32, its left half on sprite 0 and its right on sprite 1. The pair's
+; colour registers hold the fighter's red, blue and white; the explosion is red, cyan and white,
+; so the blue one is changed in the copper list while it shows.
+BANG_FRAMES	equ	4
+BANG_LINES	equ	32
+BANG_OFFSET	equ	8			; it starts this far up and left of the fighter
+BANG_BLOCK	equ	(CONTROL_WORDS+BANG_LINES*LINE_WORDS+CONTROL_WORDS)*2
+FIGHTER_BLUE	equ	$06f
+BANG_CYAN	equ	$0ff
 
 	section	code,code
 
@@ -54,13 +65,52 @@ SpritesInit:
 ; Move the sprites to where the state says the fighter and bullets are.
 ; In:       a5 = state
 ; Out:      -
-; Clobbers: d0-d5, a0
+; Clobbers: d0-d5, a0-a2
 SpritesUpdate:
+	; the fighter: itself, its explosion on sprites 0 and 1, or nothing
+	move.w	#FIGHTER_BLUE,d5
+	lea	NoSprite,a2			; what sprite 1 shows
+	lea	Fighter,a0
+	move.b	PlayerState(a5),d0
+	beq	.Whole
+	cmp.b	#PS_READY,d0
+	beq	.Whole
+	move.l	a2,a0
+	moveq	#0,d0
+	move.b	FighterStep(a5),d0
+	beq	.Show				; gone
+	; frame = 3 - (step - 1) / 4; a frame's left and right halves follow each other
+	subq.w	#1,d0
+	lsr.w	#2,d0
+	eor.w	#BANG_FRAMES-1,d0
+	mulu.w	#2*BANG_BLOCK,d0
+	lea	Bang,a0
+	add.w	d0,a0
+	lea	BANG_BLOCK(a0),a2
+	move.w	#BANG_CYAN,d5
 	move.w	ShipX(a5),d0
+	subq.w	#BANG_OFFSET,d0
+	move.w	#SHIP_Y-BANG_OFFSET,d1
+	moveq	#BANG_LINES,d2
+	bsr	Place
+	exg	a0,a2
+	move.w	ShipX(a5),d0
+	addq.w	#16-BANG_OFFSET,d0
+	move.w	#SHIP_Y-BANG_OFFSET,d1
+	moveq	#BANG_LINES,d2
+	bsr	Place
+	exg	a0,a2
+	bra	.Show
+.Whole	move.w	ShipX(a5),d0
 	move.w	#SHIP_Y,d1
 	moveq	#FIGHTER_LINES,d2
-	lea	Fighter,a0
 	bsr	Place
+.Show	move.w	d5,FighterColour
+	moveq	#FIGHTER_SPRITE,d0
+	bsr	VideoSetSprite
+	move.l	a2,a0
+	moveq	#FIGHTER_SPRITE+1,d0
+	bsr	VideoSetSprite
 
 	; a shot's playfield x and display line; one that is not in flight, or is above the
 	; display, is not shown
@@ -144,6 +194,19 @@ Fighter:
 	dc.w	0,0
 	incbin	"sprites.bin",SPR_FIGHTER,FIGHTER_LINES*LINE_WORDS*2
 	dc.w	0,0
+
+NoSprite:
+	dc.w	0,0
+
+; BANG_FRAMES frames, each its left half then its right, each with its own control words
+Bang:
+HALF	set	0
+	rept	2*BANG_FRAMES
+	dc.w	0,0
+	incbin	"sprites.bin",SPR_BANG+HALF*BANG_LINES*LINE_WORDS*2,BANG_LINES*LINE_WORDS*2
+	dc.w	0,0
+HALF	set	HALF+1
+	endr
 
 BulletPair:
 	dc.w	0,0

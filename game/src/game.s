@@ -37,6 +37,10 @@
 	xref	ShotsTick
 	xref	BlastsTick
 	xref	BlastsDraw
+	xref	BombsDrop
+	xref	BombsFall
+	xref	BombsDraw
+	xref	FighterHits
 	xref	HomeRc
 	xref	Enemies
 	if	STAGE_TEST
@@ -59,11 +63,13 @@ X_MASK		equ	$ff			; the arcade's sprites have 8 bits of x
 
 ;--
 ; GameInit
-; Start at the first stage.
+; Start a game at the first stage.
 ; In:       a5 = state, a6 = CUSTOM
 ; Out:      -
 ; Clobbers: d0-d7, a0-a3
 GameInit:
+	tst.b	NewGame(a5)			; a game after the first keeps the clocks running
+	bne	.Again
 	clr.w	Clock(a5)
 	clr.w	ArcadeFrame(a5)
 	clr.w	FlightFrame(a5)
@@ -71,8 +77,20 @@ GameInit:
 	if	STAGE_TEST
 	move.l	#StageLog,StageLogPtr(a5)
 	endc
+.Again
+	clr.b	NewGame(a5)
 	clr.l	Score(a5)
 	bsr	PlayerInit
+	lea	Blasts(a5),a0
+	moveq	#BLASTS-1,d0
+.Blast	clr.b	bl_live(a0)
+	lea	bl_SIZEOF(a0),a0
+	dbf	d0,.Blast
+	lea	Bombs(a5),a0
+	moveq	#BOMBS-1,d0
+.Bomb	clr.w	bm_x(a0)
+	addq.l	#bm_SIZEOF,a0
+	dbf	d0,.Bomb
 	moveq	#1,d0
 	bra	StageInit
 
@@ -83,7 +101,10 @@ GameInit:
 ; Out:      -
 ; Clobbers: d0-d7, a0-a3
 GameFrame:
-	move.w	ShipX(a5),d0
+	tst.b	NewGame(a5)
+	beq	.Play
+	bsr	GameInit
+.Play	move.w	ShipX(a5),d0
 	add.w	#DISPLAY_SX,d0
 	move.b	d0,FighterX(a5)
 	bsr	PlayerInput
@@ -97,6 +118,7 @@ GameFrame:
 	bsr	DivesTick
 	bsr	FormationTick
 	bsr	PlayerTick
+	bsr	BombsDrop
 	bsr	BlastsTick
 	addq.w	#1,TicksNow(a5)
 	addq.w	#1,ArcadeFrame(a5)
@@ -139,11 +161,18 @@ GameFrame:
 	cmp.l	a3,a0
 	bne	.Fly
 
-	; the shots move, and hit, once for each arcade frame
+	; now that the enemies have moved: the shots and bombs move, and hit, once for each
+	; arcade frame that began in this displayed frame
+	move.w	ArcadeFrame(a5),d0
+	sub.w	TicksNow(a5),d0
+	move.w	d0,TickFrame(a5)
 	move.w	TicksNow(a5),d0
 	bra	.Shoot
 .Shots	move.w	d0,-(sp)
 	bsr	ShotsTick
+	bsr	BombsFall
+	bsr	FighterHits
+	addq.w	#1,TickFrame(a5)
 	move.w	(sp)+,d0
 .Shoot	dbf	d0,.Shots
 	addq.w	#1,FlightFrame(a5)
@@ -201,6 +230,7 @@ GameFrame:
 .Drawn	lea	fl_SIZEOF(a3),a3
 	dbf	d7,.Draw
 	bsr	BlastsDraw
+	bsr	BombsDraw
 	move.w	(sp)+,d6
 
 	; the stage is over once every wave is in and nothing of it is left: on to the next
@@ -208,6 +238,8 @@ GameFrame:
 	beq	.Busy
 	tst.b	Alive(a5)
 	bne	.Busy
+	tst.b	InPlay(a5)			; not while the fighter is being replaced
+	beq	.Busy
 	lea	Blasts(a5),a0
 	moveq	#BLASTS-1,d0
 .Blast	tst.b	bl_live(a0)

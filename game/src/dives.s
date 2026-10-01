@@ -16,6 +16,8 @@
 ; A dive starts where the enemy is in the formation, heading up, and flies
 ; its kind's script, mirrored for enemies on the right.
 ;
+; Attacks stop while the fighter is out of play.
+;
 ; Not built yet: the tractor beam. Until it is, Capturing stays set, so no
 ; boss tries to capture and every boss dive is the ordinary one.
 
@@ -206,8 +208,10 @@ DivesTick:
 	lea	BeeReload(pc),a0
 	move.b	(a0,d3.w),(a2)
 
-	; nobody dives until every wave is in
+	; nobody dives until every wave is in, or while the fighter is out of play
 .Send	tst.b	WavesIn(a5)
+	beq	.Done
+	tst.b	InPlay(a5)
 	beq	.Done
 	; someone queued leaves first
 	lea	DiveQueue(a5),a2
@@ -475,6 +479,8 @@ DiveLaunch:
 	moveq	#0,d2
 	moveq	#FIRST_QUARTER,d3
 	bsr	FlightLaunch
+	move.b	#DIVE_WAIT,fl_wait(a0)		; a diver's chances to bomb are the stage's, as it stands
+	move.b	BombFlags(a5),fl_chances(a0)
 	LOG	#STAGE_LAUNCHED,d4
 	; it starts where it is: x = HomeX[column], y = 352 - HomeX[row], in pixels
 	lea	HomeRc(pc),a1

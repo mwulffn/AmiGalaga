@@ -34,6 +34,7 @@
 	xdef	HomeRc
 	xdef	BreathePatterns
 	xdef	DiveScripts
+	xdef	EntryBombers
 	xdef	StageConfig
 	xdef	BombFlagTable
 	xdef	BossReload
@@ -82,6 +83,7 @@ FlightLaunch:
 	move.l	d3,fl_head(a0)
 	move.b	d4,fl_obj(a0)
 	move.b	#1<<FLB_ACTIVE|1<<FLB_PAUSE,fl_flags(a0)
+	clr.b	fl_chances(a0)			; whoever launches it says if it bombs
 	tst.b	d5
 	beq	.Plain
 	bset	#FLB_MIRROR,fl_flags(a0)
@@ -414,6 +416,8 @@ LoadStep:
 .Heading
 	clr.l	fl_head(a0)
 	move.b	d0,fl_head(a0)
+	move.b	#DIVE_WAIT,fl_wait(a0)		; and a new set of chances to bomb
+	move.b	BombFlags(a5),fl_chances(a0)
 	addq.l	#2,a1
 	bra	.Wait
 

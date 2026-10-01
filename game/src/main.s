@@ -17,6 +17,7 @@
 	xref	GameFrame
 	xref	PanelInit
 	xref	PanelScore
+	xref	PanelShips
 	xref	SpritesInit
 	xref	SpritesUpdate
 	xref	SoundInit
@@ -61,6 +62,7 @@ Main:	bsr	StarsInit
 
 	bsr	SpritesUpdate
 	bsr	PanelScore
+	bsr	PanelShips
 	bsr	GameFrame
 	WAITBLIT				; nothing may still be drawing when the screens swap
 

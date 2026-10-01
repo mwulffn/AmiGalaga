@@ -15,6 +15,7 @@
 
 	xdef	PanelInit
 	xdef	PanelScore
+	xdef	PanelShips
 	xref	Font
 	xref	Enemies
 
@@ -29,6 +30,7 @@ SCORE_AT	equ	PANEL+50*ROW_BYTES+2
 SHIPS_AT	equ	PANEL+232*ROW_BYTES
 NO_SCORE	equ	-1				; scr_score: nothing drawn yet
 ASCII_ZERO	equ	'0'
+SHIP_PLACES	equ	5				; spare fighters the panel has room for
 
 	section	code,code
 
@@ -53,6 +55,7 @@ PanelInit:
 PanelDraw:
 	moveq	#NO_SCORE,d0
 	move.l	d0,scr_score(a3)
+	move.w	d0,scr_ships(a3)
 	move.l	scr_bitmap(a3),a3
 	lea	Labels(pc),a0
 .Label	move.w	(a0)+,d0			; colour; 0 ends the list
@@ -65,25 +68,40 @@ PanelDraw:
 	and.w	#$fffe,d1
 	move.l	d1,a0
 	bra	.Label
-.Icons	lea	SHIPS_AT,a1
-	add.l	a3,a1
-	bsr	Icon
-	lea	SHIPS_AT+2,a1
-	add.l	a3,a1
-	; falls through
+.Icons	rts
 
 ;--
-; Icon
-; Copy a spare fighter to a word-aligned position in a screen buffer.
-; In:       a1 = the screen position
+; PanelShips
+; Bring the back screen's row of spare fighters up to date, if it is not.
+; In:       a5 = state
 ; Out:      -
-; Clobbers: d0, a0-a1
-Icon:	lea	Enemies+GFX_FIGHTER+6*FRAME_SIZE,a0
+; Clobbers: d0-d3, a0-a2
+PanelShips:
+	move.l	BackScreen(a5),a2
+	moveq	#0,d3
+	move.b	Lives(a5),d3
+	cmp.w	scr_ships(a2),d3
+	beq	.Fresh
+	move.w	d3,scr_ships(a2)
+	move.l	scr_bitmap(a2),a2
+	add.l	#SHIPS_AT,a2
+	moveq	#0,d2				; which place
+.Place	move.l	a2,a1
+	lea	Enemies+GFX_FIGHTER+6*FRAME_SIZE,a0
 	moveq	#ICON_WORDS-1,d0
-.Word	move.w	(a0)+,(a1)
+.Word	moveq	#0,d1				; a fighter if there is one for this place, else nothing
+	cmp.w	d3,d2
+	bcc	.Put
+	move.w	(a0),d1
+.Put	addq.l	#2,a0
+	move.w	d1,(a1)
 	lea	PLANE_BYTES(a1),a1
 	dbf	d0,.Word
-	rts
+	addq.l	#2,a2
+	addq.w	#1,d2
+	cmp.w	#SHIP_PLACES,d2
+	bne	.Place
+.Fresh	rts
 
 ;--
 ; PanelScore

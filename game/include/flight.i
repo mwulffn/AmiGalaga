@@ -32,13 +32,16 @@ FLIGHT_HOME	equ	1		; reached its place in the formation
 FLIGHT_GONE	equ	2		; its script ended
 
 ; a STAGE_TEST build logs these two, launches, a checksum of the formation's table each frame,
-; a boss's first hit, every enemy destroyed, and the score's last four digits after it
+; a boss's first hit, every enemy destroyed and the score's last four digits after it,
+; every bomb dropped (with its rate) and every fighter lost (with the reserve)
 STAGE_LAUNCHED	equ	0
 STAGE_FORMATION	equ	3
 STAGE_KILLED	equ	4
 STAGE_BOSS_HIT	equ	5
 STAGE_SCORE_HI	equ	6
 STAGE_SCORE_LO	equ	7
+STAGE_FIGHTER_LOST equ	8
+STAGE_BOMB	equ	9
 STAGE_LOG_BYTES	equ	4*12288
 
 ; fl_flags bits
@@ -70,6 +73,8 @@ fl_tx		rs.b	1
 fl_yo		rs.b	1		; while homing: the formation's offset when it turned for home
 fl_xo		rs.b	1
 fl_obj		rs.b	1		; which enemy this is: selects its place in the formation
+fl_wait		rs.b	1		; arcade frames to its next chance to drop a bomb
+fl_chances	rs.b	1		; its chances: a bit each, low bit first; set = it drops one
 fl_pad		rs.b	1
 fl_SIZEOF	rs.b	0
 
@@ -92,3 +97,25 @@ bl_step		rs.b	1
 bl_popup	rs.b	1			; which score follows: 0 = 400, 1 = 800, 2 = 1600; negative: none
 bl_SIZEOF	rs.b	0
 POPUP_NONE	equ	-1
+
+; an enemy's bomb, placed as the arcade's sprite hardware counts
+	ifnd	BOMBS
+BOMBS		equ	8			; as many as the arcade
+	endc
+	rsreset
+bm_x		rs.w	1			; 0: not falling
+bm_y		rs.w	1
+bm_rate		rs.b	1			; sideways: 32nds of a pixel per arcade frame, bit 7 = leftwards
+bm_carry	rs.b	1			; the 32nds left over
+bm_SIZEOF	rs.b	0
+ENTRY_WAIT	equ	8			; fl_wait for an enemy arriving from the top,
+SIDE_WAIT	equ	$44			;   from the sides,
+DIVE_WAIT	equ	$1e			;   and diving
+
+; what the fighter is doing (PlayerState)
+PS_PLAYING	equ	0
+PS_BLOWN	equ	1			; exploding, then gone, until GameTimer runs out
+PS_RETURNING	equ	2			; waiting for the divers to go home
+PS_READY	equ	3			; back, and can move, but not fire or be hit, until GameTimer runs out
+PS_OVER		equ	4			; no fighters left: until GameTimer runs out, then a new game
+RESERVE		equ	2			; fighters in reserve at the start

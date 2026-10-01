@@ -11,6 +11,7 @@
 	xdef	VideoWaitFrame
 	xdef	VideoFlip
 	xdef	VideoSetSprite
+	xdef	FighterColour
 	xref	State
 	xref	StarsVBlank
 
@@ -164,7 +165,9 @@ CopperSprites:
 	dc.w	color+16,$d40,color+18,$09a,color+20,$90f,color+22,$00f
 	dc.w	color+24,$fb0,color+26,$f90,color+28,$0bf,color+30,$b0f
 	; sprites 0-1 and 2-3: the fighter and its bullets; 4-5: the captured fighter
-	dc.w	color+34,$f00,color+36,$06f,color+38,$ddf
+	dc.w	color+34,$f00,color+36
+FighterColour:
+	dc.w	$06f,color+38,$ddf
 	dc.w	color+42,$f00,color+44,$06f,color+46,$ddf
 	dc.w	color+50,$bbf,color+52,$06f,color+54,$f00
 	; Sprite 7 is the stars: one pixel, armed by hand once sprite DMA has

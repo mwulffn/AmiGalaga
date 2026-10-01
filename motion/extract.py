@@ -14,6 +14,7 @@ Writes (all derived from the ROM, so none of it belongs in the repository):
 import sys
 from pathlib import Path
 
+import bombs as B
 import dives as D
 import galaga_motion as G
 
@@ -145,6 +146,7 @@ def main() -> None:
     table("BossReload", "boss dive timer by stage setting 1 (x4) and enemies left / 10", m[D.BOSS_RELOAD : D.BOSS_RELOAD + 13], 4)
     table("ButterflyReload", "butterfly dive timer by stage setting 2 (x3) and how late in the stage", m[D.BUTTERFLY_RELOAD : D.BUTTERFLY_RELOAD + 30], 3)
     table("BeeReload", "bee dive timer by stage setting 3 (x3) and how late in the stage", m[D.BEE_RELOAD : D.BEE_RELOAD + 30], 3)
+    table("EntryBombers", "a bit per enemy from object 8 up, first enemy in bit 7: set if it may bomb on its way in", m[B.ENTRY_BOMBERS : B.ENTRY_BOMBERS + 6], 6)
     table("HomeRc", "per object number: row index, column index of its formation slot", rom.sub[G.HOME_RC : G.HOME_RC + 0x60], 16)
     asm.append("\teven")
     (out / "motion_data.s").write_text("\n".join(asm) + "\n")

@@ -29,7 +29,16 @@ MoveFlag	rs.b	1		;   alternates while the stick is held: 1 pixel, then 2
 ShotHit		rs.b	1		; shots: nonzero once the shot being tested has hit something
 ShotFlying	rs.b	1		;   nonzero if what it destroyed was flying: that scores double
 PlayerPad	rs.b	1
-TicksNow	rs.w	1		; arcade frames that began in this displayed frame
+PlayerState	rs.b	1		;   what the fighter is doing: a PS_ value
+InPlay		rs.b	1		;   nonzero while it can fire and be hit, and the enemy attacks
+FighterStep	rs.b	1		;   its explosion: counts down from 15; 0: nothing to see
+Lives		rs.b	1		;   fighters in reserve
+GameTimer	rs.b	1		;   counts down, one every 32 arcade frames: the pauses around losing a fighter
+BombReload	rs.b	1		; bombs: fl_wait after each chance, from the stage's row
+EntryBombs	rs.b	1		;   the chances of an enemy that may bomb on its way in
+NewGame		rs.b	1		; nonzero: the game is over and the next frame starts a new one
+TicksNow	rs.w	1
+TickFrame	rs.w	1		; which arcade frame the shots, bombs and collisions are at		; arcade frames that began in this displayed frame
 ScoreStep	rs.l	1		; scratch for adding to the score
 Clock		rs.w	1		; fifths of an arcade frame until the next one begins
 ArcadeFrame	rs.w	1		; arcade frames so far: what the arcade's own timers count
@@ -62,6 +71,7 @@ BossBonus	rs.b	4		; dives: per boss, how many escorts it last left with
 FormAlt		rs.w	FORM_ROWS	; formation: per row, bit n set if column n shows its row's other image
 FormObj		rs.b	FORM_ROWS*HOME_COLUMNS	; which object has each place
 Blasts		rs.b	BLASTS*bl_SIZEOF
+Bombs		rs.b	BOMBS*bm_SIZEOF
 FormBits	rs.b	HOME_ENTRIES	; breathing: per column and row, bit 0 set if it moves this step
 StageLogPtr	rs.l	1		; STAGE_TEST builds: next free entry of the log
 FlightFrame	rs.w	1		; flight: frames stepped; its low bit picks which speed a step uses

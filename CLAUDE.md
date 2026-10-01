@@ -91,7 +91,7 @@ Sprites pair up and each pair shares three colours.
 
 | Sprite | Use |
 |---|---|
-| 0, 1 | fighter; second fighter when dual; the player explosion can reuse both |
+| 0, 1 | fighter on 0; its 32x32 explosion on both, left and right half (the pair's blue register is changed to the explosion's cyan in the copper list while it shows); second fighter on 1 when dual |
 | 2, 3 | player bullets: both of the fighter's two on sprite 2, one below the other; sprite 3 for the dual fighter's second pair |
 | 4 | captured (red) fighter |
 | 5 | free |
@@ -157,11 +157,30 @@ option is kept for later.
   the model finds 333, and 3 that the arcade did not have. An enemy
   blows up as in the arcade: three 16x16 frames and two 32x32 ones (four
   flyers each), stepped every fourth arcade frame.
+- Bombs and losing the fighter are the arcade's (`game/src/bombs.s`,
+  `player.s`, model `motion/bombs.py`): a flying enemy's timer and
+  chances, a bomb aimed at the fighter when dropped, falling 2 and 3
+  lines on alternate arcade frames, at most 8 at once; the fighter is
+  lost to a bomb, or to an enemy once the stage's waves are in, within
+  6 pixels to the side and 3 two-line steps up or down, and the enemy is
+  destroyed too. Against the two traces: 533 of 535 bombs aimed as the
+  arcade's, all 45,745 frames of falling the same, and all 66 losses
+  explained by the box (59 with the fighter's position as traced, the
+  rest within 2 pixels of it).
+- Losing a fighter follows the arcade's sequence and timer: explosion
+  (15 steps of 4 arcade frames, the noise sound), a pause of 4 counts of
+  32 frames, then the next fighter comes on once the divers are home,
+  can move for 3 counts, and is then in play. Attacks, new waves and
+  bombs stop while it is out of play. With none left in reserve the game
+  is over and a new one starts after 6 counts. No READY or GAME OVER
+  text yet.
+- Bombs are drawn as flyers of half height (their image is 8 lines).
 - A stage ends when every wave has been launched and nothing of it is
   left; the next starts 100 frames later (no STAGE n text yet).
-- `test_stage.sh` now runs a build that plays itself (side to side, a
-  press every 16 frames) and compares every launch, landing, hit, kill
-  and score with the models over 3,600 frames in both builds: identical.
+- `test_stage.sh` runs a build that plays itself (side to side, a press
+  every 16 frames) and compares every launch, landing, hit, kill, score,
+  bomb and lost fighter (through a game over into the next game) with
+  the models over 3,600 frames in both builds: identical.
 - The stage index row is the arcade's difficulty switch; `RANK` 3 is
   what MAME's default (and the trace) uses.
 - A flying enemy is turned the way it is heading by the arcade's rule
@@ -272,6 +291,26 @@ blitter-finished interrupt feeds. Average lines, worst frame in brackets:
 - With 25,000 cycles of logic, 20 full-size flyers do not hold 50 fps on
   a stock A500 in any of the four set-ups.
 
+### Bombs (2026-10-01)
+
+Self-playing runs of 2,500 frames. The stress run makes every flying
+enemy drop a bomb whenever one is free and lets nothing hurt the fighter
+(`BOMB_STRESS=1`), with the limit (`BOMBS`) varied:
+
+| Run | Average | Worst frame |
+|---|---|---|
+| Normal play (limit 8, as the arcade) | 152 | 254 |
+| Stress, limit 2 | 160 | 268 |
+| Stress, limit 4 | 168 | 279 |
+| Stress, limit 6 | 177 | 291 |
+| Stress, limit 8 | 185 | 302 |
+
+A bomb costs about 4 lines on average and 6 in the worst frame. With the
+arcade's 8 the worst frame stays inside 313, by 11 lines. The limit is
+`BOMBS` in `flight.i`; it stays at 8 until the user decides otherwise.
+A cheaper bomb is possible: its image is 3 pixels wide, so 13 of 16 x
+positions need a one-word blit, not two.
+
 A flyer costs about 6.4 lines to draw, the starfield 11-14. The arcade
 never has more than 12 enemies flying at once; the rest of its
 off-formation objects are bombs and explosions.
@@ -285,12 +324,10 @@ included, so the real figure is a little lower.
 
 - **The game** (`game/`) so far: startup and shutdown, video, sound,
   starfield, flyers, formation strips, score panel, the flight stepper,
-  the stage entrance, the formation's movement, dives, and the player:
-  joystick in port 2, shots, hits, explosions, score, and stages that
-  end. All to the style guide and linted. Nothing can hurt the fighter
-  yet. A self-playing run of 2,500 frames takes 145 raster lines on
-  average, 245 at worst (explosions are four flyers each, and a row that
-  is hit is rebuilt at once).
+  the stage entrance, the formation's movement, dives, bombs, and the
+  player: joystick in port 2, shots, hits, explosions, score, lives, the
+  fighter's loss and return, game over into a new game, and stages that
+  end. All to the style guide and linted.
 - **Not in the entrance yet:** the enemies that fly through without
   joining (stage 4 on; needs the arcade's random numbers), the wait
   before the first wave (READY, STAGE n), and holding waves back while
@@ -298,11 +335,8 @@ included, so the real figure is a little lower.
 - **Not in the dives yet:** capture attempts (no tractor beam: until
   there is one, `Capturing` stays set and every boss dive is the
   ordinary one, which makes boss dives more repetitive than the
-  arcade's), bombs (`BombFlags` is worked out but nothing drops),
-  transforming enemies and their convoys, and the pause in attacks while
-  the fighter is out of play.
-- **Game logic** not ported yet: bombs, anything hitting the fighter,
-  lives, capture, the high score, extra fighters by score, the bonus for
+  arcade's), and transforming enemies and their convoys.
+- **Game logic** not ported yet: capture, the high score, extra fighters by score, the bonus for
   all 8 of a challenging stage's wave and that stage's results.
 - **Sound cost: deferred, by decision.** The driver works and the user
   has confirmed it sounds right on the emulated A500 (2026-10-01). At up
@@ -325,8 +359,8 @@ included, so the real figure is a little lower.
   more has to come from turning the tones down. The user approved this
   balance by ear (2026-10-01). Paula's channels are hard-panned (0 and 3 left,
   1 and 2 right) while the arcade is mono; nothing is done about that.
-- **Not drawn yet:** tractor beam, the fighter's explosion, dual fighter,
-  READY/STAGE text.
+- **Not drawn yet:** tractor beam, dual fighter, READY / STAGE n /
+  GAME OVER text.
 - Second star layer on sprite 6: decide once logic shows the frame time
   left.
 

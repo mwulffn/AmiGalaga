@@ -34,6 +34,7 @@
 	xref	StageData
 	xref	ChallengeData
 	xref	WaveObjects
+	xref	EntryBombers
 
 WAVE_START	equ	$7e			; marks in the wave table
 WAVE_END	equ	$7f
@@ -44,12 +45,12 @@ LINE_FRAMES	equ	8			; arcade frames between enemies in a line
 LAST_STAGE	equ	$17			; stages from here on repeat the four before
 STAGE_SLOTS	equ	17			; stages in a rank's row of the stage index
 CHALLENGES	equ	8			; challenging stages before they repeat
-ROW_HEADER	equ	2			; a stage row starts with two bytes about bombs
 HALF_WAVE	equ	4
 ; object / 2 of the first of each group
 BEES		equ	$08/2
 BOSSES		equ	$30/2
 BUTTERFLIES	equ	$40/2
+FIRST_ENEMY	equ	$08			; the first object that is a stage's enemy
 
 	section	code,code
 
@@ -92,7 +93,9 @@ StageInit:
 	move.b	(a1,d0.w),d4
 	move.b	d4,d5
 	lea	ChallengeData(pc),a0
-.Row	lea	ROW_HEADER(a0,d2.w),a0
+.Row	lea	(a0,d2.w),a0
+	move.b	(a0)+,BombReload(a5)		; the row starts with two bytes about bombs
+	move.b	(a0)+,EntryBombs(a5)
 
 	lea	ObjKind(a5),a1
 	moveq	#BEES-1,d0
@@ -155,7 +158,7 @@ ChallengeKinds:
 ; In:       d6.w = when in this displayed frame the arcade frame begins, in fifths,
 ;           a5 = state
 ; Out:      Z = the stage's waves have all been launched
-; Clobbers: d0-d5, a0-a2
+; Clobbers: d0-d5, d7, a0-a2
 StageTick:
 	; how many are flying, and the first free slot
 	lea	Flights(a5),a0
@@ -186,6 +189,8 @@ StageTick:
 	bne	.Enemy
 	tst.w	d1				; a wave starts once nothing is flying
 	bne	.Wait
+	tst.b	InPlay(a5)			; and not while the fighter is being replaced
+	beq	.Wait
 	addq.w	#1,WaveAt(a5)
 .Wait	moveq	#1,d0
 	rts
@@ -208,6 +213,7 @@ StageTick:
 	addq.w	#2,WaveAt(a5)
 	moveq	#0,d4
 	move.b	(a2),d4				; the object
+	move.b	d0,d7				; the control byte, for after the launch
 	addq.b	#1,Alive(a5)
 	LOG	#STAGE_LAUNCHED,d4
 	; EntryPaths[path] = script, pair of start positions; a pair is plain then mirrored
@@ -235,5 +241,23 @@ StageTick:
 	move.b	(a1)+,d2
 	move.b	(a1)+,d3
 	bsr	FlightLaunch
-	moveq	#1,d0
+	; its first chance to bomb comes sooner from the top than from the sides
+	moveq	#ENTRY_WAIT,d0
+	btst	#0,d7
+	beq	.Top
+	moveq	#SIDE_WAIT,d0
+.Top	move.b	d0,fl_wait(a0)
+	; may it bomb on its way in? The arcade's table has a bit per enemy, the first in bit 7
+	move.w	d4,d0
+	subq.w	#FIRST_ENEMY,d0
+	lsr.w	#1,d0
+	move.w	d0,d1
+	lsr.w	#3,d1
+	lea	EntryBombers(pc),a1
+	move.b	(a1,d1.w),d1
+	and.w	#7,d0
+	lsl.b	d0,d1
+	bpl	.Quiet
+	move.b	EntryBombs(a5),fl_chances(a0)
+.Quiet	moveq	#1,d0
 	rts

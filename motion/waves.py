@@ -56,6 +56,7 @@ class Launch:
     script: int
     start: tuple[int, int, int]  # y, x, heading as FlightLaunch wants them
     mirror: bool
+    path: int = 0  # which entry path: odd ones come in from the sides
 
 
 class Launcher:
@@ -71,7 +72,8 @@ class Launcher:
     def done(self) -> bool:
         return self.table[self.at] == WAVE_END
 
-    def tick(self, frame: int, flying: int, free_slot: bool) -> Launch | None:
+    def tick(self, frame: int, flying: int, free_slot: bool, enabled: bool = True) -> Launch | None:
+        """enabled: False while the fighter is being replaced; no new wave starts then."""
         c = self.table[self.at]
         flying, self.flying = self.flying, flying
         self.heard = flying  # what the arcade's logic takes the number flying to be this frame
@@ -79,7 +81,7 @@ class Launcher:
             self.all_in = self.all_in or not flying
             return None
         if c == WAVE_START:
-            if not flying:
+            if not flying and enabled:
                 self.at += 1
             return None
         if (not c & 0x80 and frame & 7) or not free_slot:
@@ -88,7 +90,7 @@ class Launcher:
         self.at += 2
         script, k = self.entries[c & 0x3F]
         mirror = bool(c & 0x40)
-        return Launch(obj, script, self.starts[2 * k + mirror], mirror)
+        return Launch(obj, script, self.starts[2 * k + mirror], mirror, c & 0x3F)
 
 
 def main() -> None:

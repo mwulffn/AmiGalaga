@@ -52,6 +52,8 @@ class State:
     xo: int = 0  # formation offset added for display while homing
     yo: int = 0
     active: bool = True
+    bomb_timer: int = 0  # arcade frames to its next chance to bomb
+    bomb_bits: int = 0  # its chances: one bit a time, low bit first
 
 
 def from_slot(s: bytes) -> State:
@@ -127,6 +129,7 @@ def load(st: State, rom: G.Rom, env: G.Env) -> bool:
                 if st.mirror:
                     a = -(a + 0x80) & 0xFF
                 st.h, st.ptr = (a << 24) & 0xFFFFFFFF, p + 2
+                st.bomb_timer, st.bomb_bits = 0x1E, env.bomb_bits  # and a new set of chances to bomb
             elif t == 0xF1:
                 st.y = (st.y & 0xFF) | ((env.home_loc[rc[0] + 1] + 0x20) & 0xFF) << 8
             elif env.stage_parms[8 if t == 0xF0 else 9]:

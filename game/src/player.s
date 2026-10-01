@@ -28,6 +28,7 @@
 	xdef	PlayerInput
 	xdef	PlayerTick
 	xdef	ShotsTick
+	xdef	FighterHits
 	xref	FlightPlace
 	xref	FlightImage
 	xref	Enemies
@@ -44,6 +45,19 @@ SY_MASK		equ	$1ff			; the arcade's sprite y has 9 bits
 AUTO_FIRE	equ	16			; test builds: frames between presses
 UPRIGHT		equ	6*FRAME_SIZE		; an enemy's upright image
 BOSS_MASK	equ	7			; a boss's number is (object and this) / 2
+TIMER_FRAMES	equ	32			; arcade frames per count of GameTimer
+STEP_FRAMES	equ	4			; arcade frames per step of the fighter's explosion
+BLOWN_STEPS	equ	15			; steps of it
+BLOWN_PAUSE	equ	4			; GameTimer from the fighter's loss until the next one is due
+READY_PAUSE	equ	3			;   while the new fighter cannot yet fire or be hit
+OVER_PAUSE	equ	6			;   after the last fighter
+RETURN_SX	equ	$7a			; where a new fighter appears
+TIME_BACK	equ	30			; StageTime added when it does,
+STAGE_TIME	equ	120			;   up to the stage's starting time
+TOUCH_ASIDE	equ	6			; the fighter is hit by anything within this many pixels to the side
+TOUCH_UP_DOWN	equ	3			;   and this many two-line steps above or below
+SHIP_HALF_Y	equ	SHIP_SY/2
+NO_OBJECT	equ	$7f			; above every object number
 ; the arcade's colour sets, which decide an enemy's sound and score
 BLUE_BOSS	equ	1
 RED_FIGHTER	equ	7
@@ -52,12 +66,17 @@ RED_FIGHTER	equ	7
 
 ;--
 ; PlayerInit
-; The fighter in the middle, no shots in flight.
+; A new game's fighter: in the middle, in play, no shots in flight, the reserve full.
 ; In:       a5 = state
 ; Out:      -
 ; Clobbers: a0
 PlayerInit:
 	move.w	#(PLAY_WIDTH-16)/2,ShipX(a5)
+	move.b	#PS_PLAYING,PlayerState(a5)
+	st	InPlay(a5)
+	clr.b	FighterStep(a5)
+	clr.b	GameTimer(a5)
+	move.b	#RESERVE,Lives(a5)
 	lea	Shots(a5),a0
 	clr.l	(a0)+
 	clr.l	(a0)
@@ -122,7 +141,63 @@ PlayerInput:
 ; Out:      -
 ; Clobbers: d0-d2, a0-a1
 PlayerTick:
-	move.w	ShipX(a5),d2
+	; the timer for the pauses around losing a fighter
+	moveq	#TIMER_FRAMES-1,d0
+	and.w	ArcadeFrame(a5),d0
+	bne	.Timed
+	tst.b	GameTimer(a5)
+	beq	.Timed
+	subq.b	#1,GameTimer(a5)
+.Timed	move.b	PlayerState(a5),d0
+	beq	.Fly				; PS_PLAYING
+	subq.b	#PS_READY,d0
+	beq	.Ready
+	bcs	.Away
+	; PS_OVER: after the pause, a new game
+	tst.b	GameTimer(a5)
+	bne	.Done
+	st	NewGame(a5)
+	rts
+.Away	addq.b	#PS_READY-PS_BLOWN,d0
+	bne	.Returning
+	; PS_BLOWN: the explosion steps on frames 3, 7, 11..., as the arcade's object for the fighter does
+	moveq	#STEP_FRAMES-1,d0
+	and.w	ArcadeFrame(a5),d0
+	subq.w	#STEP_FRAMES-1,d0
+	bne	.Blown
+	tst.b	FighterStep(a5)
+	beq	.Blown
+	subq.b	#1,FighterStep(a5)
+.Blown	tst.b	GameTimer(a5)
+	bne	.Done
+	move.b	#PS_OVER,PlayerState(a5)	; no fighter left in reserve: the game is over
+	move.b	#OVER_PAUSE,GameTimer(a5)
+	tst.b	Lives(a5)
+	beq	.Done
+	subq.b	#1,Lives(a5)
+	move.b	#PS_RETURNING,PlayerState(a5)
+	rts
+	; PS_RETURNING: the next fighter comes on once the divers are home
+.Returning
+	tst.w	Flying(a5)
+	bne	.Done
+	move.w	#RETURN_SX-DISPLAY_SX,ShipX(a5)
+	moveq	#TIME_BACK,d0			; the stage gets some of its time back
+	add.b	StageTime(a5),d0
+	cmp.b	#STAGE_TIME,d0
+	bls	.Time
+	moveq	#STAGE_TIME,d0
+.Time	move.b	d0,StageTime(a5)
+	move.b	#READY_PAUSE,GameTimer(a5)
+	move.b	#PS_READY,PlayerState(a5)
+	rts
+	; PS_READY: it can move; after the pause it is in play
+.Ready	tst.b	GameTimer(a5)
+	bne	.Fly
+	move.b	#PS_PLAYING,PlayerState(a5)
+	st	InPlay(a5)
+
+.Fly	move.w	ShipX(a5),d2
 	add.w	#DISPLAY_SX,d2			; as the arcade counts
 	move.b	PadLeft(a5),d0
 	move.b	PadRight(a5),d1
@@ -148,7 +223,9 @@ PlayerTick:
 	bra	.Fire
 .Still	clr.b	MoveFlag(a5)
 
-.Fire	tst.b	FirePending(a5)
+.Fire	tst.b	InPlay(a5)
+	beq	.Lost				; no firing before the fighter is in play
+	tst.b	FirePending(a5)
 	beq	.Done
 	lea	Shots(a5),a0
 	lea	sh_SIZEOF(a0),a1		; the other shot
@@ -256,6 +333,98 @@ Shot:	move.w	sh_x(a3),d6
 	beq	.None
 .Gone	clr.w	sh_x(a3)
 .None	rts
+
+;--
+; FighterHits
+; One arcade frame: is the fighter touched by an enemy or a bomb? If so it is lost, and
+; so is the enemy.
+; In:       a5 = state
+; Out:      -
+; Clobbers: d0-d7, a0-a3
+FighterHits:
+	if	BOMB_STRESS
+	rts					; the timing test: nothing hurts the fighter
+	endc
+	tst.b	InPlay(a5)
+	beq	.Safe
+	move.w	ShipX(a5),d6
+	add.w	#DISPLAY_SX,d6
+	moveq	#0,d7				; nonzero once something has touched it
+	; an enemy in flight: only once the stage's waves are all in. If several touch, the
+	; arcade takes the one with the lowest object number.
+	tst.b	WavesIn(a5)
+	beq	.Bombs
+	sub.l	a3,a3
+	moveq	#NO_OBJECT,d5
+	lea	Flights(a5),a0
+	moveq	#FLIGHT_SLOTS-1,d4
+.Flight	btst	#FLB_ACTIVE,fl_flags(a0)
+	beq	.NextFlight
+	bsr	FlightPlace
+	move.w	d0,d2
+	addq.w	#SPRITE_X,d2
+	sub.b	d6,d2
+	addq.b	#TOUCH_ASIDE,d2
+	cmp.b	#2*TOUCH_ASIDE,d2
+	bhi	.NextFlight
+	move.w	d1,d2
+	add.w	#SPRITE_Y,d2
+	and.w	#SY_MASK,d2
+	lsr.w	#1,d2
+	sub.b	#SHIP_HALF_Y,d2
+	addq.b	#TOUCH_UP_DOWN,d2
+	cmp.b	#2*TOUCH_UP_DOWN,d2
+	bhi	.NextFlight
+	cmp.b	fl_obj(a0),d5
+	bls	.NextFlight
+	move.b	fl_obj(a0),d5
+	move.l	a0,a3
+.NextFlight
+	lea	fl_SIZEOF(a0),a0
+	dbf	d4,.Flight
+	move.l	a3,d0
+	beq	.Bombs
+	moveq	#1,d7
+	move.l	a3,a0
+	bsr	FlightPlace
+	movem.w	d6-d7,-(sp)
+	bsr	HitFlying			; it is hit as by a shot
+	movem.w	(sp)+,d6-d7
+	; the first bomb that touches is used up
+.Bombs	lea	Bombs(a5),a0
+	moveq	#BOMBS-1,d4
+.Bomb	move.w	bm_x(a0),d2
+	beq	.NextBomb
+	sub.b	d6,d2
+	addq.b	#TOUCH_ASIDE,d2
+	cmp.b	#2*TOUCH_ASIDE,d2
+	bhi	.NextBomb
+	move.w	bm_y(a0),d2
+	lsr.w	#1,d2
+	sub.b	#SHIP_HALF_Y,d2
+	addq.b	#TOUCH_UP_DOWN,d2
+	cmp.b	#2*TOUCH_UP_DOWN,d2
+	bhi	.NextBomb
+	clr.w	bm_x(a0)
+	moveq	#1,d7
+	bra	.Touched
+.NextBomb
+	addq.l	#bm_SIZEOF,a0
+	dbf	d4,.Bomb
+.Touched
+	tst.w	d7
+	beq	.Safe
+	; the fighter is lost
+	move.b	#PS_BLOWN,PlayerState(a5)
+	clr.b	InPlay(a5)
+	move.b	#BLOWN_STEPS,FighterStep(a5)
+	move.b	#BLOWN_PAUSE,GameTimer(a5)
+	clr.b	FirePending(a5)
+	LOG	#STAGE_FIGHTER_LOST,Lives(a5)
+	if	SOUND_TEST=0
+	move.b	#1,Sound+snd_bang(a5)
+	endc
+.Safe	rts
 
 ;--
 ; HitPlaced
