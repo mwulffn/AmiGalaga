@@ -101,9 +101,10 @@ bl_image	rs.l	1			; what it looked like, shown until the blast starts
 bl_live		rs.b	1
 bl_obj		rs.b	1			; which enemy: decides on which frames it steps
 bl_step		rs.b	1
-bl_popup	rs.b	1			; which score follows: 0 = 400, 1 = 800, 2 = 1600, 3 = 1000, 4 = 1500; negative: none
+bl_popup	rs.b	1			; which score follows: 0 = 400, 1 = 800, 2 = 1600, 3 = 1000, 4 = 1500, 5 = 2000, 6 = 3000; negative: none
 bl_SIZEOF	rs.b	0
 POPUP_NONE	equ	-1
+POPUP_WIDE	equ	5			; from here on a score is two images side by side
 
 ; an enemy's bomb, placed as the arcade's sprite hardware counts
 	ifnd	BOMBS

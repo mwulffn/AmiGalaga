@@ -834,15 +834,15 @@ Points:	dc.w	0,$0150,$0080,$0050,$0080,$0080,$0080,$0500
 ; a challenging stage's bonus for all eight of a wave, by stage / 8: 1000, 1500, 2000, 3000
 WavePoints:
 	dc.w	$1000,$1500,$2000,$3000
-; and the pop-up that shows it (the 2000 and 3000 ones are two tiles wide: not drawn yet)
+; and the pop-up that shows it
 WavePopups:
-	dc.b	3,4,POPUP_NONE,POPUP_NONE
+	dc.b	3,4,5,6
 ; all three that a transformed enemy became, by what it became: flagships 3000,
 ; scorpions 1000, spy ships 2000
 TrioPoints:
 	dc.w	$3000,$1000,$2000
 TrioPopups:
-	dc.b	POPUP_NONE,POPUP_1000,POPUP_NONE
+	dc.b	6,POPUP_1000,5
 	even
 ; and what a boss shot while diving adds for 0, 1 or 2 escorts: 400, 800, 1600 in all
 BonusPoints:

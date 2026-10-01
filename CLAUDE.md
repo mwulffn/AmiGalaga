@@ -175,7 +175,11 @@ option is kept for later.
   The hit box was tested against the firing trace: of 336 arcade hits
   the model finds 333, and 3 that the arcade did not have. An enemy
   blows up as in the arcade: three 16x16 frames and two 32x32 ones (four
-  flyers each), stepped every fourth arcade frame.
+  flyers each), stepped every fourth arcade frame. A score that
+  follows (400 to 1600 for a boss, 1000 to 3000 for a challenging
+  stage's wave or a transformed enemy's three) shows for 19 steps where
+  the enemy was; 2000 and 3000 are two images side by side, as in the
+  arcade.
 - Bombs and losing the fighter are the arcade's (`game/src/bombs.s`,
   `player.s`, model `motion/bombs.py`): a flying enemy's timer and
   chances, a bomb aimed at the fighter when dropped, falling 2 and 3
@@ -513,10 +517,6 @@ included, so the real figure is a little lower.
   the 256-line display and its 32x32 explosion (233 to 264) loses its
   bottom 8 lines. The user has seen the clipping; not decided yet
   (2026-10-01).
-- **Not drawn yet:** the two-tile score
-  pop-ups (2000 and 3000, for a challenging stage's wave from stage 19
-  and for all three spy ships or flagships of a transformed enemy: the
-  points are given, nothing shows).
 - Second star layer on sprite 6: decide once logic shows the frame time
   left.
 

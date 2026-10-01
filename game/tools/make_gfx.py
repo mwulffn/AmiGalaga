@@ -51,8 +51,10 @@ ENEMIES = [
 # screen), listed here top left, top right, bottom left, bottom right.
 BLAST = [(t, 10) for t in (0x41, 0x42, 0x43, 0x46, 0x44, 0x47, 0x45, 0x4A, 0x48, 0x4B, 0x49)]
 # Score pop-ups for a boss shot while diving: 400, 800, 1600; and for all eight of a
-# challenging stage's wave: 1000, 1500.
+# challenging stage's wave: 1000, 1500. Then 2000 and 3000, each two tiles side by side, left
+# one first (the arcade doubles the sprite: tile n is the right half, n+2 the left).
 POINTS = [(0x35, 10), (0x37, 13), (0x3A, 14), (0x38, 13), (0x39, 13)]
+POINTS += [(0x3E, 14), (0x3C, 14), (0x3F, 14), (0x3D, 14)]
 BOMB = (0x30, 11)  # the fighter's bullet, upside down in another colour set
 # The fighter's explosion: four 32x32 frames in colour set 11, shown on hardware sprites 0 and 1
 # (left and right halves). Their colour registers hold the fighter's colours, so each of the

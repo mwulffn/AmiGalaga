@@ -27,6 +27,7 @@ BLAST_STEPS	equ	1+SMALL_STEPS+BIG_STEPS	; at this step the blast is over
 POPUP_STEPS	equ	19			; steps a score stays
 BIG_OFFSET	equ	8			; a big frame starts this far up and left
 QUADS		equ	4
+WIDE_OFFSET	equ	8			; a score of two images starts this far left
 
 	section	code,code
 
@@ -121,7 +122,26 @@ BlastsDraw:
 	bra	.Next
 .Score	moveq	#0,d6
 	move.b	bl_popup(a3),d6
+	cmp.w	#POPUP_WIDE,d6
+	bcs	.Narrow
+	; two images side by side, starting 8 pixels further left: image = 5 + 2 * (score - 5)
+	add.w	d6,d6
+	subq.w	#POPUP_WIDE,d6
 	lsl.w	#8,d6
+	lea	Enemies+GFX_POINTS,a0
+	add.w	d6,a0
+	move.w	d4,d0
+	subq.w	#WIDE_OFFSET,d0
+	move.w	d5,d1
+	bsr	Draw
+	lea	Enemies+GFX_POINTS+FRAME_SIZE,a0
+	add.w	d6,a0
+	move.w	d4,d0
+	addq.w	#16-WIDE_OFFSET,d0
+	move.w	d5,d1
+	bsr	Draw
+	bra	.Next
+.Narrow	lsl.w	#8,d6
 	lea	Enemies+GFX_POINTS,a0
 	add.w	d6,a0
 .One	move.w	d4,d0

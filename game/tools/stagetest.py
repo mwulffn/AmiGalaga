@@ -32,7 +32,7 @@ LAUNCHED, HOME, GONE, FORMATION, KILLED, BOSS_HIT, SCORE_HI, SCORE_LO, FIGHTER_L
 PLAYING, BLOWN, RETURNING, READY, OVER, ABSENT = range(6)  # what the fighter is doing
 PLAY, INTRO, CLEARED, RESULTS, SPLASH, ENTER = range(6)  # where the game is between stages (src/flow.s)
 INTRO_PAUSE, CLEARED_PAUSE, SPLASH_PAUSE, RESULT_PAUSE, RESULT_END, BLINKS = 8, 4, 3, 3, 6, 7
-WAVE_POINTS, WAVE_POPUPS = (1000, 1500, 2000, 3000), (3, 4, -1, -1)
+WAVE_POINTS, WAVE_POPUPS = (1000, 1500, 2000, 3000), (3, 4, 5, 6)
 BEGUN = 10
 RESERVE, BLOWN_STEPS, BLOWN_PAUSE, READY_PAUSE, OVER_PAUSE, RETURN_SX, TIME_BACK = 2, 15, 4, 3, 6, 0x7A, 30
 NAMES = {
@@ -120,7 +120,7 @@ def model(rom: G.Rom, fifths: int, frames: int, first: int = 1) -> list[tuple[in
                 trio_left = (trio_left - 1) & 0xFF
                 if not trio_left:
                     score += TF.BONUS[tf.colour]
-                    popup = 3 if TF.BONUS[tf.colour] == 1000 else -1
+                    popup = {1000: 3, 2000: 5, 3000: 6}[TF.BONUS[tf.colour]]
             elif colour[obj] == S.BLUE_BOSS:
                 popup = dives.bonus[(obj & 7) >> 1]
                 score += S.BOSS_BONUS[popup]
