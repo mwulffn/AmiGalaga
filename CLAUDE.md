@@ -122,6 +122,12 @@ Sprites pair up and each pair shares three colours.
 - `sound/` extracts every sound from the user's ROM. Its driver model is
   identical to MAME on all 78,575 ticks of a gameplay trace. Highest
   pitch is 2143 Hz, so waveform copies down to 8 samples are enough.
+- The Amiga driver (`experiment-6/src/sound.s`) is a port of the driver
+  logic, not stream playback. It is checked against the arcade model by
+  a scripted run in FS-UAE (`tools/measure.sh sndtest`): 6,774 ticks,
+  all identical. The game requests sound n by writing byte 2*n of
+  `snd_state`. Size: 1.5 KB code, 3.2 KB tables, 0.5 KB state, 4.4 KB
+  of samples in chip RAM.
 
 ## Measured budget
 
@@ -134,6 +140,14 @@ A PAL frame is 313 raster lines. Drawing time, blitter priority on:
 | Formation + 10 flyers + panel + stars | 157 | 178 |
 | Formation + 20 flyers + panel + stars | 225 | 246 |
 
+| Formation + 10 flyers + panel + stars + sound | 174 | 213 |
+| Formation + 20 flyers + panel + stars + sound | 247 | 294 |
+
+Sound costs CPU time, not blitter time: a driver tick is about 890 CPU
+cycles when silent, 2,400 with the start theme, 3,500 in a busy stretch
+(pulse, shots, hits, dives), at 121 ticks a second. That is 5, 13 and 19
+raster lines per frame.
+
 A flyer costs about 6.4 lines, the starfield 11-14. The arcade never has
 more than 12 enemies flying at once; the rest of its off-formation
 objects are bombs and explosions.
@@ -145,8 +159,13 @@ objects are bombs and explosions.
   not measured.
 - **Game logic** is not ported or measured: formation drift and
   breathing, dive scheduling, bombs, capture, scoring.
-- **Sound on the Amiga:** no player yet; undecided between porting the
-  driver logic and playing back per-tick streams. Noise chip not modelled.
+- **Sound cost.** At up to 19 lines a frame the driver is the largest
+  CPU item measured so far, and it lifts the worst frame with 20 flyers
+  to 294 of 313 lines. Not yet tried: testing sounds two at a time,
+  a lighter path for one-track sounds, or playing some sounds from
+  pre-computed streams.
+- **Sound by ear on the Amiga** is unchecked beyond the user listening
+  to experiment-6; the explosion's level against the tones is a guess.
 - **Not drawn yet:** tractor beam, 32x32 explosions, dual fighter,
   READY/STAGE text.
 - Second star layer on sprite 6: decide once logic shows the frame time
@@ -156,7 +175,7 @@ objects are bombs and explosions.
 
 | Path | Contents |
 |---|---|
-| `experiment-1` .. `experiment-5` | the rendering experiments; each has `make run`, and `tools/measure.sh` for timing |
+| `experiment-1` .. `experiment-6` | the experiments (1-5 rendering, 6 adds sound); each has `make run`, and `tools/measure.sh` for timing |
 | `experiment-1/tools/extract_gfx.py` | sprites, font and palette from the ROM to Amiga bitplanes |
 | `analysis/` | MAME Lua trace scripts and results (colours, sprite load, positions) |
 | `motion/` | movement extraction, reference stepper, validation against MAME |
