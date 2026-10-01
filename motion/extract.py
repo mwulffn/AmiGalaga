@@ -14,6 +14,7 @@ Writes (all derived from the ROM, so none of it belongs in the repository):
 import sys
 from pathlib import Path
 
+import dives as D
 import galaga_motion as G
 
 
@@ -136,6 +137,14 @@ def main() -> None:
     table("ChallengeData", "challenging stages, same layout", m[G.CHALLENGE_DATA : G.CHALLENGE_DATA + 8 * 18], 18)
     table("WaveObjects", "object numbers in arrival order: 5 waves of 8", m[G.WAVE_OBJECTS : G.WAVE_OBJECTS + 40], 8)
     table("BreathePatterns", "formation breathing: 4 sets of bit patterns for 10 columns and 6 rows", m[G.BREATHE_PATTERNS : G.BREATHE_PATTERNS + 64], 16)
+    for rank in range(4):
+        at = rom.word(m, D.STAGE_CONFIG_INDEX + 2 * rank)
+        label, note = ("StageConfig", "per rank, 26 stages x 5 bytes: ten settings a stage, a nibble each") if rank == 0 else (f"StageConfig{rank}", f"rank {rank}")
+        table(label, note, m[at : at + D.STAGE_CONFIG_SIZE], 5)
+    table("BombFlagTable", "bomb flags by stage setting 0 (x4) and enemies left / 10", m[D.BOMB_FLAGS : D.BOMB_FLAGS + 32], 4)
+    table("BossReload", "boss dive timer by stage setting 1 (x4) and enemies left / 10", m[D.BOSS_RELOAD : D.BOSS_RELOAD + 13], 4)
+    table("ButterflyReload", "butterfly dive timer by stage setting 2 (x3) and how late in the stage", m[D.BUTTERFLY_RELOAD : D.BUTTERFLY_RELOAD + 30], 3)
+    table("BeeReload", "bee dive timer by stage setting 3 (x3) and how late in the stage", m[D.BEE_RELOAD : D.BEE_RELOAD + 30], 3)
     table("HomeRc", "per object number: row index, column index of its formation slot", rom.sub[G.HOME_RC : G.HOME_RC + 0x60], 16)
     asm.append("\teven")
     (out / "motion_data.s").write_text("\n".join(asm) + "\n")

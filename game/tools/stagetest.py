@@ -4,22 +4,23 @@
 
 A STAGE_TEST build logs every launch, landing and departure with the frame
 it happened in, and a checksum of the formation's positions every frame.
-This replays the same frames with the launcher and formation models
-(motion/waves.py, motion/formation.py, both checked against MAME) and the
-flight model (motion/pal_scale.py), following src/game.s step for step, and
-compares.
+This replays the same frames with the launcher, formation and dive models
+(motion/waves.py, formation.py and dives.py, all checked against MAME) and
+the flight model (motion/pal_scale.py), following src/game.s step for step,
+and compares.
 """
 
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "motion"))
+import dives as D  # noqa: E402
 import formation as F  # noqa: E402
 import galaga_motion as G  # noqa: E402
 import pal_scale as P  # noqa: E402
 import waves as W  # noqa: E402
 
-SLOTS, FORM_ROWS, STAGE_PAUSE, EMPTY_PAUSE, DEMO_STAGES = 12, 5, 450, 100, 3  # as in the game's sources
+SLOTS, FORM_ROWS, STAGE_PAUSE, EMPTY_PAUSE, DEMO_STAGES = 12, 5, 1500, 100, 3  # as in the game's sources
 SHIP_START, SHIP_MAX, SHIP_STEP, FIGHTER_X = 104, 208, 2, 17
 LAUNCHED, HOME, GONE, FORMATION = 0, 1, 2, 3
 NAMES = {LAUNCHED: "launch", HOME: "home", GONE: "gone", FORMATION: "formation"}
@@ -31,9 +32,20 @@ def model(rom: G.Rom, fifths: int, frames: int) -> list[tuple[int, int, int]]:
     env = P.formation_env()
     slots: list[P.State | None] = [None] * SLOTS
     landed = [False] * SLOTS
-    stage, clock, arcade, form_next, wait = 1, 0, 0, 0, 0
+    clock, arcade, form_next = 0, 0, 0
     ship, ship_step = SHIP_START, SHIP_STEP
-    launcher, form, present = W.Launcher(rom, stage), F.Formation(rom), 0
+    row_of = lambda obj: (rom.sub[G.HOME_RC + obj] - 22) // 2  # noqa: E731
+
+    def start(stage: int) -> tuple:
+        parms = D.stage_parms(rom, stage)
+        dives = D.Dives(rom, parms, max_flying=parms[4], capturing=1, special=0xFF)
+        env.stage_parms = bytes(parms) + b"\0"
+        return stage, W.Launcher(rom, stage), F.Formation(rom), dives, parms
+
+    stage, launcher, form, dives, parms = start(1)
+    present: set[int] = set()
+    dirty: set[int] = set()
+    wait, alive, stage_time = 0, 0, D.STAGE_TIME
     for frame in range(frames):
         ship += ship_step
         if not 0 <= ship <= SHIP_MAX:
@@ -50,7 +62,25 @@ def model(rom: G.Rom, fifths: int, frames: int) -> list[tuple[int, int, int]]:
                     y=y << 8, x=x << 8, h=head << 30 & 0xFFFFFFFF, ptr=go.script,
                     obj=go.obj, mirror=go.mirror, left=clock, pause=True,
                 )  # fmt: skip
+                alive += 1
                 log.append((frame, LAUNCHED, go.obj))
+            if arcade & 31 == 0 and stage_time:
+                stage_time -= 1
+            env.last_stand = int(alive < parms[7])
+            dives.settings(stage_time, alive, bool(env.last_stand))
+            if launcher.all_in:
+                state = {obj: int(obj in present) for obj in range(0, 0x80, 2)}
+                free = next((i for i, s in enumerate(slots) if s is None), None)
+                go = dives.tick(arcade, state, launcher.heard, free is not None)
+                if go:
+                    row, col = rom.sub[G.HOME_RC + go.obj : G.HOME_RC + go.obj + 2]
+                    slots[free] = P.State(
+                        y=(352 - env.home_x[row]) << 7, x=env.home_x[col] << 7, h=1 << 30, ptr=go.script,
+                        obj=go.obj, mirror=go.mirror, left=clock, pause=True,
+                    )  # fmt: skip
+                    present.discard(go.obj)
+                    dirty.add(row_of(go.obj))
+                    log.append((frame, LAUNCHED, go.obj))
             form.tick(arcade, launcher.all_in, not present)
             env.home_loc, env.home_x = form.home_loc, form.home_x
             arcade += 1
@@ -72,15 +102,19 @@ def model(rom: G.Rom, fifths: int, frames: int) -> list[tuple[int, int, int]]:
                 slots[i] = None
                 log.append((frame, GONE, st.obj))
         busy = sum(s is not None for s in slots)
+        rows = dirty or {form_next}
+        if not dirty:
+            form_next = (form_next + 1) % FORM_ROWS
         for i, st in enumerate(slots):
-            if st is not None and landed[i] and (rom.sub[G.HOME_RC + st.obj] - 22) // 2 == form_next:
-                slots[i], landed[i], present = None, False, present + 1
-        form_next = (form_next + 1) % FORM_ROWS
-        if launcher.all_in and not busy:
+            if st is not None and landed[i] and row_of(st.obj) in rows:
+                present.add(st.obj)
+                slots[i], landed[i] = None, False
+        dirty = set()
+        if launcher.all_in:
             wait += 1
-            if wait >= (STAGE_PAUSE if present else EMPTY_PAUSE):
-                stage = stage % DEMO_STAGES + 1
-                launcher, form, present, wait = W.Launcher(rom, stage), F.Formation(rom), 0, 0
+            if wait >= (STAGE_PAUSE if present or busy else EMPTY_PAUSE):
+                stage, launcher, form, dives, parms = start(stage % DEMO_STAGES + 1)
+                present, wait, alive, stage_time = set(), 0, 0, D.STAGE_TIME
                 slots, landed = [None] * SLOTS, [False] * SLOTS
                 env.home_loc, env.home_x = form.home_loc, form.home_x
     return log

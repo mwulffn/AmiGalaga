@@ -55,6 +55,19 @@ from side to side while waves arrive and the breathing afterwards. Its
 tables are identical to the trace's on all 33,016 frames of the seven
 stages that have a formation.
 
+`dives.py` is the model of who leaves the formation to attack and when
+(three timers, a limit on how many fly, a boss with its escorts). It is
+checked against a second kind of trace, `trace_game.lua`, which dumps
+the main CPU's working memory every frame (1,216 bytes; `game_trace.py`
+reads it): each frame's timers, queue and launches are predicted from
+the frame before. Over two traces (the bot firing, and not firing so the
+formation stays whole) 37,756 of 37,758 frames and 298 of 299 launches
+are as the arcade's; the misses are inputs that changed within a frame.
+
+    GOUT=game.bin GFRAMES=40000 mame galaga -rompath ../original -video none \
+        -sound none -nothrottle -skip_gameinfo -autoboot_script trace_game.lua
+    python3 dives.py ../original/galaga.zip game.bin
+
 ## Validation
 
 `validate.py` against 38,600 frames of MAME (stages 1 to about 9, bot
@@ -71,9 +84,9 @@ To repeat it (the trace is about 17 MB):
 
 ## Not covered yet
 
-- Which enemy dives when, bombs, the capture sequence, escorts and the
-  transforming enemies. The scripts are extracted; the logic that starts
-  them is in the main CPU and has not been ported.
+- Bombs, the capture sequence, and the transforming enemies and their
+  convoys. The scripts are extracted; the logic that starts them is in
+  the main CPU and has not been ported.
 - Choosing the sprite frame and flips from the heading is ported in the
   game (`game/src/game.s`) but not validated against MAME: its result
   goes to sprite RAM, not to the slot, and the trace does not record it.

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Check the stage entrance (launcher, flights, landings) against the models:
+# Check the stage (launcher, formation, dives, flights, landings) against the models:
 # a test build logs every launch and landing over the first stages in FS-UAE,
 # and tools/stagetest.py replays the same frames. Run for the exact build
 # and the PAL build.
@@ -7,7 +7,7 @@ set -e
 cd "$(dirname "$0")/.."
 ROM=${ROM:-../original/galaga.zip}
 KICK=${KICK:-$HOME/Documents/FS-UAE/Kickstarts/kick34005.A500}
-frames=${1:-2600}
+frames=${1:-3600}
 hd=build/hd
 for exact in 1 0; do
     make -s build/galaga DEFS="-DSTAGE_TEST=1 -DTEST_FRAMES=$frames -DEXACT_TIMING=$exact" >/dev/null

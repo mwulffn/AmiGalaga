@@ -15,6 +15,17 @@ WAVE_BYTES	equ	STAGE_WAVES*(1+2*8)+1		; a start mark and 8 (control, object) pai
 FIFTHS		equ	6-EXACT_TIMING
 FRAME_FIFTHS	equ	5		; fifths in one arcade frame
 
+; dives
+STAGE_PARMS	equ	10
+DIVE_KINDS	equ	3
+DIVE_QUEUE	equ	4
+	rsreset
+dq_obj		rs.b	1			; the object, bit 7 set to fly mirrored; QUEUE_EMPTY if none
+dq_pad		rs.b	1
+dq_script	rs.w	1
+dq_SIZEOF	rs.b	0
+QUEUE_EMPTY	equ	$ff
+
 ; what FlightStep returns
 FLIGHT_FLYING	equ	0
 FLIGHT_HOME	equ	1		; reached its place in the formation
@@ -23,7 +34,7 @@ FLIGHT_GONE	equ	2		; its script ended
 ; a STAGE_TEST build logs these two, launches, and a checksum of the formation's table each frame
 STAGE_LAUNCHED	equ	0
 STAGE_FORMATION	equ	3
-STAGE_LOG_BYTES	equ	4*4096
+STAGE_LOG_BYTES	equ	4*8192
 
 ; fl_flags bits
 FLB_ACTIVE	equ	0

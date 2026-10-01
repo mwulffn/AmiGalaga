@@ -27,12 +27,27 @@ Stage		rs.w	1		; 1 is the first
 StageWait	rs.w	1		; until there is a game: frames since the stage was all in
 WaveAt		rs.w	1		; launcher: where it is in WaveTable
 WasFlying	rs.w	1		;   flights in the air one arcade frame ago
+Flying		rs.w	1		;   how many the arcade's logic takes to be flying: it hears a frame late
 FormNext	rs.w	1		; formation: the row whose strip is rebuilt next
 FormDrift	rs.w	1		;   how far it has drifted sideways as a whole, in pixels
 FormDrifting	rs.b	1		;   nonzero while it drifts; then it breathes
 FormLeftwards	rs.b	1		;   nonzero: drifting left
 FormCount	rs.b	1		;   breathing: steps out so far; bit 7 set on the way back in
 WavesIn		rs.b	1		; launcher: nonzero once every wave is launched and has landed
+Alive		rs.b	1		; stage: enemies sent in and not yet destroyed
+StageTime	rs.b	1		;   counts down from 120, one every 32 arcade frames
+MaxFlying	rs.b	1		; dives: no new one while this many are flying
+BombFlags	rs.b	1		;   which of a diver's chances to bomb are taken
+Capturing	rs.b	1		;   nonzero: a boss is out to capture, the others take escorts
+CaptureBoss	rs.b	1		;   which boss that is
+BossToggle	rs.b	1		;   every other boss dive is a capture attempt
+Special		rs.b	1		;   the enemy that is about to transform: it does not dive
+FormDirty	rs.b	1		; formation: bit n set if row n's strip must be rebuilt this frame
+StagePad	rs.b	1
+StageParms	rs.b	STAGE_PARMS	; the stage's ten settings, see dives.s
+DiveTimers	rs.b	DIVE_KINDS	; dives: per kind (boss, butterfly, bee), 16-frame periods to its next
+DiveReload	rs.b	DIVE_KINDS	;   and what the timer restarts from
+DiveQueue	rs.b	DIVE_QUEUE*dq_SIZEOF	; a boss and those going with it, waiting to leave
 FormBits	rs.b	HOME_ENTRIES	; breathing: per column and row, bit 0 set if it moves this step
 StageLogPtr	rs.l	1		; STAGE_TEST builds: next free entry of the log
 FlightFrame	rs.w	1		; flight: frames stepped; its low bit picks which speed a step uses

@@ -123,6 +123,19 @@ Sprites pair up and each pair shares three colours.
   frame the arcade made them. The 68000 version is `game/src/stage.s`;
   `game/tools/test_stage.sh` compares its launches and landings over
   2,600 frames with the models, in both builds: identical.
+- Dives are scheduled as the arcade does it (`game/src/dives.s`, model
+  `motion/dives.py`): three timers (boss, butterfly, bee) counted every
+  16 arcade frames, a limit on how many fly at once, restart values from
+  ROM tables by stage, enemies left and time into the stage; a boss
+  takes two escorts, or one, or goes alone, and they leave on successive
+  frames. Predicting each frame of two MAME traces from the frame before
+  (`trace_game.lua`, one with the bot firing and one without), the model
+  matches the arcade's timers, queue and launches on 37,756 of 37,758
+  frames and 298 of 299 launches; the misses are inputs that changed
+  within the frame. `test_stage.sh` compares the game with the models
+  over 3,600 frames in both builds: identical.
+- A diver leaves its row's strip in the same frame: a row someone has
+  left is rebuilt at once instead of waiting for its turn.
 - The stage index row is the arcade's difficulty switch; `RANK` 3 is
   what MAME's default (and the trace) uses.
 - A flying enemy is turned the way it is heading by the arcade's rule
@@ -246,17 +259,24 @@ included, so the real figure is a little lower.
 
 - **The game** (`game/`) so far: startup and shutdown, video, sound,
   starfield, flyers, formation strips, score panel, fighter and bullet
-  sprites, the flight stepper, and the stage entrance: each stage's five
-  waves fly in and take their places. All to the style guide and linted.
-  It cycles through stages 1 to 3 (`DEMO_STAGES`); `demo.s` stands in
-  for the player. Stage 1's entrance with the start theme takes 144
-  raster lines on average, 202 at worst (8 flying).
+  sprites, the flight stepper, the stage entrance, the formation's
+  movement and dives. All to the style guide and linted. It cycles
+  through stages 1 to 3 (`DEMO_STAGES`), giving each 30 seconds of
+  dives; `demo.s` stands in for the player. Stage 1 with entrance and
+  dives takes 146 raster lines on average, 207 at worst.
 - **Not in the entrance yet:** the enemies that fly through without
   joining (stage 4 on; needs the arcade's random numbers), the wait
   before the first wave (READY, STAGE n), and holding waves back while
   the fighter is replaced.
-- **Game logic** not ported or measured yet: dive scheduling, bombs,
-  collisions, capture, scoring.
+- **Not in the dives yet:** capture attempts (no tractor beam: until
+  there is one, `Capturing` stays set and every boss dive is the
+  ordinary one, which makes boss dives more repetitive than the
+  arcade's), bombs (`BombFlags` is worked out but nothing drops),
+  transforming enemies and their convoys, the pause in attacks while
+  the fighter is out of play, and everything that depends on enemies
+  being shot (the count of those left only goes up).
+- **Game logic** not ported or measured yet: bombs, collisions, capture,
+  scoring, the player.
 - **Sound cost: deferred, by decision.** The driver works and the user
   has confirmed it sounds right on the emulated A500 (2026-10-01). At up
   to 19 lines a frame it is the largest CPU item measured, and it lifts

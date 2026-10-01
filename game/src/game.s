@@ -27,14 +27,15 @@
 	xref	FormationCompose
 	xref	FormationDraw
 	xref	FormationTick
+	xref	DivesTick
 	xref	HomeRc
 	xref	Enemies
 	if	STAGE_TEST
 	xdef	StageLog
 	endc
 
-STAGE_PAUSE	equ	450			; until there is a game: frames a full formation is shown,
-EMPTY_PAUSE	equ	100			;   and an empty one
+STAGE_PAUSE	equ	1500			; until there is a game: frames a stage goes on once all are in,
+EMPTY_PAUSE	equ	100			;   or if nobody stayed
 UPRIGHT		equ	6*FRAME_SIZE		; an enemy's upright image
 FLYING_BITS	equ	1<<FLB_ACTIVE|1<<FLB_LANDED
 QUADRANT_BITS	equ	2
@@ -80,6 +81,7 @@ GameFrame:
 	cmp.w	#FIFTHS,d6
 	bcc	.Ticked
 	bsr	StageTick
+	bsr	DivesTick
 	bsr	FormationTick
 	addq.w	#1,ArcadeFrame(a5)
 	addq.w	#FRAME_FIFTHS,Clock(a5)
@@ -124,45 +126,39 @@ GameFrame:
 	bne	.Fly
 	addq.w	#1,FlightFrame(a5)
 
-	; one row's strip is rebuilt each frame; whoever has landed in that row is in it from now on
+	; A row's strip is rebuilt when someone has just left it; otherwise one row each frame in
+	; turn. Whoever has landed in a row is part of its strip from then on.
+	moveq	#0,d5
+	move.b	FormDirty(a5),d5
+	bne	.Dirty
 	move.w	FormNext(a5),d0
-	moveq	#0,d6				; flights in the air or landed
-	lea	Flights(a5),a0
-	lea	HomeRc(pc),a1
-	lea	FormPresent(a5),a2
-	moveq	#FLIGHT_SLOTS-1,d1
-.Land	moveq	#FLYING_BITS,d2
-	and.b	fl_flags(a0),d2
-	beq	.Landed
-	addq.w	#1,d6
-	btst	#FLB_LANDED,d2
-	beq	.Landed
-	; strip row = (row entry - first row's) / 2 - rows without a strip, column = entry / 2
-	moveq	#0,d2
-	move.b	fl_obj(a0),d2
-	moveq	#0,d3
-	move.b	(a1,d2.w),d3
-	sub.w	#HOME_ROWS+2*STRIP_ROWS,d3
-	lsr.w	#1,d3
-	cmp.w	d0,d3
-	bne	.Landed
-	move.b	1(a1,d2.w),d2
-	lsr.w	#1,d2
-	add.w	d3,d3
-	move.w	(a2,d3.w),d4
-	bset	d2,d4
-	move.w	d4,(a2,d3.w)
-	clr.b	fl_flags(a0)
-.Landed	lea	fl_SIZEOF(a0),a0
-	dbf	d1,.Land
-	move.w	d0,d1
-	addq.w	#1,d1
-	cmp.w	#FORM_ROWS,d1
+	bset	d0,d5
+	addq.w	#1,d0
+	cmp.w	#FORM_ROWS,d0
 	bne	.Next
-	moveq	#0,d1
-.Next	move.w	d1,FormNext(a5)
+	moveq	#0,d0
+.Next	move.w	d0,FormNext(a5)
+.Dirty	clr.b	FormDirty(a5)
+	moveq	#0,d6				; flights in the air or landed, before any join their strip
+	lea	Flights(a5),a0
+	moveq	#FLIGHT_SLOTS-1,d1
+.Count	moveq	#FLYING_BITS,d2
+	and.b	fl_flags(a0),d2
+	beq	.Counted
+	addq.w	#1,d6
+.Counted
+	lea	fl_SIZEOF(a0),a0
+	dbf	d1,.Count
 	move.w	d6,-(sp)
-	bsr	FormationCompose
+	moveq	#0,d0
+.Rows	btst	d0,d5
+	beq	.Kept
+	movem.w	d0/d5,-(sp)
+	bsr	Rebuild
+	movem.w	(sp)+,d0/d5
+.Kept	addq.w	#1,d0
+	cmp.w	#FORM_ROWS,d0
+	bne	.Rows
 
 	bsr	FlyersErase
 	bsr	FormationDraw
@@ -184,18 +180,15 @@ GameFrame:
 	dbf	d7,.Draw
 	move.w	(sp)+,d6
 
-	; until there is a game: once everyone is in, show the formation a while, then the next stage
+	; until there is a game: once everyone is in, let them attack a while, then the next stage
 	tst.b	WavesIn(a5)
 	beq	.Busy
-	tst.w	d6
-	bne	.Busy
 	lea	FormPresent(a5),a0
-	moveq	#0,d0
 	rept	FORM_ROWS
-	or.w	(a0)+,d0
+	or.w	(a0)+,d6
 	endr
 	move.w	#STAGE_PAUSE,d1
-	tst.w	d0
+	tst.w	d6
 	bne	.Pause
 	moveq	#EMPTY_PAUSE,d1			; nobody stayed: a challenging stage
 .Pause	addq.w	#1,StageWait(a5)
@@ -208,6 +201,39 @@ GameFrame:
 	moveq	#1,d0
 	bra	StageInit
 .Busy	rts
+
+;--
+; Rebuild
+; Rebuild one row's strip, with whoever has landed in that row now part of it.
+; In:       d0.w = row, a5 = state, a6 = CUSTOM
+; Out:      -
+; Clobbers: d0-d7, a0-a3
+Rebuild:
+	lea	Flights(a5),a0
+	lea	HomeRc(pc),a1
+	lea	FormPresent(a5),a2
+	moveq	#FLIGHT_SLOTS-1,d1
+.Land	btst	#FLB_LANDED,fl_flags(a0)
+	beq	.Landed
+	; strip row = (row entry - first row's) / 2 - rows without a strip, column = entry / 2
+	moveq	#0,d2
+	move.b	fl_obj(a0),d2
+	moveq	#0,d3
+	move.b	(a1,d2.w),d3
+	sub.w	#HOME_ROWS+2*STRIP_ROWS,d3
+	lsr.w	#1,d3
+	cmp.w	d0,d3
+	bne	.Landed
+	move.b	1(a1,d2.w),d2
+	lsr.w	#1,d2
+	add.w	d3,d3
+	move.w	(a2,d3.w),d4
+	bset	d2,d4
+	move.w	d4,(a2,d3.w)
+	clr.b	fl_flags(a0)
+.Landed	lea	fl_SIZEOF(a0),a0
+	dbf	d1,.Land
+	bra	FormationCompose
 
 ;--
 ; FlightImage

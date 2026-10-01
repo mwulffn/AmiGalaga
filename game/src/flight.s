@@ -33,6 +33,12 @@
 	xdef	WaveObjects
 	xdef	HomeRc
 	xdef	BreathePatterns
+	xdef	DiveScripts
+	xdef	StageConfig
+	xdef	BombFlagTable
+	xdef	BossReload
+	xdef	ButterflyReload
+	xdef	BeeReload
 
 FIRST_COMMAND	equ	$ef			; script bytes from here up are commands
 COMMANDS	equ	$100-FIRST_COMMAND

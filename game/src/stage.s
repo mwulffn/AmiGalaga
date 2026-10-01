@@ -24,6 +24,7 @@
 	xdef	StageInit
 	xdef	StageTick
 	xref	FormationInit
+	xref	DivesInit
 	xref	FlightLaunch
 	xref	EntryPaths
 	xref	StartPos
@@ -139,6 +140,7 @@ StageInit:
 .Slot	clr.b	fl_flags(a0)
 	lea	fl_SIZEOF(a0),a0
 	dbf	d0,.Slot
+	bsr	DivesInit
 	bra	FormationInit
 
 ; what a challenging stage's enemies look like, by stage / 4 mod 8
@@ -174,6 +176,7 @@ StageTick:
 	; the arcade hears of a landing one frame late
 	move.w	WasFlying(a5),d1
 	move.w	d0,WasFlying(a5)
+	move.w	d1,Flying(a5)
 
 	lea	WaveTable(a5),a2
 	add.w	WaveAt(a5),a2
@@ -204,6 +207,7 @@ StageTick:
 	addq.w	#2,WaveAt(a5)
 	moveq	#0,d4
 	move.b	(a2),d4				; the object
+	addq.b	#1,Alive(a5)
 	if	STAGE_TEST
 	move.l	StageLogPtr(a5),a1
 	move.w	FlightFrame(a5),(a1)+
