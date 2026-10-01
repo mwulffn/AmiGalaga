@@ -21,6 +21,14 @@ Score		rs.l	1		; six decimal digits, two to a byte, in the low three bytes
 ScoreText	rs.b	8		; scratch for printing it
 ShipX		rs.w	1		; the fighter, in playfield pixels
 Bullets		rs.w	4		; x, y of each of its two bullets; y < 0: not there
+Clock		rs.w	1		; fifths of an arcade frame until the next one begins
+ArcadeFrame	rs.w	1		; arcade frames so far: what the arcade's own timers count
+Stage		rs.w	1		; 1 is the first
+StageWait	rs.w	1		; until there is a game: frames since the stage was all in
+WaveAt		rs.w	1		; launcher: where it is in WaveTable
+WasFlying	rs.w	1		;   flights in the air one arcade frame ago
+FormNext	rs.w	1		; formation: the row whose strip is rebuilt next
+StageLogPtr	rs.l	1		; STAGE_TEST builds: next free entry of the log
 FlightFrame	rs.w	1		; flight: frames stepped; its low bit picks which speed a step uses
 FighterX	rs.b	1		;   the fighter's x as the arcade's scripts see it: sprite x
 StageHard	rs.b	1		;   nonzero: entry paths take their harder branch
@@ -31,5 +39,7 @@ StatePad	rs.b	1
 HomeX		rs.b	32		; formation: pixel x of each column, low byte, in even entries
 HomeLoc		rs.b	32		;   per column, then per row: its offset, its origin
 Flights		rs.b	FLIGHT_SLOTS*fl_SIZEOF
+WaveTable	rs.b	WAVE_BYTES	; launcher: the stage's waves, see stage.s
+ObjKind		rs.b	OBJECTS/2	; what each enemy looks like (a KIND_ from gfx.i), by object / 2
 Sound		rs.b	snd_SIZEOF	; the sound driver's state: see sound.i
 State_SIZEOF	rs.b	0

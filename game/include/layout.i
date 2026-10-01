@@ -31,9 +31,23 @@ scr_flyers	rs.w	1			; flyers drawn in it, to erase next time
 scr_erase	rs.l	MAX_FLYERS		;   and where
 scr_SIZEOF	rs.b	0
 
-; the formation
-FORM_ROWS	equ	5
+; the formation, and the arcade's two tables that place it (HomeX, HomeLoc):
+; an entry of two bytes for each of 10 columns, then each of 6 rows
+FORM_ROWS	equ	5			; rows drawn as strips
 FORM_SPREAD	equ	64			; how much further apart the outer columns get at most
+HOME_COLUMNS	equ	10
+HOME_ROWS	equ	2*HOME_COLUMNS		; offset of the first row's entry
+STRIP_ROWS	equ	1			; the first row with a strip: row 0 is for captured fighters
+
+; From the arcade's coordinates to the buffer's. A sprite at x, y in HomeX,
+; which is how the arcade's sprite hardware counts, has its left edge at
+; buffer x - SPRITE_X and its top at buffer row y - SPRITE_Y. A flight counts
+; y upwards: its top is at buffer row FLIGHT_TOP - y.
+SPRITE_X	equ	1
+SPRITE_Y	equ	40
+FLIGHT_TOP	equ	312
+LAST_FLYER_X	equ	GUARD+PLAY_WIDTH-1	; a flyer further right is not on the screen
+LAST_FLYER_Y	equ	SCREEN_ROWS-16		; nor one further down
 
 ; the player's fighter
 SHIP_Y		equ	240			; its display line

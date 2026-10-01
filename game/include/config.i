@@ -17,16 +17,24 @@ BLITTER_PRIORITY equ	1		; 1: the blitter takes the bus ahead of the CPU
 SOUND_TEST	equ	0		; n: drive the sound driver from the test script for n
 	endc				;    ticks and report what it sent to Paula
 
-	ifnd	DEMO_FLYERS
-DEMO_FLYERS	equ	10		; until there is a game: how many flyers demo.s moves
-	endc
-
 	ifnd	EXACT_TIMING
 EXACT_TIMING	equ	0		; 1: enemies move one arcade frame per displayed frame,
 	endc				;    byte for byte as in the arcade (and so 17% slow on PAL)
 
 	ifnd	FLIGHT_TEST
 FLIGHT_TEST	equ	0		; 1: fly the test cases, report every position, and exit
+	endc
+
+	ifnd	STAGE_TEST
+STAGE_TEST	equ	0		; 1: with TEST_FRAMES, report every launch and landing
+	endc
+
+	ifnd	RANK
+RANK		equ	3		; the arcade's difficulty switch: which row of the stage
+	endc				;    index it uses. 3 is the arcade's (and MAME's) default
+
+	ifnd	DEMO_STAGES
+DEMO_STAGES	equ	3		; until there is a game: the stages it cycles through
 	endc
 
 ; a build that writes a report for the host

@@ -69,6 +69,7 @@ FlightTest:
 	move.b	(a3)+,StageHarder(a5)
 	move.b	(a3)+,LastStand(a5)
 	move.b	(a3)+,BossKilled(a5)
+	moveq	#0,d6
 	lea	Flights(a5),a0
 	bsr	FlightLaunch
 	clr.w	FlightFrame(a5)

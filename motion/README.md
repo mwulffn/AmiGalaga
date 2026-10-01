@@ -44,6 +44,12 @@ mirrored, and whether the two halves arrive together or in one line. The
 path table adds a start position (top centre or lower sides). A stage row
 is picked by rank and stage number through an index table.
 
+`waves.py` is the model of that set-up and of the launcher that sends
+the enemies in (one per frame at most; a wave starts once nothing is
+flying; enemies in a line are 8 frames apart). Against the trace it
+makes all 160 launches of stages 1, 2, 3 and 7 at the arcade's frame.
+Enemies that only fly through (stage 4 on) are not modelled yet.
+
 ## Validation
 
 `validate.py` against 38,600 frames of MAME (stages 1 to about 9, bot

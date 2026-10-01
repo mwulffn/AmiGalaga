@@ -26,6 +26,12 @@
 	xdef	MotionScripts
 	xdef	EntryPaths
 	xdef	StartPos
+	xdef	StageIndex
+	xdef	ChallengeIndex
+	xdef	StageData
+	xdef	ChallengeData
+	xdef	WaveObjects
+	xdef	HomeRc
 
 FIRST_COMMAND	equ	$ef			; script bytes from here up are commands
 COMMANDS	equ	$100-FIRST_COMMAND
@@ -37,7 +43,7 @@ QUARTER_TURN	equ	$100			; in the arcade's heading
 TOP_OF_SCREEN	equ	$9c			; y, in two-pixel units, just above the screen
 HOME_ROW_ABOVE	equ	$20			; "home row" flights start this far above their row
 TRANSIENT_MASK	equ	$38			; objects $38-$3f only fly through
-OBJECTS		equ	$60			; objects below this have a place in the formation
+PLACED		equ	$60			; objects below this have a place in the formation
 AIM_TABLE	equ	8			; an aim command is followed by this many step lengths
 CAPTURE_Y	equ	$48			; where a capturing boss stops, in two-pixel units
 FRAC_BITS	equ	7			; a position's fraction, and a heading's fraction of an octant
@@ -50,12 +56,14 @@ FRAC_MASK	equ	$7f
 ; Start a flight. The first FlightStep reads its script's first token.
 ; In:       a0 = the flight's slot, d0.w = script (offset into MotionScripts),
 ;           d1.b = y, d2.b = x (two-pixel units), d3.b = heading (quarter turns),
-;           d4.b = object, d5.b = nonzero to fly it mirrored
+;           d4.b = object, d5.b = nonzero to fly it mirrored,
+;           d6.w = fifths of an arcade frame to wait first: 0, or when in this
+;           displayed frame the arcade frame that launches it begins
 ; Out:      -
 ; Clobbers: d1-d3
 FlightLaunch:
 	move.w	d0,fl_script(a0)
-	clr.w	fl_left(a0)
+	move.w	d6,fl_left(a0)
 	lsl.w	#8,d1
 	move.w	d1,fl_y(a0)
 	lsl.w	#8,d2
@@ -66,7 +74,7 @@ FlightLaunch:
 	lsl.l	#HEADING_SHIFT-16,d3		; quarter turns to the top two bits
 	move.l	d3,fl_head(a0)
 	move.b	d4,fl_obj(a0)
-	move.b	#1<<FLB_ACTIVE,fl_flags(a0)
+	move.b	#1<<FLB_ACTIVE|1<<FLB_PAUSE,fl_flags(a0)
 	tst.b	d5
 	beq	.Plain
 	bset	#FLB_MIRROR,fl_flags(a0)
@@ -480,7 +488,7 @@ HomeIndex:
 	moveq	#0,d2
 	moveq	#0,d0
 	move.b	fl_obj(a0),d0
-	cmp.b	#OBJECTS,d0
+	cmp.b	#PLACED,d0
 	bcc	.None
 	lea	HomeRc(pc),a2
 	move.b	(a2,d0.w),d2

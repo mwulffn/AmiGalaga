@@ -2,6 +2,13 @@
 
 FLIGHT_SLOTS	equ	12		; as many as the arcade flies at once
 
+; An enemy is known by its object number, as in the arcade: even numbers,
+; $08-$2e the 20 bees, $30-$36 the 4 bosses, $38-$3e enemies that only fly
+; through, $40-$5e the 16 butterflies, $00-$06 captured fighters.
+OBJECTS		equ	$80
+STAGE_WAVES	equ	5			; a stage's enemies arrive in 5 waves of 8
+WAVE_BYTES	equ	STAGE_WAVES*(1+2*8)+1		; a start mark and 8 (control, object) pairs each, an end mark
+
 ; Time is counted in fifths of an arcade frame. A displayed frame uses up
 ; FIFTHS of them: 6 on a 50 Hz display, which keeps the arcade's speed;
 ; 5 reproduces the arcade exactly and is the build that is checked against it.
@@ -13,11 +20,16 @@ FLIGHT_FLYING	equ	0
 FLIGHT_HOME	equ	1		; reached its place in the formation
 FLIGHT_GONE	equ	2		; its script ended
 
+; a STAGE_TEST build logs these two, and launches
+STAGE_LAUNCHED	equ	0
+STAGE_LOG_BYTES	equ	4*2048
+
 ; fl_flags bits
 FLB_ACTIVE	equ	0
 FLB_PAUSE	equ	1		; standing still for one arcade frame
 FLB_DIVING	equ	2		; watching for its dive depth
 FLB_HOMING	equ	3		; heading for its place in the formation
+FLB_LANDED	equ	4		; home, and drawn there until its row's strip is next rebuilt
 FLB_MIRROR	equ	7		; flies the script mirrored
 
 ; Positions are in the arcade's own space, 1/128 pixel: x from the left,

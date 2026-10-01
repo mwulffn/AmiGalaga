@@ -14,7 +14,8 @@
 	xref	VideoFlip
 	xref	StarsInit
 	xref	DemoFrame
-	xref	FormationInit
+	xref	GameInit
+	xref	GameFrame
 	xref	PanelInit
 	xref	PanelScore
 	xref	SpritesInit
@@ -23,6 +24,9 @@
 	xref	SoundStop
 	if	SOUND_TEST
 	xref	SoundLog
+	endc
+	if	STAGE_TEST
+	xref	StageLog
 	endc
 	if	FLIGHT_TEST
 	xref	FlightTest
@@ -40,7 +44,7 @@ METER_COLOUR	equ	$004		; the raster meter's idle colour
 ; Clobbers: d0-d7, a0-a3
 Main:	bsr	StarsInit
 	bsr	VideoInit
-	bsr	FormationInit
+	bsr	GameInit
 	bsr	PanelInit
 	bsr	SpritesInit
 	move.w	#SHIP_X_MAX/2,ShipX(a5)
@@ -62,6 +66,7 @@ Main:	bsr	StarsInit
 	bsr	SpritesUpdate
 	bsr	PanelScore
 	bsr	DemoFrame
+	bsr	GameFrame
 	WAITBLIT				; nothing may still be drawing when the screens swap
 
 	if	RASTER_METER
@@ -78,6 +83,14 @@ Main:	bsr	StarsInit
 	btst	#CIAAB_FIRE0,CIAA_PRA
 	bne	.Frame
 .Done	bsr	SoundStop
+	if	STAGE_TEST
+	lea	StageLog,a0
+	move.l	a0,ReportPtr(a5)
+	move.l	StageLogPtr(a5),d0
+	sub.l	a0,d0
+	move.l	d0,ReportLen(a5)
+	rts
+	endc
 	if	SOUND_TEST
 	move.l	#SoundLog,ReportPtr(a5)
 	move.l	#SOUND_TEST*SOUND_LOG_ENTRY,ReportLen(a5)

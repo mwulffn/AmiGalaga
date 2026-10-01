@@ -2,8 +2,8 @@
 # make            build the executable and a bootable disk image
 # make run        boot the disk in FS-UAE (stock A500, Kickstart 1.3)
 # make lint       check every routine's header against its code (also part of the build)
-# make test       run the test builds in FS-UAE: frame timing, the sound driver
-#                 against the arcade model, and the flight stepper against its model
+# make test       run the test builds in FS-UAE: frame timing, and the sound driver,
+#                 the flight stepper and the stage entrance against their models
 # DEFS="-DRASTER_METER=1" and the like override include/config.i
 
 DEFS   ?=
@@ -12,7 +12,7 @@ KICK   ?= $(HOME)/Documents/FS-UAE/Kickstarts/kick34005.A500
 UAE     = fs-uae --amiga_model=A500 --kickstart_file=$(KICK) --slow_memory=0
 
 # startup.o must be first: the program starts at the top of the first object
-OBJECTS = build/startup.o build/main.o build/demo.o build/video.o build/stars.o \
+OBJECTS = build/startup.o build/main.o build/game.o build/stage.o build/demo.o build/video.o build/stars.o \
 	build/formation.o build/flyers.o build/flight.o build/flighttest.o build/panel.o build/sprites.o build/sound.o \
 	build/gfx.o build/state.o
 # built from the user's own ROM set; never committed
@@ -71,6 +71,7 @@ test:
 	tools/test.sh
 	tools/test_sound.sh
 	tools/test_flight.sh
+	tools/test_stage.sh
 
 clean:
 	rm -rf build

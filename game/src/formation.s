@@ -30,12 +30,6 @@
 	xref	Enemies
 
 CELL		equ	16				; an enemy's width and height
-COLUMNS		equ	10
-HOME_ROWS	equ	2*COLUMNS			; where the rows start in HomeX and HomeLoc
-STRIP_ROWS	equ	1				; the first row with a strip
-; a sprite at x, y in the arcade's tables has its left edge at buffer x - 1 and its top at row y - 40
-SPRITE_X	equ	1
-SPRITE_Y	equ	40
 CELL_WORDS	equ	2				; one enemy into a strip: its word and one for the shift
 CLEAR		equ	$0100				; bltcon0: D only, all zeros
 MERGE		equ	$0bfa				; bltcon0: D = A or C
@@ -80,7 +74,7 @@ FormationInit:
 	lea	RestTable(pc),a0
 	lea	HomeX(a5),a1
 	lea	HomeLoc(a5),a2
-	moveq	#COLUMNS+FORM_ROWS+STRIP_ROWS-1,d0
+	moveq	#HOME_COLUMNS+FORM_ROWS+STRIP_ROWS-1,d0
 .Home	move.b	(a0)+,d1			; where it is, in pixels
 	move.b	d1,(a1)+
 	clr.b	(a1)+
@@ -244,11 +238,12 @@ FormationDraw:
 ; A column's origin is its x; a row's is its height above the bottom, halved.
 RestTable:
 X	set	49
-	rept	COLUMNS
+	rept	HOME_COLUMNS
 	dc.b	X,X
 X	set	X+CELL
 	endr
 	dc.b	60,146,76,138,92,130,104,124,116,118,128,112
+	even
 
 ; \1 = strip, \2 = GFX_ name, \3 = width in words, \4 = columns, \5 = first column,
 ; \6 = lines in the strip, \7 = image rows copied, \8 = the first of them, \9 = the strip line it goes to

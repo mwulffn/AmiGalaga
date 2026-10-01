@@ -96,6 +96,18 @@ Sprites pair up and each pair shares three colours.
   step routine. `motion/galaga_motion.py` is the reference port and is
   byte-identical to MAME (see `motion/README.md`).
 
+- Waves are sent in as the arcade does it: a table of (path, enemy)
+  pairs built from the stage's row, and a launcher that runs once per
+  arcade frame. `motion/waves.py` is the model: all 160 launches of the
+  trace's stages without fly-through enemies (1, 2, 3, 7) happen at the
+  frame the arcade made them. The 68000 version is `game/src/stage.s`;
+  `game/tools/test_stage.sh` compares its launches and landings over
+  2,600 frames with the models, in both builds: identical.
+- The stage index row is the arcade's difficulty switch; `RANK` 3 is
+  what MAME's default (and the trace) uses.
+- A landed enemy is drawn as a flyer at its place until its row's strip
+  is next rebuilt (at most 5 frames), then it is part of the strip.
+
 ### Timing on PAL (approved 2026-10-01)
 - The game runs at arcade speed on a 50 Hz display by advancing 1.2
   arcade frames per PAL frame. The arcade's scripts and tables are used
@@ -110,7 +122,10 @@ Sprites pair up and each pair shares three colours.
 - "Reached home" accepts +-2 units and "reached dive depth" accepts
   having passed it, because the per-frame move is larger.
 - Every other frame-counted timer (bombs, dive scheduling, formation
-  drift) runs off the same fifths clock.
+  drift) runs off the same fifths clock: the arcade's own logic gets one
+  tick per arcade frame, so two in every fifth PAL frame (`Clock` in
+  `game/src/game.s`). A flight launched by a tick waits out the part of
+  the frame before it, so enemies in a line stay evenly spaced.
 - Prototype and evidence: `motion/pal_scale.py`, 636 runs, always the
   same outcome as the arcade and within 9 pixels of it;
   `motion/render_compare.py` shows it side by side.
@@ -202,14 +217,15 @@ included, so the real figure is a little lower.
 
 - **The game** (`game/`) so far: startup and shutdown, video, sound,
   starfield, flyers, formation strips, score panel, fighter and bullet
-  sprites, all to the style guide and linted. `demo.s` stands in for the
-  game and moves things; it is to be replaced. With it, formation + 10
-  flyers + stars + panel + sprites + the start theme take 170 raster
-  lines (worst 197); with 20 flyers 245 (worst 273). With the formation
-  at the arcade's layout (shorter strips) the 10-flyer scene is 158
-  (worst 182). The flight stepper
-  is written and checked but nothing launches flights yet. Next: game
-  state.
+  sprites, the flight stepper, and the stage entrance: each stage's five
+  waves fly in and take their places. All to the style guide and linted.
+  It cycles through stages 1 to 3 (`DEMO_STAGES`); `demo.s` stands in
+  for the player. Stage 1's entrance with the start theme takes 128
+  raster lines on average, 180 at worst (8 flying).
+- **Not in the entrance yet:** the enemies that fly through without
+  joining (stage 4 on; needs the arcade's random numbers), the wait
+  before the first wave (READY, STAGE n), and holding waves back while
+  the fighter is replaced.
 - **Game logic** is not ported or measured: formation drift and
   breathing, dive scheduling, bombs, capture, scoring.
 - Sprite frame and flips from a flight's heading: the rule is known
