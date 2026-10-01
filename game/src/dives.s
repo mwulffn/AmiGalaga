@@ -25,6 +25,7 @@
 	include	"flight.i"
 	include	"sound.i"
 	include	"state.i"
+	include	"macros.i"
 
 	xdef	DivesInit
 	xdef	DivesTick
@@ -113,6 +114,7 @@ DivesInit:
 	move.b	#STAGE_TIME,StageTime(a5)
 	clr.b	Alive(a5)
 	clr.b	BossToggle(a5)
+	clr.l	BossBonus(a5)			; a boss shot on its way in scores as one diving alone
 	st	Capturing(a5)			; until there is a tractor beam: no boss tries to capture
 	st	Special(a5)			; nobody is about to transform
 	clr.b	FormDirty(a5)
@@ -169,6 +171,9 @@ DivesTick:
 	move.b	d3,(a2)+
 	move.b	d3,(a2)+
 	move.b	d3,(a2)
+	if	SOUND_TEST=0
+	clr.b	Sound+SND_PULSE(a5)		; and the formation's pulse stops
+	endc
 	bra	.Send
 .Paced	moveq	#0,d3
 	move.b	PARM_BOSS(a1),d3
@@ -359,6 +364,12 @@ Boss:	tst.b	Capturing(a5)
 	; d4 = who leads, a3 = script, d5 = its escorts' bits, d3 = how many of them go,
 	; d2 = its rightmost escort's number
 .Queue	move.w	d4,d7				; the leader, kept for its side and its fighter
+	; a boss shot while diving scores by how many set off with it
+	moveq	#FIGHTER_MASK,d0
+	and.w	d4,d0
+	lsr.w	#1,d0
+	lea	BossBonus(a5),a0
+	move.b	d3,(a0,d0.w)
 	lea	DiveQueue(a5),a2
 	bsr	Enqueue
 	lea	Escorts+2(pc),a1
@@ -464,13 +475,7 @@ DiveLaunch:
 	moveq	#0,d2
 	moveq	#FIRST_QUARTER,d3
 	bsr	FlightLaunch
-	if	STAGE_TEST
-	move.l	StageLogPtr(a5),a1
-	move.w	FlightFrame(a5),(a1)+
-	move.b	#STAGE_LAUNCHED,(a1)+
-	move.b	d4,(a1)+
-	move.l	a1,StageLogPtr(a5)
-	endc
+	LOG	#STAGE_LAUNCHED,d4
 	; it starts where it is: x = HomeX[column], y = 352 - HomeX[row], in pixels
 	lea	HomeRc(pc),a1
 	moveq	#0,d2

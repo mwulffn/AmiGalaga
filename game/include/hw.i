@@ -6,6 +6,7 @@ CUSTOM		equ	$dff000
 dmaconr		equ	$002
 vposr		equ	$004
 vhposr		equ	$006
+joy1dat		equ	$00c
 intenar		equ	$01c
 intreqr		equ	$01e
 bltcon0		equ	$040
@@ -95,5 +96,9 @@ CIA_E_CLOCK	equ	709379		; PAL: timer ticks per second
 
 CIAA_PRA	equ	$bfe001
 CIAAB_FIRE0	equ	6		; left mouse button, active low
+CIAAB_FIRE1	equ	7		; the joystick's fire button, active low
+; joy1dat
+JOYB_RIGHT	equ	1
+JOYB_LEFT	equ	9
 
 PAL_LINES	equ	313

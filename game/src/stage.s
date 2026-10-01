@@ -19,6 +19,7 @@
 	include	"flight.i"
 	include	"sound.i"
 	include	"state.i"
+	include	"macros.i"
 	include	"gfx.i"
 
 	xdef	StageInit
@@ -208,13 +209,7 @@ StageTick:
 	moveq	#0,d4
 	move.b	(a2),d4				; the object
 	addq.b	#1,Alive(a5)
-	if	STAGE_TEST
-	move.l	StageLogPtr(a5),a1
-	move.w	FlightFrame(a5),(a1)+
-	move.b	#STAGE_LAUNCHED,(a1)+
-	move.b	d4,(a1)+
-	move.l	a1,StageLogPtr(a5)
-	endc
+	LOG	#STAGE_LAUNCHED,d4
 	; EntryPaths[path] = script, pair of start positions; a pair is plain then mirrored
 	moveq	#PATH_MASK,d1
 	and.w	d0,d1

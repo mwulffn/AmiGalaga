@@ -31,10 +31,15 @@ FLIGHT_FLYING	equ	0
 FLIGHT_HOME	equ	1		; reached its place in the formation
 FLIGHT_GONE	equ	2		; its script ended
 
-; a STAGE_TEST build logs these two, launches, and a checksum of the formation's table each frame
+; a STAGE_TEST build logs these two, launches, a checksum of the formation's table each frame,
+; a boss's first hit, every enemy destroyed, and the score's last four digits after it
 STAGE_LAUNCHED	equ	0
 STAGE_FORMATION	equ	3
-STAGE_LOG_BYTES	equ	4*8192
+STAGE_KILLED	equ	4
+STAGE_BOSS_HIT	equ	5
+STAGE_SCORE_HI	equ	6
+STAGE_SCORE_LO	equ	7
+STAGE_LOG_BYTES	equ	4*12288
 
 ; fl_flags bits
 FLB_ACTIVE	equ	0
@@ -67,3 +72,23 @@ fl_xo		rs.b	1
 fl_obj		rs.b	1		; which enemy this is: selects its place in the formation
 fl_pad		rs.b	1
 fl_SIZEOF	rs.b	0
+
+; the fighter's shots: where each is, as the arcade's sprite hardware counts
+SHOTS		equ	2
+	rsreset
+sh_x		rs.w	1			; 0: not in flight
+sh_y		rs.w	1
+sh_SIZEOF	rs.b	0
+
+; an enemy blowing up, and the score that may appear where it was
+BLASTS		equ	8
+	rsreset
+bl_x		rs.w	1			; in buffer pixels and rows, of the 16x16 it filled
+bl_y		rs.w	1
+bl_image	rs.l	1			; what it looked like, shown until the blast starts
+bl_live		rs.b	1
+bl_obj		rs.b	1			; which enemy: decides on which frames it steps
+bl_step		rs.b	1
+bl_popup	rs.b	1			; which score follows: 0 = 400, 1 = 800, 2 = 1600; negative: none
+bl_SIZEOF	rs.b	0
+POPUP_NONE	equ	-1

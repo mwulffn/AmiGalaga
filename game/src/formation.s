@@ -23,6 +23,9 @@
 ; arcade's first row is for captured fighters and has no strip. Below the
 ; bosses the rows are 12 pixels apart at rest, so those strips are 12
 ; lines: butterflies and bees are 10 rows tall when upright.
+;
+; A row's enemies all look alike, except that a boss that has been hit
+; once shows the next kind's image (FormAlt).
 
 	include	"config.i"
 	include	"hw.i"
@@ -38,6 +41,7 @@
 	xdef	FormationDraw
 	xdef	FormationTick
 	xref	BreathePatterns
+	xref	HomeRc
 	xref	Enemies
 
 CELL		equ	16				; an enemy's width and height
@@ -81,6 +85,8 @@ RELOAD_STEPS	equ	8				; breathing steps between new bit patterns
 BREATHE_STEPS	equ	32				; steps out, and back
 CLOSING		equ	7				; FormCount: on the way back in
 PATTERN_SETS	equ	4
+PLACED		equ	$60				; objects below this have a place in the formation
+ALT_IMAGE	equ	1<<KIND_SHIFT			; from a row's image to its other one: the next kind
 
 	section	code,code
 
@@ -105,6 +111,29 @@ FormationInit:
 	moveq	#FORM_ROWS-1,d0
 .Empty	clr.w	(a0)+
 	dbf	d0,.Empty
+	lea	FormAlt(a5),a0
+	moveq	#FORM_ROWS-1,d0
+.Plain	clr.w	(a0)+
+	dbf	d0,.Plain
+	; which object has each place: from the arcade's table of each object's row and column
+	lea	HomeRc(pc),a0
+	lea	FormObj(a5),a1
+	moveq	#0,d0
+.Object	moveq	#0,d1
+	move.b	(a0)+,d1
+	moveq	#0,d2
+	move.b	(a0)+,d2
+	sub.w	#HOME_ROWS+2*STRIP_ROWS,d1
+	bcs	.NoPlace			; a captured fighter's row
+	lsr.w	#1,d1
+	mulu.w	#HOME_COLUMNS,d1
+	lsr.w	#1,d2
+	add.w	d2,d1
+	move.b	d0,(a1,d1.w)
+.NoPlace
+	addq.w	#2,d0
+	cmp.w	#PLACED,d0
+	bne	.Object
 	clr.w	FormDrift(a5)
 	st	FormDrifting(a5)
 	clr.b	FormLeftwards(a5)
@@ -149,6 +178,8 @@ FormationCompose:
 	add.w	d0,d0
 	lea	FormPresent(a5),a0
 	move.w	(a0,d0.w),d7			; who is there
+	lea	FormAlt(a5),a0
+	move.w	(a0,d0.w),-(sp)			; and who shows the row's other image
 	moveq	#0,d3
 	move.b	HOME_ROWS+2*STRIP_ROWS(a2,d0.w),d3
 	add.w	row_dy(a3),d3
@@ -175,6 +206,7 @@ FormationCompose:
 	move.w	#IMAGE_MODULO,bltamod(a6)
 	move.w	d1,bltcmod(a6)
 	move.w	d1,bltdmod(a6)
+	move.w	(sp)+,d0
 	move.w	row_columns(a3),d1
 	subq.w	#1,d1
 .Cell	btst	d5,d7
@@ -195,9 +227,13 @@ FormationCompose:
 	lsr.w	#3,d3
 	and.l	#$fffe,d3
 	add.l	a1,d3				; the word in the strip
-	WAITBLIT
+	move.l	a0,d2
+	btst	d5,d0
+	beq	.Image
+	add.l	#ALT_IMAGE,d2
+.Image	WAITBLIT
 	move.l	d4,bltcon0(a6)
-	move.l	a0,bltapt(a6)
+	move.l	d2,bltapt(a6)
 	move.l	d3,bltcpt(a6)
 	move.l	d3,bltdpt(a6)
 	move.w	row_cell(a3),bltsize(a6)

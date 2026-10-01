@@ -13,7 +13,6 @@
 	xref	VideoWaitFrame
 	xref	VideoFlip
 	xref	StarsInit
-	xref	DemoFrame
 	xref	GameInit
 	xref	GameFrame
 	xref	PanelInit
@@ -47,9 +46,6 @@ Main:	bsr	StarsInit
 	bsr	GameInit
 	bsr	PanelInit
 	bsr	SpritesInit
-	move.w	#SHIP_X_MAX/2,ShipX(a5)
-	move.l	#$00640000+100,Bullets(a5)	; until there is a game: two bullets in flight
-	move.l	#$00640000+220,Bullets+4(a5)
 	bsr	SoundInit
 	if	FLIGHT_TEST
 	bsr	FlightTest
@@ -65,7 +61,6 @@ Main:	bsr	StarsInit
 
 	bsr	SpritesUpdate
 	bsr	PanelScore
-	bsr	DemoFrame
 	bsr	GameFrame
 	WAITBLIT				; nothing may still be drawing when the screens swap
 

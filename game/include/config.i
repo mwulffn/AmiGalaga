@@ -33,9 +33,5 @@ STAGE_TEST	equ	0		; 1: with TEST_FRAMES, report every launch and landing
 RANK		equ	3		; the arcade's difficulty switch: which row of the stage
 	endc				;    index it uses. 3 is the arcade's (and MAME's) default
 
-	ifnd	DEMO_STAGES
-DEMO_STAGES	equ	3		; until there is a game: the stages it cycles through
-	endc
-
 ; a build that writes a report for the host
 REPORTING	equ	TEST_FRAMES+SOUND_TEST+FLIGHT_TEST

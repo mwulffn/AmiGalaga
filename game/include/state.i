@@ -20,7 +20,17 @@ FormPresent	rs.w	FORM_ROWS	;   per row: bit n set if the enemy in column n is th
 Score		rs.l	1		; six decimal digits, two to a byte, in the low three bytes
 ScoreText	rs.b	8		; scratch for printing it
 ShipX		rs.w	1		; the fighter, in playfield pixels
-Bullets		rs.w	4		; x, y of each of its two bullets; y < 0: not there
+Shots		rs.b	SHOTS*sh_SIZEOF	; its shots
+PadLeft		rs.b	1		; player: nonzero while the stick is held left,
+PadRight	rs.b	1		;   right
+FireWas		rs.b	1		;   nonzero if the button was down last frame
+FirePending	rs.b	1		;   nonzero: a press that has not fired its shot yet
+MoveFlag	rs.b	1		;   alternates while the stick is held: 1 pixel, then 2
+ShotHit		rs.b	1		; shots: nonzero once the shot being tested has hit something
+ShotFlying	rs.b	1		;   nonzero if what it destroyed was flying: that scores double
+PlayerPad	rs.b	1
+TicksNow	rs.w	1		; arcade frames that began in this displayed frame
+ScoreStep	rs.l	1		; scratch for adding to the score
 Clock		rs.w	1		; fifths of an arcade frame until the next one begins
 ArcadeFrame	rs.w	1		; arcade frames so far: what the arcade's own timers count
 Stage		rs.w	1		; 1 is the first
@@ -48,6 +58,10 @@ StageParms	rs.b	STAGE_PARMS	; the stage's ten settings, see dives.s
 DiveTimers	rs.b	DIVE_KINDS	; dives: per kind (boss, butterfly, bee), 16-frame periods to its next
 DiveReload	rs.b	DIVE_KINDS	;   and what the timer restarts from
 DiveQueue	rs.b	DIVE_QUEUE*dq_SIZEOF	; a boss and those going with it, waiting to leave
+BossBonus	rs.b	4		; dives: per boss, how many escorts it last left with
+FormAlt		rs.w	FORM_ROWS	; formation: per row, bit n set if column n shows its row's other image
+FormObj		rs.b	FORM_ROWS*HOME_COLUMNS	; which object has each place
+Blasts		rs.b	BLASTS*bl_SIZEOF
 FormBits	rs.b	HOME_ENTRIES	; breathing: per column and row, bit 0 set if it moves this step
 StageLogPtr	rs.l	1		; STAGE_TEST builds: next free entry of the log
 FlightFrame	rs.w	1		; flight: frames stepped; its low bit picks which speed a step uses

@@ -1,6 +1,6 @@
 #!/bin/sh
-# Check the stage (launcher, formation, dives, flights, landings) against the models:
-# a test build logs every launch and landing over the first stages in FS-UAE,
+# Check the stage (launcher, formation, dives, flights, shots, scoring) against the models:
+# a test build plays itself and logs what happens over the first stages in FS-UAE,
 # and tools/stagetest.py replays the same frames. Run for the exact build
 # and the PAL build.
 set -e

@@ -14,10 +14,13 @@
 	include	"flight.i"
 	include	"sound.i"
 	include	"state.i"
+	include	"macros.i"
 	include	"gfx.i"
 
 	xdef	GameInit
 	xdef	GameFrame
+	xdef	FlightPlace
+	xdef	FlightImage
 	xref	StageInit
 	xref	StageTick
 	xref	FlightStep
@@ -28,14 +31,21 @@
 	xref	FormationDraw
 	xref	FormationTick
 	xref	DivesTick
+	xref	PlayerInit
+	xref	PlayerInput
+	xref	PlayerTick
+	xref	ShotsTick
+	xref	BlastsTick
+	xref	BlastsDraw
 	xref	HomeRc
 	xref	Enemies
 	if	STAGE_TEST
 	xdef	StageLog
 	endc
 
-STAGE_PAUSE	equ	1500			; until there is a game: frames a stage goes on once all are in,
-EMPTY_PAUSE	equ	100			;   or if nobody stayed
+STAGE_GAP	equ	100			; frames between one stage's end and the next one's start
+FIRST_ENEMY	equ	$08			; objects below this are captured fighters
+TRANSIENT_MASK	equ	$38			; objects $38-$3f only fly through
 UPRIGHT		equ	6*FRAME_SIZE		; an enemy's upright image
 FLYING_BITS	equ	1<<FLB_ACTIVE|1<<FLB_LANDED
 QUADRANT_BITS	equ	2
@@ -44,7 +54,6 @@ HALF_STEP	equ	21			; half of 15 degrees, where a quadrant is 256
 FLIP_SHIFT	equ	11			; FLIP_SIZE as a shift
 POSITION_SHIFT	equ	7			; a flight's position to pixels
 X_MASK		equ	$ff			; the arcade's sprites have 8 bits of x
-FIGHTER_X	equ	17			; from the fighter's left edge to its x as the scripts see it
 
 	section	code,code
 
@@ -62,6 +71,8 @@ GameInit:
 	if	STAGE_TEST
 	move.l	#StageLog,StageLogPtr(a5)
 	endc
+	clr.l	Score(a5)
+	bsr	PlayerInit
 	moveq	#1,d0
 	bra	StageInit
 
@@ -73,8 +84,10 @@ GameInit:
 ; Clobbers: d0-d7, a0-a3
 GameFrame:
 	move.w	ShipX(a5),d0
-	add.w	#FIGHTER_X,d0
+	add.w	#DISPLAY_SX,d0
 	move.b	d0,FighterX(a5)
+	bsr	PlayerInput
+	clr.w	TicksNow(a5)
 
 	; an arcade frame for each one that begins in this displayed frame
 .Tick	move.w	Clock(a5),d6
@@ -83,6 +96,9 @@ GameFrame:
 	bsr	StageTick
 	bsr	DivesTick
 	bsr	FormationTick
+	bsr	PlayerTick
+	bsr	BlastsTick
+	addq.w	#1,TicksNow(a5)
 	addq.w	#1,ArcadeFrame(a5)
 	addq.w	#FRAME_FIFTHS,Clock(a5)
 	bra	.Tick
@@ -96,11 +112,7 @@ GameFrame:
 	add.b	(a0),d0
 	addq.l	#2,a0
 	dbf	d1,.Sum
-	move.l	StageLogPtr(a5),a1
-	move.w	FlightFrame(a5),(a1)+
-	move.b	#STAGE_FORMATION,(a1)+
-	move.b	d0,(a1)+
-	move.l	a1,StageLogPtr(a5)
+	LOG	#STAGE_FORMATION,d0
 	endc
 
 	lea	Flights(a5),a0
@@ -108,22 +120,32 @@ GameFrame:
 .Fly	btst	#FLB_ACTIVE,fl_flags(a0)
 	beq	.Flown
 	bsr	FlightStep
-	if	STAGE_TEST
 	tst.w	d0
-	beq	.Logged
-	move.l	StageLogPtr(a5),a1
-	move.w	FlightFrame(a5),(a1)+
-	move.b	d0,(a1)+
-	move.b	fl_obj(a0),(a1)+
-	move.l	a1,StageLogPtr(a5)
-.Logged
-	endc
+	beq	.Flown
+	LOG	d0,fl_obj(a0)
 	subq.w	#FLIGHT_HOME,d0
-	bne	.Flown
+	bne	.Left
 	bset	#FLB_LANDED,fl_flags(a0)
+	bra	.Flown
+	; its script ended: it has left the stage, and if it was one of the stage's own it is one fewer
+.Left	move.b	fl_obj(a0),d0
+	cmp.b	#FIRST_ENEMY,d0
+	bcs	.Flown
+	and.b	#TRANSIENT_MASK,d0
+	cmp.b	#TRANSIENT_MASK,d0
+	beq	.Flown
+	subq.b	#1,Alive(a5)
 .Flown	lea	fl_SIZEOF(a0),a0
 	cmp.l	a3,a0
 	bne	.Fly
+
+	; the shots move, and hit, once for each arcade frame
+	move.w	TicksNow(a5),d0
+	bra	.Shoot
+.Shots	move.w	d0,-(sp)
+	bsr	ShotsTick
+	move.w	(sp)+,d0
+.Shoot	dbf	d0,.Shots
 	addq.w	#1,FlightFrame(a5)
 
 	; A row's strip is rebuilt when someone has just left it; otherwise one row each frame in
@@ -169,7 +191,7 @@ GameFrame:
 	and.b	fl_flags(a3),d4
 	beq	.Drawn
 	move.l	a3,a0
-	bsr	Place
+	bsr	FlightPlace
 	cmp.w	#LAST_FLYER_X,d0
 	bhi	.Drawn
 	cmp.w	#LAST_FLYER_Y,d1
@@ -178,27 +200,27 @@ GameFrame:
 	bsr	FlyerDraw
 .Drawn	lea	fl_SIZEOF(a3),a3
 	dbf	d7,.Draw
+	bsr	BlastsDraw
 	move.w	(sp)+,d6
 
-	; until there is a game: once everyone is in, let them attack a while, then the next stage
+	; the stage is over once every wave is in and nothing of it is left: on to the next
 	tst.b	WavesIn(a5)
 	beq	.Busy
-	lea	FormPresent(a5),a0
-	rept	FORM_ROWS
-	or.w	(a0)+,d6
-	endr
-	move.w	#STAGE_PAUSE,d1
+	tst.b	Alive(a5)
+	bne	.Busy
+	lea	Blasts(a5),a0
+	moveq	#BLASTS-1,d0
+.Blast	tst.b	bl_live(a0)
+	bne	.Busy
+	lea	bl_SIZEOF(a0),a0
+	dbf	d0,.Blast
 	tst.w	d6
-	bne	.Pause
-	moveq	#EMPTY_PAUSE,d1			; nobody stayed: a challenging stage
-.Pause	addq.w	#1,StageWait(a5)
-	cmp.w	StageWait(a5),d1
-	bhi	.Busy
+	bne	.Busy
+	addq.w	#1,StageWait(a5)
+	cmp.w	#STAGE_GAP,StageWait(a5)
+	bcs	.Busy
 	move.w	Stage(a5),d0
 	addq.w	#1,d0
-	cmp.w	#DEMO_STAGES,d0
-	bls	StageInit
-	moveq	#1,d0
 	bra	StageInit
 .Busy	rts
 
@@ -290,12 +312,13 @@ FlightImage:
 FlipOf:	dc.b	2,0,1,3
 
 ;--
-; Place
+; FlightPlace
 ; Where a flight is drawn.
 ; In:       a0 = its slot, a5 = state
 ; Out:      d0.w = x in buffer pixels, d1.w = y in buffer rows
 ; Clobbers: d2-d3, a1-a2
-Place:	lea	HomeRc(pc),a1
+FlightPlace:
+	lea	HomeRc(pc),a1
 	moveq	#0,d2
 	move.b	fl_obj(a0),d2
 	add.w	d2,a1				; its row and column in the formation's tables

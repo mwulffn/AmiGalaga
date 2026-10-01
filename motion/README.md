@@ -68,6 +68,11 @@ are as the arcade's; the misses are inputs that changed within a frame.
         -sound none -nothrottle -skip_gameinfo -autoboot_script trace_game.lua
     python3 dives.py ../original/galaga.zip game.bin
 
+`shots.py` is the model of the fighter's shots: how they move, what they
+hit, and what it scores. Its hit box, tested on every shot, enemy and
+frame of the firing trace, finds 333 of the arcade's 336 hits and 3 the
+arcade did not have (positions that changed within the frame).
+
 ## Validation
 
 `validate.py` against 38,600 frames of MAME (stages 1 to about 9, bot

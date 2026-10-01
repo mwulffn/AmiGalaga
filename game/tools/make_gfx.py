@@ -12,6 +12,8 @@ Reads the arcade ROM zip and writes:
                open and closed) four times over: as they are, flipped top to
                bottom, flipped left to right, and both. That is how the
                arcade's sprite hardware gets all 24 directions from them.
+               After the enemies come the explosion's images and the score
+               pop-ups, one image each.
   sprites.bin  fighter + bullet as 2-plane hardware sprite image words
   font.bin     1-bit 8x8 glyphs for ASCII 32..90 (space, digits, A-Z)
   gfx.i        vasm include with frame offsets and the palettes
@@ -42,6 +44,12 @@ ENEMIES = [
     ("enterprise", 2, 0x78, 7),
     ("fighter", 9, 0x00, 8),  # in playfield colours, for the lives icons
 ]
+# Explosion: three 16x16 frames, then two 32x32 ones as four tiles each (the arcade doubles the
+# sprite: tile n is top right, n+1 bottom right, n+2 top left, n+3 bottom left on the upright
+# screen), listed here top left, top right, bottom left, bottom right.
+BLAST = [(t, 10) for t in (0x41, 0x42, 0x43, 0x46, 0x44, 0x47, 0x45, 0x4A, 0x48, 0x4B, 0x49)]
+# Score pop-ups for a boss shot while diving: 400, 800, 1600; and 1000.
+POINTS = [(0x35, 10), (0x37, 13), (0x3A, 14), (0x38, 13)]
 FIGHTER = (9, 0x06)  # colour code, tile
 BULLET = (9, 0x30)
 
@@ -134,6 +142,19 @@ def main() -> None:
                         data += w.to_bytes(2, "big")
                         mask += m.to_bytes(2, "big")
                 frames += data + mask
+    for label, tiles in (("BLAST", BLAST), ("POINTS", POINTS)):
+        inc.append(f"GFX_{label}\tequ\t{len(frames)}")
+        for t, code in tiles:
+            cols = colours(code)
+            pix = [[0 if cols[p] is None else PALETTE.index(cols[p]) for p in r] for r in tile_pens(rom, t)]
+            sheet.append(pix)
+            for row in pix:
+                m = sum(1 << (15 - x) for x in range(16) if row[x])
+                frames += b"".join(
+                    sum(1 << (15 - x) for x in range(16) if row[x] >> plane & 1).to_bytes(2, "big") for plane in range(4)
+                )
+            for row in pix:
+                frames += sum(1 << (15 - x) for x in range(16) if row[x]).to_bytes(2, "big") * 4
     (out / "enemies.bin").write_bytes(frames)
 
     spr = bytearray()

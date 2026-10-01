@@ -23,7 +23,7 @@ DISPLAY_TOP	equ	44			; raster line of the first displayed line
 
 ; What goes with a screen buffer. FrontScreen and BackScreen in the state
 ; point at one of these each.
-MAX_FLYERS	equ	32
+MAX_FLYERS	equ	48
 	rsreset
 scr_bitmap	rs.l	1			; the buffer, in chip RAM
 scr_score	rs.l	1			; the score its panel shows
@@ -50,6 +50,8 @@ FLIGHT_TOP	equ	312
 LAST_FLYER_X	equ	GUARD+PLAY_WIDTH-1	; a flyer further right is not on the screen
 LAST_FLYER_Y	equ	SCREEN_ROWS-16		; nor one further down
 
-; the player's fighter
-SHIP_Y		equ	240			; its display line
-SHIP_X_MAX	equ	PLAY_WIDTH-16
+; the player's fighter and its shots are placed as the arcade's sprite hardware counts, too
+SHIP_SY		equ	297			; the fighter's y
+DISPLAY_SY	equ	SPRITE_Y+GUARD		; sprite y of the first displayed line
+DISPLAY_SX	equ	SPRITE_X+GUARD		; sprite x of the playfield's left edge
+SHIP_Y		equ	SHIP_SY-DISPLAY_SY	; its display line

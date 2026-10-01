@@ -1,0 +1,456 @@
+; Player: the fighter, its shots, and what they hit.
+;
+; Ported from the arcade (the model is motion/shots.py). The fighter moves
+; one pixel and two pixels on alternate arcade frames while the stick is
+; held. Two shots can be in flight; a shot climbs 6 lines an arcade frame
+; and is gone above the screen. Each frame, after it has moved, a shot hits
+; every enemy within 5 pixels to the side and from 6 above to 5 below (the
+; arcade halves the y's, so in two-line steps). A boss takes two hits; the
+; first only changes its colour. A destroyed enemy scores by its kind,
+; double if it was flying, and a boss shot while diving scores by how many
+; escorts it set off with instead: 400, 800 or 1600.
+;
+; Where this differs from the arcade, by decision: both shots share one
+; hardware sprite, which needs them 9 lines apart, so a second press that
+; comes sooner than that waits a frame or two instead of firing at once.
+; A press while both shots are in flight is lost, as in the arcade.
+
+	include	"config.i"
+	include	"hw.i"
+	include	"layout.i"
+	include	"flight.i"
+	include	"sound.i"
+	include	"state.i"
+	include	"macros.i"
+	include	"gfx.i"
+
+	xdef	PlayerInit
+	xdef	PlayerInput
+	xdef	PlayerTick
+	xdef	ShotsTick
+	xref	FlightPlace
+	xref	FlightImage
+	xref	Enemies
+
+SHIP_LEFT	equ	$12			; the fighter's sprite x stays within these
+SHIP_RIGHT	equ	$e1
+SHOT_SPEED	equ	6			; lines per arcade frame
+SHOT_TOP	equ	40			; a shot above this sprite y is gone
+SHOT_GAP	equ	9			; lines the first shot must be up before the second fires
+HIT_ASIDE	equ	5			; a hit is within this many pixels to either side,
+HIT_ABOVE	equ	3			;   and with the enemy at most this far above
+HIT_BELOW	equ	2			;   or below, in two-line steps
+SY_MASK		equ	$1ff			; the arcade's sprite y has 9 bits
+AUTO_FIRE	equ	16			; test builds: frames between presses
+UPRIGHT		equ	6*FRAME_SIZE		; an enemy's upright image
+BOSS_MASK	equ	7			; a boss's number is (object and this) / 2
+; the arcade's colour sets, which decide an enemy's sound and score
+BLUE_BOSS	equ	1
+RED_FIGHTER	equ	7
+
+	section	code,code
+
+;--
+; PlayerInit
+; The fighter in the middle, no shots in flight.
+; In:       a5 = state
+; Out:      -
+; Clobbers: a0
+PlayerInit:
+	move.w	#(PLAY_WIDTH-16)/2,ShipX(a5)
+	lea	Shots(a5),a0
+	clr.l	(a0)+
+	clr.l	(a0)
+	clr.b	PadLeft(a5)
+	clr.b	FireWas(a5)
+	clr.b	FirePending(a5)
+	clr.b	MoveFlag(a5)
+	if	REPORTING
+	st	PadRight(a5)
+	else
+	clr.b	PadRight(a5)
+	endc
+	rts
+
+;--
+; PlayerInput
+; Once a displayed frame: read the stick and the fire button.
+; In:       a5 = state, a6 = CUSTOM
+; Out:      -
+; Clobbers: d0-d1
+PlayerInput:
+	if	REPORTING
+	; a test build plays itself: from side to side, a press every AUTO_FIRE frames
+	move.w	ShipX(a5),d0
+	add.w	#DISPLAY_SX,d0
+	cmp.w	#SHIP_RIGHT,d0
+	bcs	.NotRight
+	st	PadLeft(a5)
+	clr.b	PadRight(a5)
+.NotRight
+	cmp.w	#SHIP_LEFT,d0
+	bcc	.NotLeft
+	st	PadRight(a5)
+	clr.b	PadLeft(a5)
+.NotLeft
+	moveq	#AUTO_FIRE-1,d0
+	and.w	FlightFrame(a5),d0
+	bne	.Read
+	st	FirePending(a5)
+	else
+	move.w	joy1dat(a6),d0
+	btst	#JOYB_RIGHT,d0
+	sne	PadRight(a5)
+	btst	#JOYB_LEFT,d0
+	sne	PadLeft(a5)
+	; a press is the button down now and up last frame
+	btst	#CIAAB_FIRE1,CIAA_PRA
+	seq	d0
+	move.b	FireWas(a5),d1
+	move.b	d0,FireWas(a5)
+	not.b	d1
+	and.b	d0,d1
+	beq	.Read
+	st	FirePending(a5)
+	endc
+.Read	rts
+
+;--
+; PlayerTick
+; One arcade frame of the fighter: move it, and fire if a press is waiting.
+; In:       a5 = state
+; Out:      -
+; Clobbers: d0-d2, a0-a1
+PlayerTick:
+	move.w	ShipX(a5),d2
+	add.w	#DISPLAY_SX,d2			; as the arcade counts
+	move.b	PadLeft(a5),d0
+	move.b	PadRight(a5),d1
+	cmp.b	d0,d1
+	beq	.Still
+	; a pixel and two pixels on alternate frames
+	moveq	#1,d0
+	bchg	#0,MoveFlag(a5)
+	beq	.Step
+	moveq	#2,d0
+.Step	tst.b	d1
+	beq	.Left
+	cmp.w	#SHIP_RIGHT,d2
+	bcc	.Fire
+	add.w	d0,d2
+	bra	.Moved
+.Left	cmp.w	#SHIP_LEFT,d2
+	bcs	.Fire
+	sub.w	d0,d2
+.Moved	move.w	d2,d0
+	sub.w	#DISPLAY_SX,d0
+	move.w	d0,ShipX(a5)
+	bra	.Fire
+.Still	clr.b	MoveFlag(a5)
+
+.Fire	tst.b	FirePending(a5)
+	beq	.Done
+	lea	Shots(a5),a0
+	lea	sh_SIZEOF(a0),a1		; the other shot
+	tst.w	sh_x(a0)
+	beq	.Free
+	exg	a0,a1
+	tst.w	sh_x(a0)
+	bne	.Lost				; both are in flight: the press is lost
+.Free	tst.w	sh_x(a1)
+	beq	.Launch
+	; both shots share a sprite: the press waits until the other shot has made room
+	move.w	#SHIP_SY,d0
+	sub.w	sh_y(a1),d0
+	cmp.w	#SHOT_GAP,d0
+	blt	.Done
+.Launch	move.w	d2,sh_x(a0)
+	move.w	#SHIP_SY,sh_y(a0)
+	SOUND	SND_SHOT
+.Lost	clr.b	FirePending(a5)
+.Done	rts
+
+;--
+; ShotsTick
+; One arcade frame of the shots: move them, and see what they hit.
+; In:       a5 = state
+; Out:      -
+; Clobbers: d0-d7, a0-a3
+ShotsTick:
+	lea	Shots(a5),a3
+	bsr	Shot
+	lea	Shots+sh_SIZEOF(a5),a3
+	; falls through
+
+;--
+; Shot
+; Move one shot and destroy what it hits.
+; In:       a3 = the shot, a5 = state
+; Out:      -
+; Clobbers: d0-d7, a0-a2
+Shot:	move.w	sh_x(a3),d6
+	beq	.None
+	subq.w	#SHOT_SPEED,sh_y(a3)
+	move.w	sh_y(a3),d7
+	cmp.w	#SHOT_TOP,d7
+	blt	.Gone
+	lsr.w	#1,d7				; the arcade compares y's halved
+	clr.b	ShotHit(a5)
+
+	; the formation: each row within reach, then whoever is there in it
+	lea	HomeX(a5),a2
+	moveq	#FORM_ROWS-1,d4
+.Row	move.w	d4,d1
+	add.w	d1,d1
+	move.b	HOME_ROWS+2*STRIP_ROWS(a2,d1.w),d0
+	lsr.b	#1,d0
+	sub.b	d7,d0
+	addq.b	#HIT_ABOVE,d0
+	cmp.b	#HIT_ABOVE+HIT_BELOW,d0
+	bhi	.NextRow
+	lea	FormPresent(a5),a0
+	move.w	(a0,d1.w),d3
+	beq	.NextRow
+	moveq	#HOME_COLUMNS-1,d2
+.Column	btst	d2,d3
+	beq	.NextColumn
+	move.w	d2,d1
+	add.w	d1,d1
+	move.b	(a2,d1.w),d0
+	sub.b	d6,d0
+	addq.b	#HIT_ASIDE,d0
+	cmp.b	#2*HIT_ASIDE,d0
+	bhi	.NextColumn
+	bsr	HitPlaced
+.NextColumn
+	dbf	d2,.Column
+.NextRow
+	dbf	d4,.Row
+
+	; the flights, in the air or just landed
+	lea	Flights(a5),a0
+	moveq	#FLIGHT_SLOTS-1,d4
+.Flight	moveq	#1<<FLB_ACTIVE|1<<FLB_LANDED,d0
+	and.b	fl_flags(a0),d0
+	beq	.NextFlight
+	bsr	FlightPlace
+	move.w	d1,d2
+	add.w	#SPRITE_Y,d2
+	and.w	#SY_MASK,d2
+	lsr.w	#1,d2
+	sub.b	d7,d2
+	addq.b	#HIT_ABOVE,d2
+	cmp.b	#HIT_ABOVE+HIT_BELOW,d2
+	bhi	.NextFlight
+	move.w	d0,d2
+	addq.w	#SPRITE_X,d2
+	sub.b	d6,d2
+	addq.b	#HIT_ASIDE,d2
+	cmp.b	#2*HIT_ASIDE,d2
+	bhi	.NextFlight
+	bsr	HitFlying
+.NextFlight
+	lea	fl_SIZEOF(a0),a0
+	dbf	d4,.Flight
+	tst.b	ShotHit(a5)
+	beq	.None
+.Gone	clr.w	sh_x(a3)
+.None	rts
+
+;--
+; HitPlaced
+; A shot has hit an enemy in its place in the formation.
+; In:       d2.w = its column, d4.w = its row, a5 = state
+; Out:      -
+; Clobbers: d0-d1, d5, a0-a1
+HitPlaced:
+	st	ShotHit(a5)
+	clr.b	ShotFlying(a5)
+	bset	d4,FormDirty(a5)		; either way its row's strip changes
+	move.w	d4,d0
+	mulu.w	#HOME_COLUMNS,d0
+	add.w	d2,d0
+	lea	FormObj(a5),a0
+	moveq	#0,d5
+	move.b	(a0,d0.w),d5			; who it is
+	lea	ObjKind(a5),a0
+	move.w	d5,d0
+	lsr.w	#1,d0
+	add.w	d0,a0
+	move.w	d4,d1
+	add.w	d1,d1
+	cmp.b	#KIND_BOSS,(a0)
+	bne	.Destroy
+	; a boss's first hit: it changes colour
+	move.b	#KIND_BOSSHIT,(a0)
+	lea	FormAlt(a5),a1
+	move.w	(a1,d1.w),d0
+	bset	d2,d0
+	move.w	d0,(a1,d1.w)
+	SOUND	SND_HIT_BOSS1
+	LOG	#STAGE_BOSS_HIT,d5
+	rts
+.Destroy
+	lea	FormPresent(a5),a1
+	move.w	(a1,d1.w),d0
+	bclr	d2,d0
+	move.w	d0,(a1,d1.w)
+	; where it was, in the buffer
+	lea	HomeX(a5),a1
+	add.w	d2,a1
+	moveq	#0,d0
+	move.b	(a1,d2.w),d0
+	subq.w	#SPRITE_X,d0
+	lea	HomeX+HOME_ROWS+2*STRIP_ROWS(a5),a1
+	add.w	d4,a1
+	moveq	#0,d1
+	move.b	(a1,d4.w),d1
+	sub.w	#SPRITE_Y,d1
+	sub.l	a1,a1				; upright
+	bra	Destroy
+
+;--
+; HitFlying
+; A shot has hit an enemy in flight, or one that has just landed.
+; In:       a0 = its flight, d0.w = its x in buffer pixels, d1.w = its y in buffer rows,
+;           a5 = state
+; Out:      -
+; Clobbers: d2-d3, d5, a1
+HitFlying:
+	st	ShotHit(a5)
+	moveq	#0,d5
+	move.b	fl_obj(a0),d5
+	lea	ObjKind(a5),a1
+	move.w	d5,d2
+	lsr.w	#1,d2
+	add.w	d2,a1
+	cmp.b	#KIND_BOSS,(a1)
+	bne	.Destroy
+	move.b	#KIND_BOSSHIT,(a1)
+	SOUND	SND_HIT_BOSS1
+	LOG	#STAGE_BOSS_HIT,d5
+	rts
+.Destroy
+	btst	#FLB_ACTIVE,fl_flags(a0)	; one that has landed counts as in its place
+	sne	ShotFlying(a5)
+	; its image as it flies, for the moment before the blast
+	movem.l	d4/a0/a3,-(sp)
+	move.l	a0,a3
+	bsr	FlightImage
+	move.l	a0,a1
+	movem.l	(sp)+,d4/a0/a3
+	clr.b	fl_flags(a0)
+	; falls through
+
+;--
+; Destroy
+; An enemy is destroyed: its sound, its score, and a blast where it was.
+; In:       d0.w = its x in buffer pixels, d1.w = its y in buffer rows, d5.w = object,
+;           a1 = its image, or 0 for its kind's upright one, ShotFlying(a5), a5 = state
+; Out:      -
+; Clobbers: a1
+Destroy:
+	movem.l	d2-d4/a0,-(sp)
+	lea	ObjKind(a5),a0
+	move.w	d5,d2
+	lsr.w	#1,d2
+	moveq	#0,d3
+	move.b	(a0,d2.w),d3			; its kind
+	move.l	a1,d2
+	bne	.Image
+	move.l	d3,d2
+	moveq	#KIND_SHIFT,d4
+	lsl.l	d4,d2
+	add.l	#Enemies+UPRIGHT,d2
+	move.l	d2,a1
+.Image	lea	KindColour(pc),a0
+	move.b	(a0,d3.w),d3			; the arcade's colour set for it
+	; the sound: boss, butterfly, bee by colour
+	if	SOUND_TEST=0
+	moveq	#SND_HIT_BOSS2,d2
+	cmp.b	#RED_FIGHTER,d3
+	beq	.Sound
+	move.b	d3,d2
+	subq.b	#1,d2
+	and.w	#3,d2
+	add.w	d2,d2
+	addq.w	#SND_HIT_BOSS2,d2
+.Sound	lea	Sound(a5),a0
+	move.b	#1,(a0,d2.w)
+	endc
+	; the score: by colour, twice over if it was flying
+	moveq	#0,d2
+	move.b	d3,d2
+	add.w	d2,d2
+	lea	Points(pc),a0
+	move.w	(a0,d2.w),d2
+	moveq	#POPUP_NONE,d4
+	bsr	ScoreAdd
+	tst.b	ShotFlying(a5)
+	beq	.Scored
+	bsr	ScoreAdd
+	cmp.b	#BLUE_BOSS,d3
+	bne	.Scored
+	; a boss shot while diving: more for the escorts it set off with, and the total pops up
+	moveq	#BOSS_MASK,d2
+	and.w	d5,d2
+	lsr.w	#1,d2
+	lea	BossBonus(a5),a0
+	moveq	#0,d4
+	move.b	(a0,d2.w),d4
+	move.w	d4,d2
+	add.w	d2,d2
+	lea	BonusPoints(pc),a0
+	move.w	(a0,d2.w),d2
+	bsr	ScoreAdd
+.Scored	subq.b	#1,Alive(a5)
+	LOG	#STAGE_KILLED,d5
+	LOG	#STAGE_SCORE_HI,Score+2(a5)
+	LOG	#STAGE_SCORE_LO,Score+3(a5)
+	; the blast, if there is room for one
+	lea	Blasts(a5),a0
+	moveq	#BLASTS-1,d2
+.Find	tst.b	bl_live(a0)
+	beq	.Blast
+	lea	bl_SIZEOF(a0),a0
+	dbf	d2,.Find
+	bra	.Out
+.Blast	st	bl_live(a0)
+	move.w	d0,bl_x(a0)
+	move.w	d1,bl_y(a0)
+	move.l	a1,bl_image(a0)
+	move.b	d5,bl_obj(a0)
+	clr.b	bl_step(a0)
+	move.b	d4,bl_popup(a0)
+.Out	movem.l	(sp)+,d2-d4/a0
+	rts
+
+; points by the arcade's colour set, as decimal digits: green boss (not destroyed by one
+; hit), blue boss 150, butterfly 80, bee 50, the challenging stages' three 80, red fighter 500
+Points:	dc.w	0,$0150,$0080,$0050,$0080,$0080,$0080,$0500
+; and what a boss shot while diving adds for 0, 1 or 2 escorts: 400, 800, 1600 in all
+BonusPoints:
+	dc.w	$0100,$0500,$1300
+; the colour set of each kind of enemy (the KIND_ order)
+KindColour:
+	dc.b	0,1,2,3,4,5,6,2,2,2,RED_FIGHTER
+	even
+
+;--
+; ScoreAdd
+; Add to the score.
+; In:       d2.w = points, as four decimal digits, a5 = state
+; Out:      -
+; Clobbers: -
+ScoreAdd:
+	movem.l	a0-a1,-(sp)
+	clr.w	ScoreStep(a5)
+	move.w	d2,ScoreStep+2(a5)
+	lea	Score+4(a5),a0
+	lea	ScoreStep+4(a5),a1
+	and.b	#$ef,ccr			; no carry in
+	abcd	-(a1),-(a0)
+	abcd	-(a1),-(a0)
+	abcd	-(a1),-(a0)
+	movem.l	(sp)+,a0-a1
+	rts

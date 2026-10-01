@@ -72,6 +72,7 @@ class Dives:
     capture_boss: int = 0
     toggle: int = 0
     special: int = 0  # the enemy that is about to transform does not dive
+    bonus: list[int] = field(default_factory=lambda: [0] * 4)  # per boss: escorts it last left with
 
     def settings(self, stage_time: int, alive: int, last_stand: bool) -> None:
         """Every frame: the limits and reload values for the state of the stage ($0857)."""
@@ -149,6 +150,7 @@ class Dives:
     def send(self, boss: int, script: int, escorts: list[int], state: dict[int, int]) -> None:
         """Queue a boss, its escorts and its captured fighter: they leave on successive frames."""
         side = 0x80 if boss & 2 else 0
+        self.bonus[(boss & 7) >> 1] = len(escorts)  # decides what the boss scores if shot on the way
         group = [boss, *escorts]
         if state[boss & 7] == IN_PLACE:
             group.append(boss & 7)

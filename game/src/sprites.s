@@ -1,15 +1,15 @@
 ; Sprites: the player's fighter and bullets, as hardware sprites.
 ;
-; The game says where they are in the state (ShipX, Bullets); SpritesUpdate
+; The game says where they are in the state (ShipX, Shots); SpritesUpdate
 ; turns that into the sprites' control words. Call it straight after the
 ; vertical blank: the hardware reads the control words near the top of
 ; the frame.
 ;
 ; Sprite 0 is the fighter. Sprite 2 shows both bullets, one below the
 ; other: a sprite can be reused further down the screen as long as there
-; is a line between the two images. The bullet's image is 8 lines tall
-; and two bullets are normally 18 or more apart; if they are ever closer,
-; the lower one is not shown that frame.
+; is a line between the two images. The bullet's image is 8 lines tall,
+; and the game does not fire a second shot until the first is 9 lines up
+; (player.s), so both always fit.
 
 	include	"config.i"
 	include	"hw.i"
@@ -31,6 +31,7 @@ BULLET_TOP	equ	4			; the bullet's image starts this far down its 16x16 cell
 BULLET_LINES	equ	8
 LINE_WORDS	equ	2			; a sprite line is two words
 CONTROL_WORDS	equ	2
+NOT_SHOWN	equ	-$4000			; a display line no shot can have
 
 	section	code,code
 
@@ -61,33 +62,49 @@ SpritesUpdate:
 	lea	Fighter,a0
 	bsr	Place
 
-	; the upper bullet goes first in the sprite; a bullet with a negative y is not there
-	movem.w	Bullets(a5),d0-d1/d4-d5		; x, y of each
-	tst.w	d1
-	bmi	.Swap
-	tst.w	d5
-	bmi	.Ordered
+	; a shot's playfield x and display line; one that is not in flight, or is above the
+	; display, is not shown
+	movem.w	Shots(a5),d0-d1/d4-d5		; x, y of each, as the arcade counts
+	tst.w	d0
+	beq	.No0
+	sub.w	#DISPLAY_SX,d0
+	sub.w	#DISPLAY_SY,d1
+	cmp.w	#-BULLET_TOP-BULLET_LINES,d1
+	bgt	.Is0
+.No0	move.w	#NOT_SHOWN,d1
+.Is0	tst.w	d4
+	beq	.No1
+	sub.w	#DISPLAY_SX,d4
+	sub.w	#DISPLAY_SY,d5
+	cmp.w	#-BULLET_TOP-BULLET_LINES,d5
+	bgt	.Is1
+.No1	move.w	#NOT_SHOWN,d5
+.Is1	; the upper bullet goes first in the sprite
+	cmp.w	#NOT_SHOWN,d1
+	beq	.Swap
+	cmp.w	#NOT_SHOWN,d5
+	beq	.Ordered
 	cmp.w	d1,d5
 	bge	.Ordered
 .Swap	exg	d0,d4
 	exg	d1,d5
 .Ordered
 	lea	BulletPair,a0
-	tst.w	d1
-	bmi	.None
-	tst.w	d5
-	bmi	.Upper
+	cmp.w	#NOT_SHOWN,d1
+	beq	.None
+	cmp.w	#NOT_SHOWN,d5
+	beq	.Upper
 	move.w	d5,d3
 	sub.w	d1,d3				; how far below the upper one the lower one is
 	cmp.w	#BULLET_LINES+1,d3
 	bge	.Upper
-	moveq	#-1,d5				; too close for one sprite to show both
+	move.w	#NOT_SHOWN,d5			; too close for one sprite to show both
 .Upper	addq.w	#BULLET_TOP,d1
 	moveq	#BULLET_LINES,d2
 	bsr	Place
 	lea	BulletSecond-BulletPair(a0),a0
-	tst.w	d5
-	bmi	.None
+	cmp.w	#NOT_SHOWN,d5
+	beq	.None
 	move.w	d4,d0
 	move.w	d5,d1
 	addq.w	#BULLET_TOP,d1

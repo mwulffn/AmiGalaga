@@ -93,11 +93,23 @@ Sprites pair up and each pair shares three colours.
 | Sprite | Use |
 |---|---|
 | 0, 1 | fighter; second fighter when dual; the player explosion can reuse both |
-| 2, 3 | player bullets, both reused vertically on sprite 2; sprite 3 for the dual shot |
+| 2, 3 | player bullets: both of the fighter's two on sprite 2, one below the other; sprite 3 for the dual fighter's second pair |
 | 4 | captured (red) fighter |
 | 5 | free |
 | 6 | free, two usable colours; candidate for a second star layer |
 | 7 | stars |
+
+Both bullets on one sprite needs them 9 lines apart (the bullet's image
+trimmed to its 8 lines, plus the line the hardware needs between two
+uses of a sprite). A bullet climbs 6 lines an arcade frame and two
+bullets keep their distance, so the only constraint is at launch: a
+second press within a frame or two of the first waits until the first
+shot is 9 lines up, instead of firing at once. **Accepted drift from the
+arcade** (2026-10-01, the user tried the arcade and could not see the
+overlap): at most a frame or two on a double tap faster than a hand can
+do. A press while both shots are in flight is lost, as in the arcade.
+Sprite reuse would also allow more than the arcade's two shots; that
+option is kept for later.
 
 ### Starfield
 - One sprite pixel, repositioned and recoloured per raster line by a
@@ -136,6 +148,21 @@ Sprites pair up and each pair shares three colours.
   over 3,600 frames in both builds: identical.
 - A diver leaves its row's strip in the same frame: a row someone has
   left is rebuilt at once instead of waiting for its turn.
+- The fighter and its shots are the arcade's (`game/src/player.s`, model
+  `motion/shots.py`): a pixel and two pixels on alternate arcade frames
+  while the stick is held; a shot hits every enemy within 5 pixels to
+  the side and from 6 lines above to 5 below; a boss takes two hits;
+  points by kind, double when flying, and 400, 800 or 1600 for a boss
+  shot while diving by the escorts it set off with, shown as a pop-up.
+  The hit box was tested against the firing trace: of 336 arcade hits
+  the model finds 333, and 3 that the arcade did not have. An enemy
+  blows up as in the arcade: three 16x16 frames and two 32x32 ones (four
+  flyers each), stepped every fourth arcade frame.
+- A stage ends when every wave has been launched and nothing of it is
+  left; the next starts 100 frames later (no STAGE n text yet).
+- `test_stage.sh` now runs a build that plays itself (side to side, a
+  press every 16 frames) and compares every launch, landing, hit, kill
+  and score with the models over 3,600 frames in both builds: identical.
 - The stage index row is the arcade's difficulty switch; `RANK` 3 is
   what MAME's default (and the trace) uses.
 - A flying enemy is turned the way it is heading by the arcade's rule
@@ -258,12 +285,13 @@ included, so the real figure is a little lower.
 ## Open
 
 - **The game** (`game/`) so far: startup and shutdown, video, sound,
-  starfield, flyers, formation strips, score panel, fighter and bullet
-  sprites, the flight stepper, the stage entrance, the formation's
-  movement and dives. All to the style guide and linted. It cycles
-  through stages 1 to 3 (`DEMO_STAGES`), giving each 30 seconds of
-  dives; `demo.s` stands in for the player. Stage 1 with entrance and
-  dives takes 146 raster lines on average, 207 at worst.
+  starfield, flyers, formation strips, score panel, the flight stepper,
+  the stage entrance, the formation's movement, dives, and the player:
+  joystick in port 2, shots, hits, explosions, score, and stages that
+  end. All to the style guide and linted. Nothing can hurt the fighter
+  yet. A self-playing run of 2,500 frames takes 145 raster lines on
+  average, 245 at worst (explosions are four flyers each, and a row that
+  is hit is rebuilt at once).
 - **Not in the entrance yet:** the enemies that fly through without
   joining (stage 4 on; needs the arcade's random numbers), the wait
   before the first wave (READY, STAGE n), and holding waves back while
@@ -272,11 +300,11 @@ included, so the real figure is a little lower.
   there is one, `Capturing` stays set and every boss dive is the
   ordinary one, which makes boss dives more repetitive than the
   arcade's), bombs (`BombFlags` is worked out but nothing drops),
-  transforming enemies and their convoys, the pause in attacks while
-  the fighter is out of play, and everything that depends on enemies
-  being shot (the count of those left only goes up).
-- **Game logic** not ported or measured yet: bombs, collisions, capture,
-  scoring, the player.
+  transforming enemies and their convoys, and the pause in attacks while
+  the fighter is out of play.
+- **Game logic** not ported yet: bombs, anything hitting the fighter,
+  lives, capture, the high score, extra fighters by score, the bonus for
+  all 8 of a challenging stage's wave and that stage's results.
 - **Sound cost: deferred, by decision.** The driver works and the user
   has confirmed it sounds right on the emulated A500 (2026-10-01). At up
   to 19 lines a frame it is the largest CPU item measured, and it lifts
@@ -298,7 +326,7 @@ included, so the real figure is a little lower.
   more has to come from turning the tones down. The user approved this
   balance by ear (2026-10-01). Paula's channels are hard-panned (0 and 3 left,
   1 and 2 right) while the arcade is mono; nothing is done about that.
-- **Not drawn yet:** tractor beam, 32x32 explosions, dual fighter,
+- **Not drawn yet:** tractor beam, the fighter's explosion, dual fighter,
   READY/STAGE text.
 - Second star layer on sprite 6: decide once logic shows the frame time
   left.
