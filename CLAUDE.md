@@ -350,7 +350,8 @@ included, so the real figure is a little lower.
 ## Open
 
 - **The game** (`game/`) so far plays from PLAYER 1 to GAME OVER and
-  round again: startup and shutdown, video, sound, starfield, flyers,
+  round again (the user has played it to stage 3 with a gamepad and
+  says it plays really well, 2026-10-01): startup and shutdown, video, sound, starfield, flyers,
   formation strips, the panel (score, high score, stage badges, spare
   fighters), the flight stepper, the stage entrance, the formation's
   movement, dives, bombs, the player (joystick in port 2, shots, hits,
@@ -386,6 +387,9 @@ included, so the real figure is a little lower.
   more has to come from turning the tones down. The user approved this
   balance by ear (2026-10-01). Paula's channels are hard-panned (0 and 3 left,
   1 and 2 right) while the arcade is mono; nothing is done about that.
+  The user compared the game with the arcade in MAME (2026-10-01): the
+  sounds and when they play are right; the arcade's effects sound more
+  "direct" because it is mono, and the difference is accepted.
 - **The fighter may have to move up about 4 lines.** It sits where the
   arcade's does, at display lines 241 to 256, so the last line is off
   the 256-line display and its 32x32 explosion (233 to 264) loses its
