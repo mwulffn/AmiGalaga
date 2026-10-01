@@ -311,6 +311,9 @@ arcade's 8 the worst frame stays inside 313, by 11 lines. The limit is
 A cheaper bomb is possible: its image is 3 pixels wide, so 13 of 16 x
 positions need a one-word blit, not two.
 
+The user keeps the arcade's 8 and accepts the thin margin for now
+(2026-10-01).
+
 A flyer costs about 6.4 lines to draw, the starfield 11-14. The arcade
 never has more than 12 enemies flying at once; the rest of its
 off-formation objects are bombs and explosions.
@@ -359,6 +362,11 @@ included, so the real figure is a little lower.
   more has to come from turning the tones down. The user approved this
   balance by ear (2026-10-01). Paula's channels are hard-panned (0 and 3 left,
   1 and 2 right) while the arcade is mono; nothing is done about that.
+- **The fighter may have to move up about 4 lines.** It sits where the
+  arcade's does, at display lines 241 to 256, so the last line is off
+  the 256-line display and its 32x32 explosion (233 to 264) loses its
+  bottom 8 lines. The user has seen the clipping; not decided yet
+  (2026-10-01).
 - **Not drawn yet:** tractor beam, dual fighter, READY / STAGE n /
   GAME OVER text.
 - Second star layer on sprite 6: decide once logic shows the frame time
