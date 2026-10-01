@@ -96,7 +96,8 @@ To repeat it (the trace is about 17 MB):
 
 ## Not covered yet
 
-- Bombs, the capture sequence, and the transforming enemies and their
+- The capture sequence (in the game, `game/src/capture.s`, but with no
+  model here) and the transforming enemies and their
   convoys. The scripts are extracted; the logic that starts them is in
   the main CPU and has not been ported.
 - Choosing the sprite frame and flips from the heading is ported in the

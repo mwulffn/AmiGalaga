@@ -17,6 +17,7 @@ Reads the arcade ROM zip and writes:
   sprites.bin  fighter + bullet as 2-plane hardware sprite image words
   font.bin     1-bit 8x8 glyphs for ASCII 32..90 (space, digits, A-Z)
   badges.bin   the stage badge tiles: 8 rows of 4 plane bytes each
+  beam.bin     the tractor beam in its three colour sets, 48x80 each
   gfx.i        vasm include with frame offsets and the palettes
   sheet.png    contact sheet for eyeballing (optional, needs pillow)
 """
@@ -126,6 +127,34 @@ def badges(rom: bytes, lut: bytes, pal: bytes) -> bytes:
     return bytes(out)
 
 
+# The tractor beam: 10 rows of 6 character tiles, narrow at the top, in the arcade's three
+# colour sets for it, which it cycles through.
+BEAM_ROWS = [[0x24, t, t + 1, t + 2, t + 3, 0x24] for t in range(0x4E, 0x62, 4)] + [
+    list(range(t, t + 6)) for t in range(0x62, 0x80, 6)
+]
+BEAM_SETS = (0x18, 0x19, 0x1A)
+
+
+def beam(rom: bytes, lut: bytes, pal: bytes) -> bytes:
+    """Three 48x80 images, interleaved: per line, 4 planes of 3 words."""
+    out = bytearray()
+    for code in BEAM_SETS:
+        for tiles in BEAM_ROWS:
+            pens = []
+            for tile in tiles:
+                raster = [[0] * 8 for _ in range(8)]
+                for y in range(8):
+                    for x in range(8):
+                        byte = rom[tile * 16 + y + (8 if x < 4 else 0)]
+                        raster[y][x] = (byte >> (7 - x % 4) & 1) << 1 | (byte >> (3 - x % 4) & 1)
+                pens.append([[raster[7 - x][y] for x in range(8)] for y in range(8)])
+            for y in range(8):
+                row = [PALETTE.index(ocs(pal[(lut[code * 4 + p] & 15) | 0x10])) for t in pens for p in t[y]]
+                for plane in range(4):
+                    out += sum(1 << (47 - x) for x in range(48) if row[x] >> plane & 1).to_bytes(6, "big")
+    return bytes(out)
+
+
 def main() -> None:
     zip_path, out = Path(sys.argv[1]), Path(sys.argv[2])
     out.mkdir(parents=True, exist_ok=True)
@@ -206,7 +235,22 @@ def main() -> None:
                 pens = [0 if cols[p] is None else BANG_PENS[cols[p]] for p in row]
                 for plane in range(2):
                     spr += sum(1 << (15 - x) for x in range(16) if pens[x] >> plane & 1).to_bytes(2, "big")
+    # the fighter in every direction, for when it spins in the tractor beam and for the captured
+    # (red) fighter flying: 8 frames x 4 flips as the enemies have them; the captured fighter
+    # uses the same pens with sprite 4's colour registers
+    inc.append(f"SPR_SPIN\tequ\t{len(spr)}\t; 4 flips x 8 frames x 16 lines")
+    for flip in range(4):
+        for tile in range(8):
+            rows = tile_pens(rom, tile)
+            if flip & 1:
+                rows = rows[::-1]
+            if flip & 2:
+                rows = [r[::-1] for r in rows]
+            for row in rows:
+                for plane in range(2):
+                    spr += sum(1 << (15 - x) for x in range(16) if row[x] >> plane & 1).to_bytes(2, "big")
     (out / "sprites.bin").write_bytes(spr)
+    (out / "beam.bin").write_bytes(beam(char_rom, char_lut, pal))
 
     spr_cols = colours(FIGHTER[0])[1:]
     regs = [(0x180 + 2 * i, c) for i, c in enumerate(PALETTE)]

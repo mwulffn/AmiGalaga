@@ -59,6 +59,44 @@ HighScore	rs.l	1		; as Score
 NextBonus	rs.l	1		; the score that brings the next extra fighter
 TextLines	rs.b	TEXT_LINES*ts_SIZEOF	; text in the playfield
 TextBuf		rs.b	2*TEXT_CELLS+2	; scratch for a line with a number in it
+ShipSY		rs.w	1		; player: the fighter's y as the arcade counts; it changes only in the beam
+ShipCode	rs.b	1		;   which way it is turned: frame 0-6 (6 upright)
+ShipCtrl	rs.b	1		;   and flip, as an enemy's
+ShipGone	rs.b	1		;   nonzero: not drawn (the captured fighter is drawn in its place)
+FireOff		rs.b	1		; capture: nonzero once the fighter is too far up the beam to get away
+BeamColumn	rs.b	1		;   the beam's centre: the sprite x the boss stops at
+BeamStep	rs.b	1		;   the beam's progress: the arcade's counter, 1-10 out, $40 held, $41-$4a in, bit 7 shot
+BeamWait	rs.b	1		;   arcade frames to its next step
+BeamFrames	rs.b	1		;   arcade frames per step
+BeamTop		rs.b	1		;   rows of it showing: from this one
+BeamBottom	rs.b	1		;   to before this one
+BeamWipe	rs.b	1		;   frames the beam's place is still to be cleared after it has gone
+Pulling		rs.b	1		;   nonzero while the fighter is being drawn up
+Connected	rs.b	1		;   nonzero: the boss has the fighter
+ApproachOn	rs.b	1		;   nonzero: a boss is on its way down to capture
+BeamOn		rs.b	1		;   nonzero: the beam is out
+PullOn		rs.b	1		;   nonzero: the fighter is in the beam
+CarryOn		rs.b	1		;   nonzero: the boss is taking the fighter home
+CapText		rs.b	1		;   nonzero: FIGHTER CAPTURED is due
+CapTimer	rs.b	1		;   counts down every 32 arcade frames while it shows
+JoinCount	rs.b	1		;   lines the captured fighter has moved up into its place
+StarBack	rs.b	1		; stars: nonzero: they run backwards (the fighter is being pulled up)
+CaptiveState	rs.b	1		; captured fighter: a CS_ value
+CaptiveObj	rs.b	1		;   its object number: its boss's and 7
+CaptiveCode	rs.b	1		;   which way it is turned: frame 0-7
+CaptiveCtrl	rs.b	1		;   and flip
+CaptiveWhite	rs.b	1		;   nonzero: it is drawn white, rescued
+RescueOn	rs.b	1		; rescue: nonzero while a freed fighter spins and comes down
+RescueStep	rs.b	1		;   0 just freed, 1 spinning, 2 coming down, 3 down
+Docking		rs.b	1		;   nonzero: the fighter makes room, and cannot be steered, fire or be hit
+Dual		rs.b	1		; nonzero: two fighters side by side
+Bang2Step	rs.b	1		; one of two fighters blowing up: steps left, 0 = none
+CaptivePad	rs.b	1
+CaptiveX	rs.w	1		;   where it is, as the arcade's sprite hardware counts
+CaptiveY	rs.w	1
+Bang2X		rs.w	1		;   where it blows up: playfield x
+BeamX		rs.w	1		; capture: the beam's left edge in buffer pixels
+CaptureSlot	rs.l	1		;   the capturing boss's flight
 TicksNow	rs.w	1
 TickFrame	rs.w	1		; which arcade frame the shots, bombs and collisions are at		; arcade frames that began in this displayed frame
 ScoreStep	rs.l	1		; scratch for adding to the score

@@ -34,9 +34,14 @@
 	xref	FlightPlace
 	xref	FlightImage
 	xref	Enemies
+	xref	RescueStart
 
 SHIP_LEFT	equ	$12			; the fighter's sprite x stays within these
 SHIP_RIGHT	equ	$e1
+SHIP_RIGHT_DUAL	equ	$d1			;   and the left one of two within this
+DUAL_STEP	equ	15			; the second fighter is this far right of the first
+BOSS_OBJECTS	equ	$30			; the bosses' object numbers are this and the next 7
+OBJECT_GROUP	equ	$f8
 SHOT_SPEED	equ	6			; lines per arcade frame
 SHOT_TOP	equ	40			; a shot above this sprite y is gone
 SHOT_GAP	equ	9			; lines the first shot must be up before the second fires
@@ -60,8 +65,11 @@ TOUCH_ASIDE	equ	6			; the fighter is hit by anything within this many pixels to 
 TOUCH_UP_DOWN	equ	3			;   and this many two-line steps above or below
 SHIP_HALF_Y	equ	SHIP_SY/2
 NO_OBJECT	equ	$7f			; above every object number
+SHIP_UPRIGHT	equ	6			; the fighter's frame when it points up
 CHALLENGE_MASK	equ	3			; a stage whose number ends in these two bits set is a challenging stage
 WAVE_BONUSES	equ	4
+FIRST_ENEMY	equ	$08			; objects below this are captured fighters
+POPUP_1000	equ	3
 ; the arcade's colour sets, which decide an enemy's sound and score
 BLUE_BOSS	equ	1
 RED_FIGHTER	equ	7
@@ -81,9 +89,18 @@ PlayerInit:
 	clr.b	FighterStep(a5)
 	clr.b	GameTimer(a5)
 	move.b	#RESERVE,Lives(a5)
+	bsr	Upright
+	if	DUAL_START
+	st	Dual(a5)
+	else
+	clr.b	Dual(a5)
+	endc
+	clr.b	Docking(a5)
+	clr.b	Bang2Step(a5)
 	lea	Shots(a5),a0
-	clr.l	(a0)+
-	clr.l	(a0)
+	rept	SHOTS*sh_SIZEOF/2
+	clr.w	(a0)+
+	endr
 	clr.b	PadLeft(a5)
 	clr.b	FireWas(a5)
 	clr.b	FirePending(a5)
@@ -96,12 +113,26 @@ PlayerInit:
 	rts
 
 ;--
+; Upright
+; The fighter as it normally is: at the bottom, pointing up, drawn.
+; In:       a5 = state
+; Out:      -
+; Clobbers: -
+Upright:
+	move.w	#SHIP_SY,ShipSY(a5)
+	move.b	#SHIP_UPRIGHT,ShipCode(a5)
+	clr.b	ShipCtrl(a5)
+	clr.b	ShipGone(a5)
+	rts
+
+;--
 ; PlayerEnter
 ; A game's first fighter comes on: it can move, and after the pause it is in play.
 ; In:       a5 = state
 ; Out:      -
 ; Clobbers: -
 PlayerEnter:
+	bsr	Upright
 	move.w	#RETURN_SX-DISPLAY_SX,ShipX(a5)
 	move.b	#READY_PAUSE,GameTimer(a5)
 	move.b	#PS_READY,PlayerState(a5)
@@ -118,7 +149,11 @@ PlayerInput:
 	; a test build plays itself: from side to side, a press every AUTO_FIRE frames
 	move.w	ShipX(a5),d0
 	add.w	#DISPLAY_SX,d0
-	cmp.w	#SHIP_RIGHT,d0
+	move.w	#SHIP_RIGHT,d1
+	tst.b	Dual(a5)
+	beq	.Edge
+	move.w	#SHIP_RIGHT_DUAL,d1
+.Edge	cmp.w	d1,d0
 	bcs	.NotRight
 	st	PadLeft(a5)
 	clr.b	PadRight(a5)
@@ -164,7 +199,15 @@ PlayerTick:
 	tst.b	GameTimer(a5)
 	beq	.Timed
 	subq.b	#1,GameTimer(a5)
-.Timed	move.b	PlayerState(a5),d0
+	; one of two fighters blowing up: it steps as a lone fighter's explosion does
+.Timed	moveq	#STEP_FRAMES-1,d0
+	and.w	ArcadeFrame(a5),d0
+	subq.w	#STEP_FRAMES-1,d0
+	bne	.State
+	tst.b	Bang2Step(a5)
+	beq	.State
+	subq.b	#1,Bang2Step(a5)
+.State	move.b	PlayerState(a5),d0
 	beq	.Fly				; PS_PLAYING
 	subq.b	#PS_READY,d0
 	beq	.Ready
@@ -188,6 +231,8 @@ PlayerTick:
 	subq.b	#1,FighterStep(a5)
 .Blown	tst.b	GameTimer(a5)
 	bne	.Done
+	tst.b	RescueOn(a5)			; a rescued fighter on its way down takes its place
+	bne	.Done
 	move.b	#PS_OVER,PlayerState(a5)	; no fighter left in reserve: the game is over
 	move.b	#OVER_PAUSE,GameTimer(a5)
 	tst.b	Lives(a5)
@@ -199,6 +244,7 @@ PlayerTick:
 .Returning
 	tst.w	Flying(a5)
 	bne	.Done
+	bsr	Upright
 	move.w	#RETURN_SX-DISPLAY_SX,ShipX(a5)
 	moveq	#TIME_BACK,d0			; the stage gets some of its time back
 	add.b	StageTime(a5),d0
@@ -215,7 +261,9 @@ PlayerTick:
 	move.b	#PS_PLAYING,PlayerState(a5)
 	st	InPlay(a5)
 
-.Fly	move.w	ShipX(a5),d2
+.Fly	tst.b	Docking(a5)			; making room for a rescued fighter: no stick, no fire
+	bne	.Done
+	move.w	ShipX(a5),d2
 	add.w	#DISPLAY_SX,d2			; as the arcade counts
 	move.b	PadLeft(a5),d0
 	move.b	PadRight(a5),d1
@@ -228,9 +276,13 @@ PlayerTick:
 	moveq	#2,d0
 .Step	tst.b	d1
 	beq	.Left
+	cmp.w	#SHIP_RIGHT_DUAL,d2
+	bcs	.Right
+	tst.b	Dual(a5)			; two fighters stop sooner
+	bne	.Fire
 	cmp.w	#SHIP_RIGHT,d2
 	bcc	.Fire
-	add.w	d0,d2
+.Right	add.w	d0,d2
 	bra	.Moved
 .Left	cmp.w	#SHIP_LEFT,d2
 	bcs	.Fire
@@ -260,6 +312,7 @@ PlayerTick:
 	cmp.w	#SHOT_GAP,d0
 	blt	.Done
 .Launch	move.w	d2,sh_x(a0)
+	move.b	Dual(a5),sh_wide(a0)
 	move.w	#SHIP_SY,sh_y(a0)
 	SOUND	SND_SHOT
 .Lost	clr.b	FirePending(a5)
@@ -313,16 +366,40 @@ Shot:	move.w	sh_x(a3),d6
 	add.w	d1,d1
 	move.b	(a2,d1.w),d0
 	sub.b	d6,d0
-	addq.b	#HIT_ASIDE,d0
-	cmp.b	#2*HIT_ASIDE,d0
-	bhi	.NextColumn
+	bsr	Aside
+	beq	.NextColumn
 	bsr	HitPlaced
 .NextColumn
 	dbf	d2,.Column
 .NextRow
 	dbf	d4,.Row
 
+	; the captured fighter in its place above its boss
+	cmp.b	#CS_PLACED,CaptiveState(a5)
+	bne	.Flights
+	move.w	CaptiveY(a5),d0
+	lsr.w	#1,d0
+	sub.b	d7,d0
+	addq.b	#HIT_ABOVE,d0
+	cmp.b	#HIT_ABOVE+HIT_BELOW,d0
+	bhi	.Flights
+	move.w	CaptiveX(a5),d0
+	sub.b	d6,d0
+	bsr	Aside
+	beq	.Flights
+	st	ShotHit(a5)
+	clr.b	ShotFlying(a5)
+	moveq	#0,d5
+	move.b	CaptiveObj(a5),d5
+	move.w	CaptiveX(a5),d0
+	subq.w	#SPRITE_X,d0
+	move.w	CaptiveY(a5),d1
+	sub.w	#SPRITE_Y,d1
+	sub.l	a1,a1
+	bsr	Destroy
+
 	; the flights, in the air or just landed
+.Flights
 	lea	Flights(a5),a0
 	moveq	#FLIGHT_SLOTS-1,d4
 .Flight	moveq	#1<<FLB_ACTIVE|1<<FLB_LANDED,d0
@@ -337,12 +414,13 @@ Shot:	move.w	sh_x(a3),d6
 	addq.b	#HIT_ABOVE,d2
 	cmp.b	#HIT_ABOVE+HIT_BELOW,d2
 	bhi	.NextFlight
-	move.w	d0,d2
-	addq.w	#SPRITE_X,d2
-	sub.b	d6,d2
-	addq.b	#HIT_ASIDE,d2
-	cmp.b	#2*HIT_ASIDE,d2
-	bhi	.NextFlight
+	move.w	d0,d3
+	addq.w	#SPRITE_X,d0
+	sub.b	d6,d0
+	bsr	Aside
+	exg	d0,d3
+	tst.w	d3
+	beq	.NextFlight
 	bsr	HitFlying
 .NextFlight
 	lea	fl_SIZEOF(a0),a0
@@ -351,6 +429,29 @@ Shot:	move.w	sh_x(a3),d6
 	beq	.None
 .Gone	clr.w	sh_x(a3)
 .None	rts
+
+;--
+; Aside
+; Is an enemy within a shot's reach to the side? A dual fighter's shot is two bullets,
+; and the arcade's reach for it is a pixel to the left of a single one's, and again
+; DUAL_STEP to the right.
+; In:       d0.b = the enemy's x less the shot's, a3 = the shot
+; Out:      d0 = nonzero and Z clear if it is
+; Clobbers: -
+Aside:	tst.b	sh_wide(a3)
+	bne	.Wide
+	addq.b	#HIT_ASIDE,d0
+	bra	.Test
+.Wide	addq.b	#HIT_ASIDE+1,d0
+	cmp.b	#2*HIT_ASIDE,d0
+	bls	.Hit
+	sub.b	#DUAL_STEP,d0
+.Test	cmp.b	#2*HIT_ASIDE,d0
+	bls	.Hit
+	moveq	#0,d0
+	rts
+.Hit	moveq	#1,d0
+	rts
 
 ;--
 ; FighterHits
@@ -365,8 +466,68 @@ FighterHits:
 	endc
 	tst.b	InPlay(a5)
 	beq	.Safe
+	cmp.b	#PS_PLAYING,PlayerState(a5)	; not one in the tractor beam
+	bne	.Safe
+	tst.b	Docking(a5)			; nor one making room for a rescued fighter
+	bne	.Safe
+	tst.b	Dual(a5)
+	beq	.First
+	; the second of two first, as the arcade: if it is lost the first plays on
 	move.w	ShipX(a5),d6
+	add.w	#DISPLAY_SX+DUAL_STEP,d6
+	bsr	Touched
+	tst.w	d7
+	beq	.First
+	move.w	ShipX(a5),d0
+	add.w	#DUAL_STEP,d0
+	bsr	HalfLost
+.First	move.w	ShipX(a5),d6
 	add.w	#DISPLAY_SX,d6
+	bsr	Touched
+	tst.w	d7
+	beq	.Safe
+	tst.b	Dual(a5)
+	beq	.Lost
+	; the first of two: the second is the fighter from now on
+	move.w	ShipX(a5),d0
+	add.w	#DUAL_STEP,ShipX(a5)
+	bra	HalfLost
+	; the fighter is lost
+.Lost	move.b	#PS_BLOWN,PlayerState(a5)
+	clr.b	InPlay(a5)
+	move.b	#BLOWN_STEPS,FighterStep(a5)
+	move.b	#BLOWN_PAUSE,GameTimer(a5)
+	clr.b	FirePending(a5)
+	LOG	#STAGE_FIGHTER_LOST,Lives(a5)
+	if	SOUND_TEST=0
+	move.b	#1,Sound+snd_bang(a5)
+	endc
+.Safe	rts
+
+;--
+; HalfLost
+; One of two fighters is lost: it blows up where it was and the other plays on.
+; Bosses may try to capture again.
+; In:       d0.w = its playfield x, a5 = state
+; Out:      -
+; Clobbers: -
+HalfLost:
+	move.w	d0,Bang2X(a5)
+	move.b	#BLOWN_STEPS,Bang2Step(a5)
+	clr.b	Dual(a5)
+	clr.b	Capturing(a5)
+	if	SOUND_TEST=0
+	move.b	#1,Sound+snd_bang(a5)
+	endc
+	rts
+
+;--
+; Touched
+; Is a fighter touched by an enemy or a bomb? The enemy is destroyed, the bomb used up.
+; In:       d6.w = the fighter's sprite x, a5 = state
+; Out:      d7.w = nonzero if it is
+; Clobbers: d0-d6, a0-a3
+Touched:
 	moveq	#0,d7				; nonzero once something has touched it
 	; an enemy in flight: only once the stage's waves are all in. If several touch, the
 	; arcade takes the one with the lowest object number.
@@ -425,24 +586,11 @@ FighterHits:
 	bhi	.NextBomb
 	clr.w	bm_x(a0)
 	moveq	#1,d7
-	bra	.Touched
+	bra	.Out
 .NextBomb
 	addq.l	#bm_SIZEOF,a0
 	dbf	d4,.Bomb
-.Touched
-	tst.w	d7
-	beq	.Safe
-	; the fighter is lost
-	move.b	#PS_BLOWN,PlayerState(a5)
-	clr.b	InPlay(a5)
-	move.b	#BLOWN_STEPS,FighterStep(a5)
-	move.b	#BLOWN_PAUSE,GameTimer(a5)
-	clr.b	FirePending(a5)
-	LOG	#STAGE_FIGHTER_LOST,Lives(a5)
-	if	SOUND_TEST=0
-	move.b	#1,Sound+snd_bang(a5)
-	endc
-.Safe	rts
+.Out	rts
 
 ;--
 ; HitPlaced
@@ -538,6 +686,30 @@ HitFlying:
 ; Clobbers: a1
 Destroy:
 	movem.l	d2-d4/a0,-(sp)
+	; the boss that was out to capture: another may try. The captured fighter: likewise.
+	cmp.b	CaptureBoss(a5),d5
+	bne	.Other
+	clr.b	Capturing(a5)
+	move.b	#1,CaptureBoss(a5)
+.Other	cmp.b	#FIRST_ENEMY,d5
+	bcc	.Enemy
+	clr.b	Capturing(a5)
+	clr.b	CaptiveState(a5)
+	; a boss shot in flight with the fighter it captured flying along: the fighter is free
+.Enemy	moveq	#OBJECT_GROUP-256,d2
+	and.w	d5,d2
+	cmp.b	#BOSS_OBJECTS,d2
+	bne	.Kind
+	tst.b	ShotFlying(a5)
+	beq	.Kind
+	cmp.b	#CS_FLYING,CaptiveState(a5)
+	bne	.Kind
+	moveq	#BOSS_MASK,d2
+	and.w	d5,d2
+	cmp.b	CaptiveObj(a5),d2
+	bne	.Kind
+	bsr	RescueStart
+.Kind
 	lea	ObjKind(a5),a0
 	move.w	d5,d2
 	lsr.w	#1,d2
@@ -554,7 +726,7 @@ Destroy:
 	move.b	(a0,d3.w),d3			; the arcade's colour set for it
 	; the sound: boss, butterfly, bee by colour
 	if	SOUND_TEST=0
-	moveq	#SND_HIT_BOSS2,d2
+	moveq	#SND_FIGHTER_LOST,d2		; the captured fighter has its own sound
 	cmp.b	#RED_FIGHTER,d3
 	beq	.Sound
 	move.b	d3,d2
@@ -596,7 +768,11 @@ Destroy:
 	move.w	(a0,d2.w),d2
 	bsr	ScoreAdd
 	bra	.Scored
-.Boss	cmp.b	#BLUE_BOSS,d3
+.Boss	cmp.b	#RED_FIGHTER,d3
+	bne	.Blue
+	moveq	#POPUP_1000,d4			; the captured fighter shot while flying: 1000 shows
+	bra	.Scored
+.Blue	cmp.b	#BLUE_BOSS,d3
 	bne	.Scored
 	; a boss shot while diving: more for the escorts it set off with, and the total pops up
 	moveq	#BOSS_MASK,d2

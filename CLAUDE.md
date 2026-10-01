@@ -97,9 +97,8 @@ Sprites pair up and each pair shares three colours.
 | Sprite | Use |
 |---|---|
 | 0, 1 | fighter on 0; its 32x32 explosion on both, left and right half (the pair's blue register is changed to the explosion's cyan in the copper list while it shows); second fighter on 1 when dual |
-| 2, 3 | player bullets: both of the fighter's two on sprite 2, one below the other; sprite 3 for the dual fighter's second pair |
-| 4 | captured (red) fighter |
-| 5 | free |
+| 2, 3 | player bullets: both of the fighter's two on sprite 2, one below the other; sprite 3 for the dual fighter's second bullets, 15 pixels to the right |
+| 4, 5 | captured fighter on 4: red, or white once rescued (the pair's three colour registers are set in the copper list for each use). When one of two fighters is lost, its explosion is on 4 and 5 while the other plays on; there is never a captured fighter while there are two |
 | 6 | free, two usable colours; candidate for a second star layer |
 | 7 | stars |
 
@@ -130,8 +129,9 @@ option is kept for later.
   stage 16; the stars stand still while the fighter is not on screen
   (a game's opening, after a loss) and work back up to speed over about
   a second when it comes on. Checked on screenshots: no movement during
-  the opening, then 60 lines a second. Not done yet: the arcade runs
-  them backwards while the tractor beam pulls the fighter up.
+  the opening, then 60 lines a second. They run backwards while the
+  tractor beam pulls the fighter up, as the arcade's do (in the code,
+  not yet looked at on screen).
 
 ### Enemy movement
 - Use the arcade's own flight scripts and wave tables, extracted from
@@ -195,6 +195,41 @@ option is kept for later.
   results (NUMBER OF HITS, BONUS at 100 a hit, or PERFECT and 10000);
   READY shows while a fighter is replaced, GAME OVER after the last.
   Stage badges are in the panel above SHIPS, not at the bottom right.
+- Capture, rescue and the dual fighter are ported from the arcade's own
+  tasks, with their counters (`game/src/capture.s`; no Python model yet,
+  so `test_stage.sh` builds with `CAPTURE=0` and none of this is checked
+  against MAME). Every other boss dive, while no boss is out capturing
+  and the player has one fighter, is a capture attempt: the boss stops
+  above where the fighter was, turns to point down and puts the beam
+  out (10 rows, a row every few arcade frames by the stage's setting,
+  held 64 frames, then back in). A fighter within 27 pixels of the
+  beam's centre while it is held is taken: it spins, rises a line a
+  frame, turns red near the top; FIGHTER CAPTURED and its tune; the boss
+  carries it home, where it sits above the boss, and the player goes on
+  with the next fighter (or the game is over). The boss shot before the
+  fighter is all the way in lets it go.
+- The beam is the arcade's 48x80 image in its three colour sets, copied
+  into the playfield each frame it shows (one clear and one copy blit).
+  The captured fighter is hardware sprite 4, not a flyer: its light blue
+  is not in the 16-colour palette. It flies with its boss on later
+  dives, turned as it flies; shot there it is worth 1000.
+- Rescue: the boss shot while diving with its captured fighter frees it.
+  It turns white, spins until nothing is flying (two counts at least),
+  comes to the middle and down, the player's fighter moves over, and
+  they are two, 15 pixels apart. No dives start meanwhile, and the
+  fighter cannot be steered, fire or be hit while it makes room. If the
+  player's fighter is lost while the rescued one is on its way, the
+  rescued one takes its place.
+- Two fighters fire two bullets a shot (the arcade's wider hit window),
+  stop 16 pixels sooner at the right, and either can be hit: the one
+  hit blows up, the other plays on, and bosses may capture again.
+  `DUAL_START=1` builds a game that starts with two, for trying it out.
+- Simplifications in capture, not the arcade's: the fighter cannot fire
+  from inside the beam (the arcade's can, the way it points); a
+  captured fighter that flies off alone after its boss is shot does not
+  come back with a later stage's bosses, it is just gone.
+- The user has not yet seen or played capture; it was checked on
+  screenshots of self-playing builds only (2026-10-01).
 - The high score follows the score. An extra fighter comes at 20000, at
   70000 and every 70000 after (MAME's default switch setting).
 - The wave timer was found because the launcher model started a
@@ -345,6 +380,20 @@ stage's tables, five strips and a line of text are all built in that
 frame, with nothing else on screen. Building a line of text is slow (a
 byte at a time); if that frame ever matters, start there.
 
+With capture in (2026-10-01), self-playing runs of 4,000 frames:
+
+| Run | Average | Worst frame |
+|---|---|---|
+| Without capture (`CAPTURE=0`) | 156 | 295 |
+| With capture, the beam cleared and then copied | 161 | 324 |
+| With capture, the beam drawn in one pass | 161 | 306 |
+| Two fighters from the start (`DUAL_START=1`) | 154 | 305 |
+
+The beam's place is 80 lines of 4 words in 4 planes. Clearing it and
+then copying the beam took a frame over 313 lines; one pass (the copy
+for the rows that are out, a clear for the rest) does not. The margin
+in the worst frame is 7 lines.
+
 A flyer costs about 6.4 lines to draw, the starfield 11-14. The arcade
 never has more than 12 enemies flying at once; the rest of its
 off-formation objects are bombs and explosions.
@@ -363,15 +412,18 @@ included, so the real figure is a little lower.
   fighters), the flight stepper, the stage entrance, the formation's
   movement, dives, bombs, the player (joystick in port 2, shots, hits,
   explosions, score, lives, extra fighters), the flow between stages
-  with its text, and challenging stages with their results. All to the
+  with its text, challenging stages with their results, and capture,
+  rescue and the dual fighter. All to the
   style guide and linted.
 - **Not in the entrance yet:** the enemies that fly through without
   joining (stage 4 on; needs the arcade's random numbers).
-- **Not in the dives yet:** capture attempts (no tractor beam: until
-  there is one, `Capturing` stays set and every boss dive is the
-  ordinary one, which makes boss dives more repetitive than the
-  arcade's), and transforming enemies and their convoys.
-- **Game logic** not ported yet: capture; the results after GAME OVER
+- **Not in the dives yet:** transforming enemies and their convoys.
+- **Capture has no model.** A Python model of the beam, the rescue and
+  the dual fighter, checked against a MAME trace with a capture in it,
+  would let `test_stage.sh` run with capture on. Also open there:
+  firing from inside the beam, and the captured fighter that comes back
+  in a later stage.
+- **Game logic** not ported yet: the results after GAME OVER
   (shots, hits, ratio); title, attract mode and high score entry.
 - **Sound cost: deferred, by decision.** The driver works and the user
   has confirmed it sounds right on the emulated A500 (2026-10-01). At up
@@ -402,7 +454,7 @@ included, so the real figure is a little lower.
   the 256-line display and its 32x32 explosion (233 to 264) loses its
   bottom 8 lines. The user has seen the clipping; not decided yet
   (2026-10-01).
-- **Not drawn yet:** tractor beam, dual fighter, and the two-tile score
+- **Not drawn yet:** the two-tile score
   pop-ups (2000 and 3000 for a challenging stage's wave from stage 19:
   the points are given, nothing shows).
 - Second star layer on sprite 6: decide once logic shows the frame time

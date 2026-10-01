@@ -2,6 +2,7 @@
 
 	xdef	Enemies
 	xdef	Font
+	xdef	Beam
 	xdef	Badges
 
 	section	chip_data,data_c
@@ -11,6 +12,9 @@
 ; name in gfx.i and has its 8 frames four times: plain, then flipped top to
 ; bottom, left to right, and both, FLIP_SIZE apart.
 Enemies:	incbin	"enemies.bin"
+
+; the tractor beam: three colour sets of 48 x 80, each line 4 planes of 3 words
+Beam:	incbin	"beam.bin"
 
 	section	data,data
 

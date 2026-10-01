@@ -23,6 +23,7 @@
 
 	xdef	FlightLaunch
 	xdef	FlightStep
+	xdef	FlightTurn
 	xdef	MotionScripts
 	xdef	EntryPaths
 	xdef	StartPos
@@ -453,6 +454,10 @@ LoadStep:
 	bcs	.NotRight
 	move.w	#$c9,d1
 .NotRight
+	move.b	d1,BeamColumn(a5)		; the beam will come down here; from now the game
+	clr.b	BeamStep(a5)			; watches this boss (capture.s)
+	st	ApproachOn(a5)
+	move.l	a0,CaptureSlot(a5)
 	lsr.w	#1,d1
 	moveq	#CAPTURE_Y,d0
 	bsr	HeadFor
@@ -529,6 +534,16 @@ Precompute:
 	add.w	d1,d1
 	move.w	(a2,d1.w),fl_dist+2(a0)
 	rts
+
+;--
+; FlightTurn
+; Change a flight's turn rate in mid step.
+; In:       a0 = the flight's slot, d0.b = the rate (as flown: not mirrored again)
+; Out:      -
+; Clobbers: d1, a2
+FlightTurn:
+	move.b	d0,fl_rate(a0)
+	bra	Precompute
 
 ;--
 ; HeadFor

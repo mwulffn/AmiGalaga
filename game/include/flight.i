@@ -85,6 +85,8 @@ SHOTS		equ	2
 	rsreset
 sh_x		rs.w	1			; 0: not in flight
 sh_y		rs.w	1
+sh_wide		rs.b	1			; nonzero: fired by two fighters, a second bullet beside it
+sh_pad		rs.b	1
 sh_SIZEOF	rs.b	0
 
 ; an enemy blowing up, and the score that may appear where it was
@@ -121,6 +123,7 @@ PS_RETURNING	equ	2			; waiting for the divers to go home
 PS_READY	equ	3			; back, and can move, but not fire or be hit, until GameTimer runs out
 PS_OVER		equ	4			; no fighters left: until GameTimer runs out, then a new game
 PS_ABSENT	equ	5			; not there yet: a new game's opening
+PS_TAKEN	equ	6			; in the tractor beam, or carried off
 RESERVE		equ	2			; fighters in reserve at the start
 
 ; a line of text in the playfield (text.s)
@@ -145,3 +148,10 @@ FL_SPLASH	equ	4			; STAGE n and its badges
 FL_ENTER	equ	5			; the first stage: the fighter comes on
 BADGE_PLACES	equ	10			; badge columns the panel has room for
 BADGEB_FIRST	equ	7			; BadgeList: the first column of a badge
+
+; the captured fighter (CaptiveState)
+CS_NONE		equ	0
+CS_CARRIED	equ	1			; with the boss that caught it, on the way home
+CS_PLACED	equ	2			; in the formation, above its boss
+CS_FLYING	equ	3			; in a flight: diving with its boss, or alone
+CS_RESCUED	equ	4			;   free again: spinning, then coming down to the fighter

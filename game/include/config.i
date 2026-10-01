@@ -37,6 +37,14 @@ RANK		equ	3		; the arcade's difficulty switch: which row of the stage
 FIRST_STAGE	equ	1		; the stage a game starts at; tests start elsewhere
 	endc
 
+	ifnd	CAPTURE
+CAPTURE		equ	1		; 0: no boss tries to capture the fighter (the stage test's
+	endc				;    model does not have the tractor beam yet)
+
+	ifnd	DUAL_START
+DUAL_START	equ	0		; 1: a game starts with two fighters, to try them out
+	endc
+
 	ifnd	BOMB_STRESS
 BOMB_STRESS	equ	0		; 1: a timing test: every flying enemy bombs as fast as there
 	endc				;    are free bombs, and nothing hurts the fighter

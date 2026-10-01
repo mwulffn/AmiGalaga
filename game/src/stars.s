@@ -43,6 +43,7 @@ STAR_SPEED	equ	$40			; a line per arcade frame, in 64ths: the speed on the first
 FASTEST_STAGE	equ	16			; from this stage on they go no faster
 STAGE_STEPS	equ	$70			; stage * 4, masked with this, is added to the speed
 CARRY_BITS	equ	6
+BACK_LINES	equ	3			; lines per arcade frame when they run backwards
 CARRY_MASK	equ	(1<<CARRY_BITS)-1
 
 ; Set the line bit of the entry \1 lines below the first one to \2, in both
@@ -100,6 +101,11 @@ StarsStage:
 ; Out:      -
 ; Clobbers: d0-d1
 StarsTick:
+	tst.b	StarBack(a5)
+	beq	.Forward
+	subq.w	#BACK_LINES,StarSteps(a5)	; the fighter is being pulled up: they run backwards
+	rts
+.Forward
 	move.b	PlayerState(a5),d0
 	beq	.Moving				; PS_PLAYING
 	cmp.b	#PS_READY,d0
@@ -133,12 +139,20 @@ StarsVBlank:
 	move.w	StarFirst(a5),d0
 	move.w	StarSpeed(a5),d2
 	beq	.Still
+	bmi	.Back
 	subq.w	#1,d2
 .Step	subq.b	#1,d0				; stars move down: start one entry earlier
 	SETLINE	TO_LINE_128,LINE_BIT7		; this entry is now on line 128
 	SETLINE	TO_LINE_256,0			; and this one on line 256
 	dbf	d2,.Step
-	move.w	d0,StarFirst(a5)
+	bra	.Moved
+.Back	neg.w	d2
+	subq.w	#1,d2
+.Up	SETLINE	TO_LINE_128,0			; stars move up: this entry leaves line 128
+	SETLINE	TO_LINE_256,LINE_BIT7		; and this one comes onto line 255
+	addq.b	#1,d0
+	dbf	d2,.Up
+.Moved	move.w	d0,StarFirst(a5)
 .Still	mulu.w	#STAR_ENTRY,d0
 	add.l	a1,d0
 	move.l	d0,cop2lc(a6)			; the copper jumps here above the display

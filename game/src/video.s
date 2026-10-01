@@ -12,6 +12,7 @@
 	xdef	VideoFlip
 	xdef	VideoSetSprite
 	xdef	FighterColour
+	xdef	CaptiveColours
 	xref	State
 	xref	StarsVBlank
 
@@ -169,7 +170,9 @@ CopperSprites:
 FighterColour:
 	dc.w	$06f,color+38,$ddf
 	dc.w	color+42,$f00,color+44,$06f,color+46,$ddf
-	dc.w	color+50,$bbf,color+52,$06f,color+54,$f00
+	dc.w	color+50
+CaptiveColours:
+	dc.w	$bbf,color+52,$06f,color+54,$f00
 	; Sprite 7 is the stars: one pixel, armed by hand once sprite DMA has
 	; had its turn, then moved and coloured line by line by the star table.
 	dc.w	STAR_LINE<<8|END_OF_LINE,$fffe

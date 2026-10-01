@@ -45,6 +45,9 @@
 	xref	TextDraw
 	xref	StageIdle
 	xref	StarsTick
+	xref	CaptureInit
+	xref	CaptureTick
+	xref	BeamDraw
 	xref	HomeRc
 	xref	Enemies
 	if	STAGE_TEST
@@ -53,7 +56,7 @@
 
 FIRST_ENEMY	equ	$08			; objects below this are captured fighters
 TRANSIENT_MASK	equ	$38			; objects $38-$3f only fly through
-UPRIGHT		equ	6*FRAME_SIZE		; an enemy's upright image
+UPRIGHT_FRAME	equ	6			; an enemy's upright frame
 FLYING_BITS	equ	1<<FLB_ACTIVE|1<<FLB_LANDED
 QUADRANT_BITS	equ	2
 QUADRANTS	equ	4
@@ -94,6 +97,7 @@ GameInit:
 .Bomb	clr.w	bm_x(a0)
 	addq.l	#bm_SIZEOF,a0
 	dbf	d0,.Bomb
+	bsr	CaptureInit
 	bsr	StageIdle
 	bra	FlowInit
 
@@ -122,6 +126,7 @@ GameFrame:
 	bsr	DivesTick
 	bsr	FormationTick
 	bsr	PlayerTick
+	bsr	CaptureTick
 	bsr	BombsDrop
 	bsr	BlastsTick
 	bsr	FlowTick
@@ -154,12 +159,23 @@ GameFrame:
 	LOG	d0,fl_obj(a0)
 	subq.w	#FLIGHT_HOME,d0
 	bne	.Left
+	cmp.b	#FIRST_ENEMY,fl_obj(a0)
+	bcs	.Captive
 	bset	#FLB_LANDED,fl_flags(a0)
+	bra	.Flown
+	; the captured fighter is back in its place, which is no strip's
+.Captive
+	move.b	#CS_PLACED,CaptiveState(a5)
 	bra	.Flown
 	; its script ended: it has left the stage, and if it was one of the stage's own it is one fewer
 .Left	move.b	fl_obj(a0),d0
 	cmp.b	#FIRST_ENEMY,d0
-	bcs	.Flown
+	bcc	.Enemy
+	clr.b	CaptiveState(a5)		; the captured fighter has flown off alone
+	clr.b	Capturing(a5)
+	subq.b	#1,Alive(a5)
+	bra	.Flown
+.Enemy
 	and.b	#TRANSIENT_MASK,d0
 	cmp.b	#TRANSIENT_MASK,d0
 	beq	.Flown
@@ -220,6 +236,8 @@ GameFrame:
 
 	bsr	FlyersErase
 	bsr	FormationDraw
+	bsr	BeamDraw
+	bsr	CaptivePlace
 	bsr	FlyersBegin
 	lea	Flights(a5),a3
 	moveq	#FLIGHT_SLOTS-1,d7
@@ -228,7 +246,18 @@ GameFrame:
 	beq	.Drawn
 	move.l	a3,a0
 	bsr	FlightPlace
-	cmp.w	#LAST_FLYER_X,d0
+	cmp.b	#FIRST_ENEMY,fl_obj(a3)
+	bcc	.Bob
+	; the captured fighter in flight is its sprite, turned as it flies
+	addq.w	#SPRITE_X,d0
+	add.w	#SPRITE_Y,d1
+	move.w	d0,CaptiveX(a5)
+	move.w	d1,CaptiveY(a5)
+	bsr	FlightFacing
+	move.b	d2,CaptiveCode(a5)
+	move.b	d3,CaptiveCtrl(a5)
+	bra	.Drawn
+.Bob	cmp.w	#LAST_FLYER_X,d0
 	bhi	.Drawn
 	cmp.w	#LAST_FLYER_Y,d1
 	bhi	.Drawn
@@ -278,23 +307,46 @@ Rebuild:
 	bra	FormationCompose
 
 ;--
-; FlightImage
-; Which image shows a flight: its kind of enemy, turned the way it is heading.
-; In:       a3 = its slot, a5 = state
-; Out:      a0 = the image
-; Clobbers: d2-d4
-FlightImage:
-	moveq	#0,d2
-	move.b	fl_obj(a3),d2
-	lsr.w	#1,d2
-	lea	ObjKind(a5),a0
-	move.b	(a0,d2.w),d2
-	moveq	#KIND_SHIFT,d3
-	lsl.l	d3,d2
-	lea	Enemies,a0
-	add.l	d2,a0
+; CaptivePlace
+; The captured fighter in the formation: where its place is now, wings as the formation's.
+; In:       a5 = state
+; Out:      -
+; Clobbers: d0-d1, a0-a1
+CaptivePlace:
+	cmp.b	#CS_PLACED,CaptiveState(a5)
+	bne	.Done
+	lea	HomeRc(pc),a0
+	moveq	#0,d0
+	move.b	CaptiveObj(a5),d0
+	add.w	d0,a0
+	lea	HomeX(a5),a1
+	moveq	#0,d0
+	move.b	(a0)+,d0
+	moveq	#0,d1
+	move.b	(a1,d0.w),d1
+	move.w	d1,CaptiveY(a5)
+	move.b	(a0),d0
+	move.b	(a1,d0.w),d1
+	move.w	d1,CaptiveX(a5)
+	move.w	FrameCount(a5),d0		; wings open and closed with the formation's
+	lsr.w	#4,d0
+	and.w	#1,d0
+	addq.w	#UPRIGHT_FRAME,d0
+	move.b	d0,CaptiveCode(a5)
+	clr.b	CaptiveCtrl(a5)
+.Done	rts
+
+;--
+; FlightFacing
+; Which frame and flip show the way a flight is heading, by the arcade's rule.
+; In:       a3 = its slot
+; Out:      d2.w = frame, 0 to 6, d3.w = flip, 0 to 3
+; Clobbers: d4
+FlightFacing:
+	moveq	#UPRIGHT_FRAME,d2
+	moveq	#0,d3
 	btst	#FLB_LANDED,fl_flags(a3)
-	bne	.Upright
+	bne	.Done
 	; The arcade's rule, on a heading of quadrant (2 bits) and angle within it (8 bits):
 	;   a = angle, counted back from the end of the quadrant in quadrants 1 and 3
 	;   within half a step of straight up or down (a + 21 > 255): the upright frame
@@ -309,9 +361,6 @@ FlightImage:
 	beq	.Angle
 	not.b	d2
 .Angle	move.b	FlipOf(pc,d3.w),d3
-	lsl.w	#8,d3
-	lsl.w	#FLIP_SHIFT-8,d3
-	add.w	d3,a0
 	add.b	#HALF_STEP,d2
 	bcs	.Upright
 	lsr.b	#1,d2
@@ -320,16 +369,38 @@ FlightImage:
 	add.b	d4,d2
 	lsr.b	#5,d2
 	and.w	#7,d2
-	lsl.w	#8,d2				; FRAME_SIZE each
-	add.w	d2,a0
-	rts
+.Done	rts
 .Upright
-	lea	UPRIGHT(a0),a0
+	moveq	#UPRIGHT_FRAME,d2
 	rts
 
-; which flipped copy each quadrant uses, in FLIP_SIZE steps: 1 = top to bottom, 2 = left to right.
+; which flipped copy each quadrant uses: 1 = top to bottom, 2 = left to right.
 ; The frames point left and up: heading right and up they are mirrored, and so on round.
 FlipOf:	dc.b	2,0,1,3
+
+;--
+; FlightImage
+; Which image shows a flight: its kind of enemy, turned the way it is heading.
+; In:       a3 = its slot, a5 = state
+; Out:      a0 = the image
+; Clobbers: d2-d4
+FlightImage:
+	bsr	FlightFacing
+	lsl.w	#8,d2				; FRAME_SIZE each
+	lsl.w	#8,d3
+	lsl.w	#FLIP_SHIFT-8,d3
+	add.w	d3,d2
+	moveq	#0,d3
+	move.b	fl_obj(a3),d3
+	lsr.w	#1,d3
+	lea	ObjKind(a5),a0
+	move.b	(a0,d3.w),d3
+	moveq	#KIND_SHIFT,d4
+	lsl.l	d4,d3
+	lea	Enemies,a0
+	add.l	d3,a0
+	add.w	d2,a0
+	rts
 
 ;--
 ; FlightPlace

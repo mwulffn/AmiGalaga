@@ -3,7 +3,7 @@
 # the models: a test build plays itself and logs what happens in FS-UAE, and
 # tools/stagetest.py replays the same frames. Run for the exact build and the PAL build,
 # from stage 1 (through stage changes and a game over) and from stage 3, the first
-# challenging stage (through its results).
+# challenging stage (through its results). Built without capture, which the model does not have.
 #   tools/test_stage.sh [frames from stage 1] [frames from stage 3]
 set -e
 cd "$(dirname "$0")/.."
@@ -12,7 +12,7 @@ KICK=${KICK:-$HOME/Documents/FS-UAE/Kickstarts/kick34005.A500}
 hd=build/hd
 run() {  # first stage, frames
     for exact in 1 0; do
-        make -s build/galaga DEFS="-DSTAGE_TEST=1 -DTEST_FRAMES=$2 -DEXACT_TIMING=$exact -DFIRST_STAGE=$1" >/dev/null
+        make -s build/galaga DEFS="-DSTAGE_TEST=1 -DCAPTURE=0 -DTEST_FRAMES=$2 -DEXACT_TIMING=$exact -DFIRST_STAGE=$1" >/dev/null
         rm -rf $hd && mkdir -p $hd/S
         cp build/galaga $hd/ && printf 'galaga\n' > $hd/S/startup-sequence
         fs-uae --amiga_model=A500 --kickstart_file="$KICK" --slow_memory=0 \

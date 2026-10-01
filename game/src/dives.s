@@ -18,8 +18,7 @@
 ;
 ; Attacks stop while the fighter is out of play.
 ;
-; Not built yet: the tractor beam. Until it is, Capturing stays set, so no
-; boss tries to capture and every boss dive is the ordinary one.
+; A capture attempt's tractor beam and what follows are in capture.s.
 
 	include	"config.i"
 	include	"hw.i"
@@ -130,7 +129,9 @@ DivesInit:
 .Counted
 	clr.b	BossToggle(a5)
 	clr.l	BossBonus(a5)			; a boss shot on its way in scores as one diving alone
-	st	Capturing(a5)			; until there is a tractor beam: no boss tries to capture
+	if	CAPTURE=0
+	st	Capturing(a5)			; no boss tries to capture
+	endc
 	st	Special(a5)			; nobody is about to transform
 	clr.b	FormDirty(a5)
 	lea	DiveTimers(a5),a0
@@ -230,6 +231,8 @@ DivesTick:
 	beq	.Done
 	tst.b	InPlay(a5)
 	beq	.Done
+	tst.b	RescueOn(a5)			; nor while a rescued fighter is on its way down
+	bne	.Done
 	; someone queued leaves first
 	lea	DiveQueue(a5),a2
 	moveq	#DIVE_QUEUE-1,d2
@@ -467,10 +470,18 @@ InPlace:
 	move.b	1(a0,d4.w),d1
 	lsr.w	#1,d1				; its column
 	sub.w	#HOME_ROWS+2*STRIP_ROWS,d0	; its row, doubled
-	bcs	.No				; a captured fighter: none yet
+	bcs	.Captive
 	lea	FormPresent(a5),a0
 	move.w	(a0,d0.w),d0
 	btst	d1,d0
+	rts
+	; a captured fighter's place: is the one there is in it?
+.Captive
+	cmp.b	#CS_PLACED,CaptiveState(a5)
+	bne	.No
+	cmp.b	CaptiveObj(a5),d4
+	bne	.No
+	moveq	#1,d0
 	rts
 .No	moveq	#0,d0
 	rts
@@ -519,7 +530,10 @@ DiveLaunch:
 	; and is gone from its row, whose strip must be rebuilt at once
 	lsr.w	#1,d3
 	sub.w	#HOME_ROWS+2*STRIP_ROWS,d2
-	bcs	.Sound
+	bcc	.Row
+	move.b	#CS_FLYING,CaptiveState(a5)	; the captured fighter leaves its place
+	bra	.Sound
+.Row
 	lea	FormPresent(a5),a1
 	move.w	(a1,d2.w),d0
 	bclr	d3,d0

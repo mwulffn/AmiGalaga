@@ -273,6 +273,8 @@ Playing:
 	bne	.Busy
 	cmp.b	#PS_PLAYING,PlayerState(a5)
 	bne	.Busy
+	tst.b	RescueOn(a5)			; a rescued fighter comes down first
+	bne	.Busy
 	lea	Blasts(a5),a0
 	moveq	#BLASTS-1,d0
 .Blast	tst.b	bl_live(a0)
