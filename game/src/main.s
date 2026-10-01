@@ -101,6 +101,43 @@ Main:	bsr	StarsInit
 
 	if	TEST_FRAMES
 ;--
+; StatLoad
+; What is on screen: for the report's list of late frames.
+; In:       a5 = state
+; Out:      d1.w = flights flying, landed ones still drawn as flyers, bombs, blasts: a nibble each
+; Clobbers: -
+StatLoad:
+	movem.l	d0/d2/a0,-(sp)
+	moveq	#0,d1
+	lea	Flights(a5),a0
+	moveq	#FLIGHT_SLOTS-1,d0
+.Flight	btst	#FLB_ACTIVE,fl_flags(a0)
+	beq	.Landed
+	add.w	#$1000,d1
+.Landed	btst	#FLB_LANDED,fl_flags(a0)
+	beq	.Next
+	add.w	#$0100,d1
+.Next	lea	fl_SIZEOF(a0),a0
+	dbf	d0,.Flight
+	lea	Bombs(a5),a0
+	moveq	#BOMBS-1,d0
+.Bomb	tst.w	bm_x(a0)
+	beq	.NoBomb
+	add.w	#$0010,d1
+.NoBomb	addq.l	#bm_SIZEOF,a0
+	dbf	d0,.Bomb
+	lea	Blasts(a5),a0
+	moveq	#BLASTS-1,d0
+.Blast	tst.b	bl_live(a0)
+	beq	.NoBlast
+	addq.w	#1,d1
+.NoBlast
+	lea	bl_SIZEOF(a0),a0
+	dbf	d0,.Blast
+	movem.l	(sp)+,d0/d2/a0
+	rts
+
+;--
 ; FrameStats
 ; Record how many raster lines this frame's work took.
 ; In:       a5 = state, a6 = CUSTOM
@@ -130,11 +167,13 @@ FrameStats:
 	addq.w	#1,StatOver(a5)
 	cmp.w	#STAT_LATE,d1
 	bcc	.InTime
-	lsl.w	#2,d1
+	mulu.w	#6,d1
 	lea	StatLate(a5),a0
 	add.w	d1,a0
 	move.w	StatFrames(a5),(a0)+
-	move.w	d0,(a0)
+	move.w	d0,(a0)+
+	bsr	StatLoad
+	move.w	d1,(a0)
 .InTime
 	add.l	d0,StatTotal(a5)
 	addq.w	#1,StatFrames(a5)

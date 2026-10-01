@@ -18,7 +18,10 @@ def main() -> None:
     )
     late = struct.unpack(f">{(len(raw) - 12) // 2}H", raw[12:])
     if over:
-        print("  late frames (frame: lines): " + ", ".join(f"{f}: {n}" for f, n in zip(late[0::2], late[1::2]) if n))
+        print("  late frames (frame: lines, with flying/landed/bombs/blasts on screen):")
+        for f, n, on in zip(late[0::3], late[1::3], late[2::3]):
+            if n:
+                print(f"    {f}: {n}, {on >> 12}/{on >> 8 & 15}/{on >> 4 & 15}/{on & 15}")
 
 
 if __name__ == "__main__":

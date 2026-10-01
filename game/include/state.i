@@ -21,8 +21,8 @@ StatTotal	rs.l	1		;   their sum
 StatFrames	rs.w	1		;   and how many frames
 StatWorstAt	rs.w	1		;   which frame the worst was
 StatOver	rs.w	1		;   how many took more than a frame
-StatLate	rs.w	2*STAT_LATE	;   the first of those: frame, lines
-STAT_SIZE	equ	12+4*STAT_LATE
+StatLate	rs.w	3*STAT_LATE	;   the first of those: frame, lines, and what was on: flights, landed, bombs, blasts (a nibble each)
+STAT_SIZE	equ	12+6*STAT_LATE
 FormRows	rs.w	2*FORM_ROWS	; formation: per row, x and y of its strip, set when composed
 FormPresent	rs.w	FORM_ROWS	;   per row: bit n set if the enemy in column n is there
 Score		rs.l	1		; six decimal digits, two to a byte, in the low three bytes
