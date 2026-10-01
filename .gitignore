@@ -1,0 +1,11 @@
+# The arcade ROM set and anything generated from it stay out of the repository.
+original/
+build/
+
+# Third-party disassembly: local reading material only (see reference/README.md).
+reference/*
+!reference/README.md
+
+__pycache__/
+.DS_Store
+.claude/settings.local.json
