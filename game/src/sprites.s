@@ -14,6 +14,7 @@
 	include	"config.i"
 	include	"hw.i"
 	include	"layout.i"
+	include	"flight.i"
 	include	"sound.i"
 	include	"state.i"
 	include	"gfx.i"

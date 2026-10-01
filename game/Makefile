@@ -2,8 +2,8 @@
 # make            build the executable and a bootable disk image
 # make run        boot the disk in FS-UAE (stock A500, Kickstart 1.3)
 # make lint       check every routine's header against its code (also part of the build)
-# make test       run the test builds in FS-UAE: frame timing, and the sound
-#                 driver against the arcade model
+# make test       run the test builds in FS-UAE: frame timing, the sound driver
+#                 against the arcade model, and the flight stepper against its model
 # DEFS="-DRASTER_METER=1" and the like override include/config.i
 
 DEFS   ?=
@@ -13,12 +13,13 @@ UAE     = fs-uae --amiga_model=A500 --kickstart_file=$(KICK) --slow_memory=0
 
 # startup.o must be first: the program starts at the top of the first object
 OBJECTS = build/startup.o build/main.o build/demo.o build/video.o build/stars.o \
-	build/formation.o build/flyers.o build/panel.o build/sprites.o build/sound.o \
+	build/formation.o build/flyers.o build/flight.o build/flighttest.o build/panel.o build/sprites.o build/sound.o \
 	build/gfx.o build/state.o
 # built from the user's own ROM set; never committed
 GENERATED = build/snd_data.i build/snd_chip.bin build/sndtest_script.i \
 	build/stars.bin build/starev.bin \
-	build/gfx.i build/enemies.bin build/sprites.bin build/font.bin
+	build/gfx.i build/enemies.bin build/sprites.bin build/font.bin \
+	build/motion_data.s build/flight_cases.i
 INCLUDES = $(wildcard include/*.i)
 
 all: build/galaga.adf
@@ -34,6 +35,14 @@ build/snd_data.i build/snd_chip.bin: tools/make_sound_data.py $(ROM)
 build/gfx.i build/enemies.bin build/sprites.bin build/font.bin: tools/make_gfx.py $(ROM)
 	@mkdir -p build
 	python3 tools/make_gfx.py $(ROM) build
+
+build/motion_data.s: ../motion/extract.py $(ROM)
+	@mkdir -p build
+	python3 ../motion/extract.py $(ROM) build >/dev/null
+
+build/flight_cases.i: tools/flighttest.py ../motion/extract.py ../motion/pal_scale.py $(ROM)
+	@mkdir -p build
+	python3 tools/flighttest.py cases $(ROM) $@
 
 build/stars.bin build/starev.bin: tools/make_stars.py
 	@mkdir -p build
@@ -61,6 +70,7 @@ run: build/galaga.adf
 test:
 	tools/test.sh
 	tools/test_sound.sh
+	tools/test_flight.sh
 
 clean:
 	rm -rf build

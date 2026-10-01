@@ -20,3 +20,14 @@ SOUND_TEST	equ	0		; n: drive the sound driver from the test script for n
 	ifnd	DEMO_FLYERS
 DEMO_FLYERS	equ	10		; until there is a game: how many flyers demo.s moves
 	endc
+
+	ifnd	EXACT_TIMING
+EXACT_TIMING	equ	0		; 1: enemies move one arcade frame per displayed frame,
+	endc				;    byte for byte as in the arcade (and so 17% slow on PAL)
+
+	ifnd	FLIGHT_TEST
+FLIGHT_TEST	equ	0		; 1: fly the test cases, report every position, and exit
+	endc
+
+; a build that writes a report for the host
+REPORTING	equ	TEST_FRAMES+SOUND_TEST+FLIGHT_TEST

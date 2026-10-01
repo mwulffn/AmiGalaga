@@ -105,6 +105,13 @@ Sprites pair up and each pair shares three colours.
 - Prototype and evidence: `motion/pal_scale.py`, 636 runs, always the
   same outcome as the arcade and within 9 pixels of it;
   `motion/render_compare.py` shows it side by side.
+- The 68000 stepper is `game/src/flight.s` (`FlightLaunch`,
+  `FlightStep`), a port of `motion/pal_scale.py`. `EXACT_TIMING=1`
+  builds the 5-fifths version. `game/tools/test_flight.sh` flies 1,860
+  cases (every entry path to every place in the formation, every dive
+  and escort script, mirrored, with the fighter in different places and
+  the hard-stage branches) in FS-UAE in both builds and compares each
+  with the Python model: all identical, every frame.
 
 ### Sound
 - The arcade's three tone voices are synthesised on Paula as wavetable
@@ -173,24 +180,38 @@ blitter-finished interrupt feeds. Average lines, worst frame in brackets:
 - With 25,000 cycles of logic, 20 full-size flyers do not hold 50 fps on
   a stock A500 in any of the four set-ups.
 
-A flyer costs about 6.4 lines, the starfield 11-14. The arcade never has
-more than 12 enemies flying at once; the rest of its off-formation
-objects are bombs and explosions.
+A flyer costs about 6.4 lines to draw, the starfield 11-14. The arcade
+never has more than 12 enemies flying at once; the rest of its
+off-formation objects are bombs and explosions.
+
+Moving a flight (`FlightStep`) costs about 1.8 raster lines, so 22 for
+all 12. Measured in the test build over 440,000 steps with the display
+and the silent sound driver running and the test's own bookkeeping
+included, so the real figure is a little lower.
 
 ## Open
 
-- **The 68000 flight stepper** (both the PAL and the exact build) is not
-  written; its cost, estimated at about 8 raster lines for 12 flyers, is
-  not measured.
 - **The game** (`game/`) so far: startup and shutdown, video, sound,
   starfield, flyers, formation strips, score panel, fighter and bullet
   sprites, all to the style guide and linted. `demo.s` stands in for the
   game and moves things; it is to be replaced. With it, formation + 10
   flyers + stars + panel + sprites + the start theme take 170 raster
-  lines (worst 197); with 20 flyers 245 (worst 273). Next: the 68000
-  flight stepper.
+  lines (worst 197); with 20 flyers 245 (worst 273). The flight stepper
+  is written and checked but nothing launches flights yet. Next: game
+  state.
 - **Game logic** is not ported or measured: formation drift and
   breathing, dive scheduling, bombs, capture, scoring.
+- **The formation's layout does not match the arcade's yet.** In the
+  arcade at rest the rows' tops are at 36 (bosses), 52, 64 (butterflies),
+  76 and 88 (bees): 12 pixels apart below the bosses, opening to about
+  16 when it breathes, with a row of places for captured fighters above
+  at 20. Columns are 16 pixels apart from x = 32, opening to about 19.
+  `formation.s` has rows 16 apart from 20. Butterflies and bees are 10
+  rows tall upright, so their strips can be 12 lines. Flights head for
+  the arcade's places (`HomeLoc`, `HomeX`), so the formation has to move
+  there before flights can land in it.
+- Sprite frame and flips from a flight's heading: the rule is known
+  (six 15-degree frames per quadrant plus upright), not ported.
 - **Sound cost: deferred, by decision.** The driver works and the user
   has confirmed it sounds right on the emulated A500 (2026-10-01). At up
   to 19 lines a frame it is the largest CPU item measured, and it lifts

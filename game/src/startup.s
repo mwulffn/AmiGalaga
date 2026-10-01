@@ -4,6 +4,7 @@
 	include	"config.i"
 	include	"hw.i"
 	include	"layout.i"
+	include	"flight.i"
 	include	"sound.i"
 	include	"state.i"
 	include	"macros.i"
@@ -117,7 +118,7 @@ Start:	move.l	EXEC_BASE.w,a6
 	CALLSYS	CloseLibrary
 	CALLSYS	Permit
 
-	if	TEST_FRAMES
+	if	REPORTING
 	lea	DosName(pc),a1		; test build: leave the report for the host to read
 	CALLSYS	OldOpenLibrary
 	move.l	d0,a6
@@ -138,7 +139,7 @@ Start:	move.l	EXEC_BASE.w,a6
 	rts
 
 GfxName:	dc.b	"graphics.library",0
-	if	TEST_FRAMES
+	if	REPORTING
 DosName:	dc.b	"dos.library",0
 ReportName:	dc.b	"results",0
 	endc

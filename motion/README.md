@@ -103,7 +103,10 @@ moment; arrival differs by at most 3.2 arcade frames. Most of that
 distance is along the path (a frame or two early or late), not a
 different shape.
 
-Not yet done: the 68000 version and its cost.
+The 68000 version is `game/src/flight.s`. `game/tools/test_flight.sh`
+flies 1,860 cases through it in FS-UAE, in the exact and the PAL build,
+and compares every frame with `pal_scale.py`: all identical. It costs
+about 1.8 raster lines per flight per frame.
 
 Reference used to find my way around the code: the commented disassembly
 at https://github.com/hackbar/galaga. All addresses and behaviour here

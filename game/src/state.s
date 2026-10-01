@@ -2,6 +2,7 @@
 
 	include	"config.i"
 	include	"layout.i"
+	include	"flight.i"
 	include	"sound.i"
 	include	"state.i"
 

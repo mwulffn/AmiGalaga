@@ -3,6 +3,7 @@
 	include	"config.i"
 	include	"hw.i"
 	include	"layout.i"
+	include	"flight.i"
 	include	"sound.i"
 	include	"state.i"
 	include	"macros.i"
@@ -22,6 +23,9 @@
 	xref	SoundStop
 	if	SOUND_TEST
 	xref	SoundLog
+	endc
+	if	FLIGHT_TEST
+	xref	FlightTest
 	endc
 
 METER_COLOUR	equ	$004		; the raster meter's idle colour
@@ -43,6 +47,10 @@ Main:	bsr	StarsInit
 	move.l	#$00640000+100,Bullets(a5)	; until there is a game: two bullets in flight
 	move.l	#$00640000+220,Bullets+4(a5)
 	bsr	SoundInit
+	if	FLIGHT_TEST
+	bsr	FlightTest
+	bra	.Done
+	endc
 	if	SOUND_TEST=0
 	move.b	#1,Sound+SND_START(a5)	; until there is a game: the start theme
 	endc
