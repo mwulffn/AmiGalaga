@@ -105,6 +105,19 @@ Sprites pair up and each pair shares three colours.
   same outcome as the arcade and within 9 pixels of it;
   `motion/render_compare.py` shows it side by side.
 
+### Sound
+- The arcade's three tone voices are synthesised on Paula as wavetable
+  voices from the arcade's own 32-sample waveforms; the fourth Paula
+  channel is for noise. Explosions (a separate noise chip in the arcade)
+  will be samples. Sampling everything was rejected: about 36 s of
+  one-shot sounds will not fit 512K at a decent rate, and recordings
+  could not ship.
+- The sound driver runs at the arcade's 121 Hz from a CIA timer, not
+  from the display, so tempo needs no scaling.
+- `sound/` extracts every sound from the user's ROM. Its driver model is
+  identical to MAME on all 78,575 ticks of a gameplay trace. Highest
+  pitch is 2143 Hz, so waveform copies down to 8 samples are enough.
+
 ## Measured budget
 
 A PAL frame is 313 raster lines. Drawing time, blitter priority on:
@@ -127,7 +140,8 @@ objects are bombs and explosions.
   not measured.
 - **Game logic** is not ported or measured: formation drift and
   breathing, dive scheduling, bombs, capture, scoring.
-- **Sound** has not been looked at.
+- **Sound on the Amiga:** no player yet; undecided between porting the
+  driver logic and playing back per-tick streams. Noise chip not modelled.
 - **Not drawn yet:** tractor beam, 32x32 explosions, dual fighter,
   READY/STAGE text.
 - Second star layer on sprite 6: decide once logic shows the frame time
@@ -141,6 +155,7 @@ objects are bombs and explosions.
 | `experiment-1/tools/extract_gfx.py` | sprites, font and palette from the ROM to Amiga bitplanes |
 | `analysis/` | MAME Lua trace scripts and results (colours, sprite load, positions) |
 | `motion/` | movement extraction, reference stepper, validation against MAME |
+| `sound/` | sound extraction, driver and chip model, validation against MAME |
 | `reference/` | local-only reading material, ignored by git |
 | `original/` | the user's ROM set, ignored by git |
 
