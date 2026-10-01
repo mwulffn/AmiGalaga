@@ -13,6 +13,7 @@ committed or distributed.
 | `extract.py` | writes `build/motion_data.s` (for the Amiga port), `build/paths.txt` (readable listing), `build/paths.png` (the 24 entry paths) |
 | `trace_motion.lua` | MAME script: plays the game and dumps the motion queue every frame |
 | `validate.py` | replays a trace through `step()` and compares every byte |
+| `pal_scale.py` | prototype of the stepper at 1.2 arcade frames per PAL frame, compared with `step()` |
 
 ## How the arcade does it
 
@@ -68,9 +69,40 @@ To repeat it (the trace is about 17 MB):
   six rotation frames per quadrant (15 degrees each) plus the upright
   pair, and flips by quadrant. That routine is not ported or validated
   here, because its result goes to sprite RAM, not to the slot.
-- Frame rate. The scripts count arcade frames (60.6 Hz). On a 50 Hz PAL
-  Amiga, one step per frame would make everything 17% slower; running six
-  steps every five frames keeps the arcade's speed.
+- Frame rate: see the next section.
+
+## Running at PAL speed
+
+The scripts count arcade frames (60.6 Hz). `pal_scale.py` prototypes a
+stepper that advances 1.2 arcade frames per 50 Hz frame, with the scripts
+untouched, and compares it with the validated arcade stepper:
+
+    python3 pal_scale.py ../original/galaga.zip [motion.bin]
+
+How it counts time:
+
+- A step's duration is held in fifths of an arcade frame. A PAL frame
+  uses up 6; an "exact" build uses up 5 and must match the arcade.
+- The heading is a 32-bit value (2^32 = a full turn). Turning is one add,
+  and a long path does not drift: a 16-bit heading with a rounded 1.2
+  factor ended up to 19 pixels off on the challenging-stage paths.
+- Turn and distance for k fifths come from two small tables. When a step
+  ends part-way through a PAL frame, each step contributes its share.
+- When the script sets the heading (go home, capture aim), the old
+  step's pending turn is dropped.
+- At 1.2x the per-frame move is larger, so "reached home" accepts +-2
+  units instead of +-1, and "reached dive depth" accepts having passed it.
+
+Result over 624 runs (24 entry paths, both sides, every formation slot
+for the normal-stage paths, plus 120 dives started from states the real
+game produced): the exact build is identical to the arcade in all of
+them. The PAL build always ends the same way (home, or off screen) and
+stays within 9 pixels of the arcade's on-screen position at the same
+moment; arrival differs by at most 3.2 arcade frames. Most of that
+distance is along the path (a frame or two early or late), not a
+different shape.
+
+Not yet done: the 68000 version and its cost.
 
 Reference used to find my way around the code: the commented disassembly
 at https://github.com/hackbar/galaga. All addresses and behaviour here
