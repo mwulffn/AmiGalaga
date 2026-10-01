@@ -110,7 +110,8 @@ Sprites pair up and each pair shares three colours.
   voices from the arcade's own 32-sample waveforms; the fourth Paula
   channel is for noise. Only the fighter's own explosion uses the
   arcade's noise chip (enemy hits are tones); it will be noise of our
-  own, matched to MAME's output: about 2.7 s, 100-800 Hz, stepped decay. Sampling everything was rejected: about 36 s of
+  own, matched to MAME's output: about 2.7 s, 100-800 Hz, full level
+  for 0.2 s then halving every half second. Sampling everything was rejected: about 36 s of
   one-shot sounds will not fit 512K at a decent rate, and recordings
   could not ship.
 - The sound driver runs at the arcade's 121 Hz from a CIA timer, not

@@ -15,6 +15,7 @@ or distributed.
 | `validate.py` | replays a trace through the driver and compares what it writes to the chip |
 | `trace_noise.lua` | MAME script: silences the tone chip and logs every explosion command, for use with `-wavwrite` |
 | `noise_analyse.py` | cuts the explosions out of that recording into `build/noise/` and measures them (needs numpy) |
+| `noise_match.py` | builds our own explosion to match, as an ideal version and two Amiga versions, with a comparison WAV |
 
 ## How the arcade does it
 
@@ -72,16 +73,26 @@ the one in the power-on sound test):
 
 - It is the only noise sound in the game, always sent with the same
   parameters, and the instances differ by 2% in loudness.
-- It lasts about 2.7 seconds: full level at once, then a steady fall to
-  silence in visible steps.
+- It lasts about 2.7 seconds: full level for the first fifth of a second,
+  then it halves about every half second until it is cut off.
 - It is a low rumble. 96% of its energy is between 100 and 800 Hz, half
   of it below about 260 Hz, and almost nothing above 1600 Hz.
 
 The recordings are MAME's output and are for listening and measuring only.
 
+`noise_match.py` builds an explosion of our own to those measurements,
+from random noise shaped to the measured spectrum and decay, and writes
+it next to the reference for comparison (`build/noise/compare.wav`):
+
+    uv run --with numpy python3 noise_match.py build/noise
+
+It makes two Amiga versions at 4 kHz, 8 bits: the whole sound as one
+sample (about 11 KB), and a 2 KB loop whose decay is done with Paula's
+volume register once per frame. Both come out within a few percent of
+the reference in spectrum and loudness over time.
+
 ## Not done yet
 
-- A noise sound of our own that matches the measurements above.
 - The Amiga player, and the choice between porting the driver logic and
   playing back streams.
 - The sound names are from the reference disassembly's comments and from
