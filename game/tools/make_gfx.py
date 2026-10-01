@@ -102,10 +102,11 @@ def char_bits(rom: bytes, code: int) -> bytes:
 
 def font(rom: bytes) -> bytes:
     """Glyphs for ASCII 32..90; Galaga has 0-9 at $00, A-Z at $0a, space at $24."""
+    marks = {"-": 0x26, "%": 0x29, ".": 0x2A}
     out = bytearray()
     for c in range(32, 91):
         ch = chr(c)
-        code = int(ch) if ch.isdigit() else ord(ch) - 55 if ch.isalpha() else 0x24
+        code = int(ch) if ch.isdigit() else ord(ch) - 55 if ch.isalpha() else marks.get(ch, 0x24)
         out += char_bits(rom, code)
     return bytes(out)
 

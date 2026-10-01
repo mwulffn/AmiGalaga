@@ -29,6 +29,7 @@
 	xdef	FlowInit
 	xdef	FlowTick
 	xref	StageInit
+	xref	StageIdle
 	xref	PlayerEnter
 	xref	ScoreAdd
 	xref	TextShow
@@ -64,6 +65,9 @@ PLAYER_ROW	equ	14
 WIDE_COLUMN	equ	5			; CHALLENGING STAGE, NUMBER OF HITS
 BONUS_COLUMN	equ	8
 BONUS_ROW	equ	19
+RESULT_LINES	equ	4			; the game's results: -RESULTS- and three lines
+RESULT_ROW	equ	15			;   from this row,
+RESULT_PITCH	equ	3			;   this many rows apart
 SPECIAL_COLUMN	equ	2
 PERFECT_ROW	equ	13
 FIRST_BONUS	equ	$00020000		; the scores that bring an extra fighter, as decimal digits
@@ -103,6 +107,8 @@ FlowInit:
 	moveq	#1,d0
 	bsr	TextHide
 	moveq	#2,d0
+	bsr	TextHide
+	moveq	#3,d0
 	bsr	TextHide
 	lea	PlayerText(pc),a0
 	moveq	#OPENING_AT,d1
@@ -237,7 +243,7 @@ FlowTick:
 ; A stage is running: show the fighter's messages, and see if the stage is cleared.
 ; In:       a5 = state
 ; Out:      -
-; Clobbers: d0-d5, a0-a3
+; Clobbers: d0-d7, a0-a3
 Playing:
 	moveq	#FT_NONE,d4
 	move.b	PlayerState(a5),d0
@@ -266,8 +272,11 @@ Playing:
 	moveq	#0,d0
 	bsr	TextShow
 
+	; the game is over and its pause is up: the results
+.Stage	cmp.b	#PS_RESULTS,PlayerState(a5)
+	beq	GameResults
 	; cleared: every wave in, nothing of it left, and the fighter there to see it
-.Stage	tst.b	WavesIn(a5)
+	tst.b	WavesIn(a5)
 	beq	.Busy
 	tst.b	Alive(a5)
 	bne	.Busy
@@ -291,6 +300,135 @@ Playing:
 	move.b	#FL_CLEARED,FlowState(a5)
 	move.b	#CLEARED_PAUSE,FlowTimer(a5)
 .Busy	rts
+
+;--
+; GameResults
+; The game is over: the stage is taken away, and the results are set up, a line a frame
+; (a line of text takes a while to build): shots fired, hits, and hits per hundred shots.
+; The arcade works the ratio out with an approximate division; this one is exact.
+; In:       a5 = state, a6 = CUSTOM
+; Out:      -
+; Clobbers: d0-d7, a0-a3
+GameResults:
+	moveq	#0,d0
+	move.b	ResultStep(a5),d0
+	cmp.w	#RESULT_LINES,d0
+	bcc	.Done
+	addq.b	#1,ResultStep(a5)
+	move.w	d0,d6				; the line
+	bne	.Line
+	bsr	StageIdle
+	lea	Blasts(a5),a0
+	moveq	#BLASTS-1,d0
+.Blast	clr.b	bl_live(a0)
+	lea	bl_SIZEOF(a0),a0
+	dbf	d0,.Blast
+	lea	Bombs(a5),a0
+	moveq	#BOMBS-1,d0
+.Bomb	clr.w	bm_x(a0)
+	addq.l	#bm_SIZEOF,a0
+	dbf	d0,.Bomb
+	moveq	#0,d6				; StageIdle keeps no register
+	; its text, then what it counts
+.Line	move.w	d6,d0
+	lsl.w	#2,d0
+	lea	ResultTexts(pc),a0
+	add.w	d0,a0
+	lea	ResultTexts(pc),a1
+	add.w	(a0)+,a1			; the text
+	move.w	(a0),d7				; its column and its colour
+	lea	ResultLine(a5),a0
+.Copy	move.b	(a1)+,(a0)+
+	bne	.Copy
+	subq.l	#1,a0
+	cmp.w	#1,d6
+	bcs	.Show
+	bne	.Hits
+	move.w	ShotCount(a5),d0
+	bsr	Number
+	bra	.Show
+.Hits	move.w	HitCount(a5),d0
+	cmp.w	#2,d6
+	bne	.Ratio
+	bsr	Number
+	bra	.Show
+	; tenths of a percent = (hits * 10000 / shots + 5) / 10, and none with no shots fired
+.Ratio	moveq	#0,d1
+	move.w	ShotCount(a5),d2
+	beq	.Tenths
+	mulu.w	#10000,d0
+	divu.w	d2,d0
+	bvc	.Fits
+	move.w	#$ffff-5,d0			; more than the line has room for
+.Fits	moveq	#0,d1
+	move.w	d0,d1
+	addq.l	#5,d1
+	divu.w	#10,d1
+.Tenths	and.l	#$ffff,d1
+	divu.w	#10,d1
+	move.w	d1,d0				; whole percent
+	swap	d1				; and the tenth
+	bsr	Number
+	move.b	#'.',(a0)+
+	add.b	#'0',d1
+	move.b	d1,(a0)+
+	move.b	#' ',(a0)+
+	move.b	#'%',(a0)+
+.Show	clr.b	(a0)
+	lea	ResultLine(a5),a0
+	move.w	d7,d1
+	lsr.w	#8,d1				; column
+	move.w	d6,d2
+	mulu.w	#RESULT_PITCH,d2
+	add.w	#RESULT_ROW,d2
+	moveq	#0,d3
+	move.b	d7,d3				; colour
+	move.w	d6,d0
+	bra	TextShow
+.Done	rts
+
+; each line of the results: its text, its column, its colour. The texts that are followed
+; by a number are as long as it takes to put the number in column 20.
+RESULT	macro
+	dc.w	\1-ResultTexts
+	dc.b	\2,\3
+	endm
+ResultTexts:
+	RESULT	.Results,9,TEXT_RED
+	RESULT	.Shots,4,TEXT_YELLOW
+	RESULT	.Hits,4,TEXT_YELLOW
+	RESULT	.Ratio,4,TEXT_WHITE
+.Results
+	dc.b	"-RESULTS-",0
+.Shots	dc.b	"SHOTS FIRED     ",0
+.Hits	dc.b	"NUMBER OF HITS  ",0
+.Ratio	dc.b	"HIT-MISS RATIO  ",0
+	even
+
+;--
+; Number
+; Write a number in decimal, without leading zeros.
+; In:       d0.w = the number, a0 = where to
+; Out:      a0 = after its last digit
+; Clobbers: d0, d2-d4, a1
+Number:	lea	Powers(pc),a1
+	moveq	#0,d2				; nonzero once a digit has been written
+.Power	move.w	(a1)+,d3
+	and.l	#$ffff,d0
+	divu.w	d3,d0
+	move.w	d0,d4				; the digit
+	swap	d0				; and the rest
+	cmp.w	#1,d3
+	beq	.Write				; the last digit always shows
+	or.w	d4,d2
+	beq	.Skip
+.Write	add.b	#'0',d4
+	move.b	d4,(a0)+
+.Skip	cmp.w	#1,d3
+	bne	.Power
+	rts
+
+Powers:	dc.w	10000,1000,100,10,1
 
 ;--
 ; Splash

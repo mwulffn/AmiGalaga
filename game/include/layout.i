@@ -18,6 +18,7 @@ PLAY_WIDTH	equ	224
 SCREEN_ROWS	equ	DISPLAY_LINES+2*GUARD
 SCREEN_SIZE	equ	ROW_BYTES*SCREEN_ROWS
 VISIBLE		equ	GUARD*ROW_BYTES+GUARD/8	; first displayed byte of a buffer
+SCREENS		equ	2			; the one shown and the one drawn
 
 DISPLAY_TOP	equ	44			; raster line of the first displayed line
 

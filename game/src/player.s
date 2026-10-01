@@ -59,6 +59,7 @@ BLOWN_STEPS	equ	15			; steps of it
 BLOWN_PAUSE	equ	4			; GameTimer from the fighter's loss until the next one is due
 READY_PAUSE	equ	3			;   while the new fighter cannot yet fire or be hit
 OVER_PAUSE	equ	6			;   after the last fighter
+RESULTS_PAUSE	equ	14			;   while the game's results show
 RETURN_SX	equ	$7a			; where a new fighter appears
 TIME_BACK	equ	30			; StageTime added when it does,
 STAGE_TIME	equ	120			;   up to the stage's starting time
@@ -98,6 +99,8 @@ PlayerInit:
 	endc
 	clr.b	Docking(a5)
 	clr.b	Bang2Step(a5)
+	clr.w	ShotCount(a5)
+	clr.w	HitCount(a5)
 	lea	Shots(a5),a0
 	rept	SHOTS*sh_SIZEOF/2
 	clr.w	(a0)+
@@ -214,11 +217,20 @@ PlayerTick:
 	beq	.Ready
 	bcs	.Away
 	subq.b	#PS_OVER-PS_READY,d0
-	bne	.Done				; PS_ABSENT: not there yet
-	; PS_OVER: after the pause, a new game
+	beq	.Over
+	subq.b	#PS_RESULTS-PS_OVER,d0
+	bne	.Done				; PS_ABSENT: not there yet; PS_TAKEN: in the beam
+	; PS_RESULTS: after the pause, a new game
 	tst.b	GameTimer(a5)
 	bne	.Done
 	st	NewGame(a5)
+	rts
+	; PS_OVER: after the pause, the game's results (flow.s shows them)
+.Over	tst.b	GameTimer(a5)
+	bne	.Done
+	move.b	#PS_RESULTS,PlayerState(a5)
+	move.b	#RESULTS_PAUSE,GameTimer(a5)
+	clr.b	ResultStep(a5)
 	rts
 .Away	addq.b	#PS_READY-PS_BLOWN,d0
 	bne	.Returning
@@ -314,6 +326,7 @@ PlayerTick:
 	blt	.Done
 .Launch	move.w	d2,sh_x(a0)
 	move.b	Dual(a5),sh_wide(a0)
+	addq.w	#1,ShotCount(a5)
 	move.w	#SHIP_SY,sh_y(a0)
 	SOUND	SND_SHOT
 .Lost	clr.b	FirePending(a5)
@@ -369,6 +382,7 @@ Shot:	move.w	sh_x(a3),d6
 	sub.b	d6,d0
 	bsr	Aside
 	beq	.NextColumn
+	addq.w	#1,HitCount(a5)
 	bsr	HitPlaced
 .NextColumn
 	dbf	d2,.Column
@@ -389,6 +403,7 @@ Shot:	move.w	sh_x(a3),d6
 	bsr	Aside
 	beq	.Flights
 	st	ShotHit(a5)
+	addq.w	#1,HitCount(a5)
 	clr.b	ShotFlying(a5)
 	moveq	#0,d5
 	move.b	CaptiveObj(a5),d5
@@ -422,6 +437,7 @@ Shot:	move.w	sh_x(a3),d6
 	exg	d0,d3
 	tst.w	d3
 	beq	.NextFlight
+	addq.w	#1,HitCount(a5)
 	bsr	HitFlying
 .NextFlight
 	lea	fl_SIZEOF(a0),a0

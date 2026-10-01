@@ -46,6 +46,7 @@
 	xref	StageIdle
 	xref	StarsTick
 	xref	CaptureInit
+	xref	VideoClearField
 	xref	TransformTick
 	xref	TransformHome
 	xref	CaptureTick
@@ -238,7 +239,11 @@ GameFrame:
 	bne	.Rows
 
 	bsr	FlyersErase
-	bsr	FormationDraw
+	tst.b	ClearField(a5)
+	beq	.Field
+	subq.b	#1,ClearField(a5)
+	bsr	VideoClearField
+.Field	bsr	FormationDraw
 	bsr	BeamDraw
 	bsr	CaptivePlace
 	bsr	FlyersBegin

@@ -158,6 +158,11 @@ SpecialKind	rs.b	1		;   what it was
 TrioLeft	rs.b	1		;   of it and the two that split off it: how many are still to shoot for the bonus
 FlashImage	rs.l	1		;   its image in its new colours, wings open; wings closed follows
 FormOther	rs.l	1		; formation: the other image of the row being composed
+ShotCount	rs.w	1		; results: shots fired this game
+HitCount	rs.w	1		;   and how many times one hit
+ResultLine	rs.b	26		;   a line of the results being put together
+ResultStep	rs.b	1		;   how much of the results is set up: 0 nothing yet, then a line a frame
+ClearField	rs.b	1		; drawing: screens whose playfield is still to be wiped (see StageIdle)
 ObjKind		rs.b	OBJECTS/2	; what each enemy looks like (a KIND_ from gfx.i), by object / 2
 Sound		rs.b	snd_SIZEOF	; the sound driver's state: see sound.i
 State_SIZEOF	rs.b	0

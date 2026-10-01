@@ -3,9 +3,9 @@
 # the models: a test build plays itself and logs what happens in FS-UAE, and
 # tools/stagetest.py replays the same frames. Run for the exact build and the PAL build,
 # from stage 1 (through stage changes and a game over), from stage 3, the first
-# challenging stage (through its results), and from stage 6 (fly-through enemies, and one
+# challenging stage (through its results), and from stage 8 (fly-through enemies, and one
 # that transforms). Built without capture, which the model does not have.
-#   tools/test_stage.sh              or   STAGES="6:6000" tools/test_stage.sh   (first stage:frames ...)
+#   tools/test_stage.sh              or   STAGES="8:6000" tools/test_stage.sh   (first stage:frames ...)
 set -e
 cd "$(dirname "$0")/.."
 ROM=${ROM:-../original/galaga.zip}
@@ -30,7 +30,7 @@ run() {  # first stage, frames
         python3 tools/stagetest.py check "$ROM" $hd/results $((6 - exact)) $2 $1
     done
 }
-for spec in ${STAGES:-1:6000 3:5500 6:6000}; do
+for spec in ${STAGES:-1:6000 3:5500 8:6000}; do
     run "${spec%:*}" "${spec#*:}"
 done
 make -s build/galaga >/dev/null   # leave the normal build in place

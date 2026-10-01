@@ -29,12 +29,13 @@ SLOTS, FORM_ROWS, BLASTS = 12, 5, 8  # as in the game's sources
 SHIP_START, SHIP_SX, SHIP_SY, SHIP_LEFT, SHIP_RIGHT = 104, 17, 297, 0x12, 0xE1
 AUTO_FIRE, SHOT_GAP, BLAST_STEPS, POPUP_STEPS = 16, 9, 6, 19
 LAUNCHED, HOME, GONE, FORMATION, KILLED, BOSS_HIT, SCORE_HI, SCORE_LO, FIGHTER_LOST, BOMB = range(10)
-PLAYING, BLOWN, RETURNING, READY, OVER, ABSENT = range(6)  # what the fighter is doing
+PLAYING, BLOWN, RETURNING, READY, OVER, ABSENT, TAKEN, SHOWN = range(8)  # what the fighter is doing (SHOWN: the results)
 PLAY, INTRO, CLEARED, RESULTS, SPLASH, ENTER = range(6)  # where the game is between stages (src/flow.s)
 INTRO_PAUSE, CLEARED_PAUSE, SPLASH_PAUSE, RESULT_PAUSE, RESULT_END, BLINKS = 8, 4, 3, 3, 6, 7
 WAVE_POINTS, WAVE_POPUPS = (1000, 1500, 2000, 3000), (3, 4, 5, 6)
 BEGUN = 10
 RESERVE, BLOWN_STEPS, BLOWN_PAUSE, READY_PAUSE, OVER_PAUSE, RETURN_SX, TIME_BACK = 2, 15, 4, 3, 6, 0x7A, 30
+RESULTS_PAUSE = 14
 NAMES = {
     LAUNCHED: "launch", HOME: "home", GONE: "gone", FORMATION: "formation",
     KILLED: "destroyed", BOSS_HIT: "boss hit", SCORE_HI: "score", SCORE_LO: "score",
@@ -88,6 +89,7 @@ def model(rom: G.Rom, fifths: int, frames: int, first: int = 1) -> list[tuple[in
     dirty: set[int] = set()
     alive, stage_time, flying_hits = 0, 0, 0
     tf, tf_armed, trio_left, own_colour = TF.Transform(), False, 0, 0
+    result_step = 0
     flow, flow_timer, flow_step, first_stage, next_bonus = INTRO, INTRO_PAUSE, 0, True, 20000
     state, in_play = ABSENT, False
 
@@ -219,6 +221,9 @@ def model(rom: G.Rom, fifths: int, frames: int, first: int = 1) -> list[tuple[in
             if state == ABSENT:
                 pass
             elif state == OVER:
+                if not game_timer:  # the results show, and the stage is taken away (src/flow.s GameResults)
+                    state, game_timer, result_step = SHOWN, RESULTS_PAUSE, 0
+            elif state == SHOWN:
                 new_game = new_game or not game_timer
             elif state == BLOWN:
                 if arcade & 3 == 3 and fighter_step:
@@ -279,7 +284,16 @@ def model(rom: G.Rom, fifths: int, frames: int, first: int = 1) -> list[tuple[in
                 lives += 1
                 next_bonus = 70000 if next_bonus == 20000 else next_bonus + 70000 if next_bonus < 930000 else 10**9
             splash = False
-            if flow == PLAY:
+            if flow == PLAY and state == SHOWN:
+                if result_step == 0:
+                    launcher, form = idle()
+                    present, dirty, alive = set(), set(), 0
+                    slots, landed = [None] * SLOTS, [False] * SLOTS
+                    env.home_loc, env.home_x = form.home_loc, form.home_x
+                    blasts = []
+                    bombs = [[0, 0, 0, 0] for _ in range(B.BOMBS)]
+                result_step = min(result_step + 1, 4)
+            elif flow == PLAY:
                 if launcher.all_in and not alive and state == PLAYING and not blasts and not any(slots):
                     flow, flow_timer = CLEARED, CLEARED_PAUSE
             elif flow == INTRO:

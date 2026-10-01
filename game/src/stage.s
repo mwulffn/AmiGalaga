@@ -246,6 +246,9 @@ Random:	move.w	RandomSeed(a5),d1
 ; Out:      -
 ; Clobbers: d0-d7, a0-a3
 StageIdle:
+	; A strip wipes only its own old image, and only if it has moved a line or two: a
+	; formation taken away with enemies still in it has to be wiped from both screens.
+	move.b	#SCREENS,ClearField(a5)
 	move.b	#WAVE_END,WaveTable(a5)
 	clr.w	WaveAt(a5)
 	clr.w	WasFlying(a5)

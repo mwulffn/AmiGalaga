@@ -55,9 +55,11 @@ build/sndtest_script.i: tools/sndtest.py
 build/galaga: $(OBJECTS) lint
 	vlink -bamigahunk -s -o $@ $(OBJECTS)
 
-# a header that has drifted from its code breaks the build
+# a header that has drifted from its code breaks the build, and so does a word or long
+# field at an odd offset in one of the structures
 lint: $(GENERATED)
 	uv run -q --project ../asmlint asmlint -I include -I build src/*.s
+	python3 tools/check_even.py include build
 
 build/galaga.adf: build/galaga
 	@printf 'galaga\n' > build/startup-sequence

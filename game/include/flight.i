@@ -128,10 +128,11 @@ PS_READY	equ	3			; back, and can move, but not fire or be hit, until GameTimer r
 PS_OVER		equ	4			; no fighters left: until GameTimer runs out, then a new game
 PS_ABSENT	equ	5			; not there yet: a new game's opening
 PS_TAKEN	equ	6			; in the tractor beam, or carried off
+PS_RESULTS	equ	7			;   the game is over: its results show
 RESERVE		equ	2			; fighters in reserve at the start
 
 ; a line of text in the playfield (text.s)
-TEXT_LINES	equ	3
+TEXT_LINES	equ	4
 TEXT_CELLS	equ	12			; flyers a line: two letters each
 	rsreset
 ts_cells	rs.w	1			; flyers showing; 0: the line is not shown
@@ -142,6 +143,7 @@ ts_SIZEOF	rs.b	0
 TEXT_CYAN	equ	5
 TEXT_RED	equ	2
 TEXT_YELLOW	equ	3
+TEXT_WHITE	equ	1
 
 ; where the game is between stages (FlowState)
 FL_PLAY		equ	0			; a stage is running

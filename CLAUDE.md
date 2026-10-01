@@ -74,10 +74,10 @@ decision is made or changed.
   the pulse sound starts, and follows its direction. The user has
   confirmed the breathing looks right (2026-10-01).
 - A strip only wipes its own old image if it moves a line or two. A
-  stage now ends with the formation empty, so the jump back to the rest
-  position leaves nothing behind (the earlier demo, which changed stage
-  with a full formation, did). If anything else ever resets a formation
-  that still has enemies in it, the playfield has to be cleared then.
+  cleared stage ends with the formation empty, so the jump back to the
+  rest position leaves nothing behind. When a formation with enemies in
+  it is taken away (a game is over: `StageIdle`), the playfield is wiped
+  in both screens (`VideoClearField`, two blits a screen).
 - **Flyers** (divers, bombs, explosions, score pop-ups): masked bobs,
   erased with a clear blit of the old position.
 - **Text:** panel text is drawn by the CPU when it changes. Text inside
@@ -85,7 +85,7 @@ decision is made or changed.
   stage's results) is drawn as flyers of half height, two letters each,
   built from the font when a line is set and redrawn every frame while
   it shows (`game/src/text.s`): enemies fly through where the arcade
-  puts its text. Three lines at most. Colours as the arcade: cyan, red
+  puts its text. Four lines at most. Colours as the arcade: cyan, red
   for PERFECT, yellow for the special bonus.
 - Rejected after measuring: clearing the whole buffer per frame, clearing
   with the CPU, and unmasked per-enemy copies (neighbours at 16 px pitch
@@ -264,6 +264,14 @@ option is kept for later.
   `FormAlt` makes the strip use its shape in the new colours
   (`flash.bin`: bee and butterfly, wings open and closed, in the three
   colour sets, 3 KB).
+- After GAME OVER and its pause the results show for 14 counts, as in
+  the arcade: -RESULTS-, SHOTS FIRED, NUMBER OF HITS, HIT-MISS RATIO,
+  in its places and colours (red, yellow, yellow, white), built a line a
+  frame. A shot is a press that fired (one for two fighters' pair of
+  bullets); a hit is each enemy a shot hits, a boss's first hit
+  included. The ratio is hits per hundred shots to a tenth, worked out
+  exactly; the arcade's own division is approximate, so its last digit
+  can differ.
 - The high score follows the score. An extra fighter comes at 20000, at
   70000 and every 70000 after (MAME's default switch setting).
 - The wave timer was found because the launcher model started a
@@ -272,12 +280,15 @@ option is kept for later.
 - `test_stage.sh` runs a build that plays itself (side to side, a press
   every 16 frames) and compares every launch, landing, hit, kill, score,
   bomb, lost fighter and stage start with the models, in both builds:
-  6,000 frames from stage 1 (through a stage change and a game over
-  into the next game), 5,500 from stage 3 (a challenging stage, its
-  results and bonus, and stage 4 with its fly-through enemies, some
-  shot and some gone) and 6,000 from stage 6 (an enemy transforms in
-  both builds). All identical. `STAGES="6:6000" tools/test_stage.sh`
-  runs one of them.
+  6,000 frames from stage 1 (through a stage change, a game over and
+  its results into the next game), 5,500 from stage 3 (a challenging
+  stage, its results and bonus, and stage 4 with its fly-through
+  enemies, some shot and some gone) and 6,000 from stage 8 (an enemy
+  transforms in both builds). All identical.
+  `STAGES="8:6000" tools/test_stage.sh` runs one of them. Which run
+  contains a transformation depends on how the self-playing game goes:
+  check with the model when the game's timing changes (the run from
+  stage 6 lost its transformation when the results screen came in).
 - The stage index row is the arcade's difficulty switch; `RANK` 3 is
   what MAME's default (and the trace) uses.
 - A flying enemy is turned the way it is heading by the arcade's rule
@@ -483,8 +494,8 @@ included, so the real figure is a little lower.
   (2026-10-01). Also open there:
   firing from inside the beam, and the captured fighter that comes back
   in a later stage.
-- **Game logic** not ported yet: the results after GAME OVER
-  (shots, hits, ratio); title, attract mode and high score entry.
+- **Game logic** not ported yet: title, attract mode and high score
+  entry.
 - **Over budget in busy frames from stage 6 on** (see Measured budget):
   about 2 frames in 1,000 are late, by up to 20 lines. An optimisation
   pass is due; the user has not yet said when.
@@ -532,6 +543,7 @@ included, so the real figure is a little lower.
 | `sound/` | sound extraction, driver and chip model, validation against MAME |
 | `docs/style.md` | assembly style guide for the game's code |
 | `asmlint/` | the header linter the style guide requires: a standalone Python tool (`uv run pytest` in its directory); the game's build runs it |
+| `game/tools/check_even.py` | also run by the build: fails it if a word or long field of a structure in `include/` is at an odd offset (vasm does not align `rs.w`, and a 68000 traps on the access; this happened once and the game came up with a blank screen) |
 | `reference/` | local-only reading material, ignored by git |
 | `cfg/` | MAME's own settings, written when the arcade is run from here; not ours, untracked |
 | `original/` | the user's ROM set, ignored by git |
