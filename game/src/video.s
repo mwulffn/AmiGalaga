@@ -6,13 +6,11 @@
 	include	"flight.i"
 	include	"sound.i"
 	include	"state.i"
-	include	"macros.i"
 
 	xdef	VideoInit
 	xdef	VideoWaitFrame
 	xdef	VideoFlip
 	xdef	VideoSetSprite
-	xdef	VideoClearField
 	xdef	FighterColour
 	xdef	CaptiveColours
 	xref	State
@@ -29,12 +27,6 @@ COPPER_END	equ	$fffffffe
 STAR_LINE	equ	DISPLAY_TOP-1		; the star table takes over at the end of this line
 END_OF_LINE	equ	$df			; copper wait: horizontal position
 STAR_PIXEL	equ	$8000			; sprite 7's image: its leftmost pixel
-
-; wiping the playfield: every plane row of the buffer, up to where the panel starts
-FIELD_WORDS	equ	(GUARD+PLAY_WIDTH+16)/16
-FIELD_BLITS	equ	2			; a blit is 1024 lines at most
-FIELD_LINES	equ	SCREEN_ROWS*PLANES/FIELD_BLITS
-CLEAR		equ	$0100			; bltcon0: D only, all zeros
 
 	section	code,code
 
@@ -91,25 +83,6 @@ VideoSetSprite:
 	move.w	d1,(a1)
 	swap	d1
 	move.w	d1,4(a1)
-	rts
-
-;--
-; VideoClearField
-; Wipe the playfield, hidden edges and the gap beside the panel included, in the back screen.
-; In:       a5 = state, a6 = CUSTOM
-; Out:      -
-; Clobbers: d0, a0
-VideoClearField:
-	move.l	BackScreen(a5),a0
-	move.l	scr_bitmap(a0),a0
-	moveq	#FIELD_BLITS-1,d0
-.Half	WAITBLIT
-	move.l	#CLEAR<<16,bltcon0(a6)
-	move.w	#PLANE_BYTES-FIELD_WORDS*2,bltdmod(a6)
-	move.l	a0,bltdpt(a6)
-	move.w	#(FIELD_LINES<<6)|FIELD_WORDS,bltsize(a6)
-	add.l	#FIELD_LINES*PLANE_BYTES,a0
-	dbf	d0,.Half
 	rts
 
 ;--

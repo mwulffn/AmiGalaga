@@ -30,3 +30,21 @@ LOG	macro
 	addq.l	#4,sp
 	endc
 	endm
+
+; A PROFILE build's profile: note how far into the frame the work has come. \1 = which mark,
+; a PROF_ name. Uses a5 = state and a6 = CUSTOM. A blit is waited for before the next one
+; starts, so the last blit of one part is paid for in the next.
+MARK	macro
+	if	PROFILE
+	move.l	d0,-(sp)
+	move.w	FrameCount(a5),d0
+	sub.w	FrameStart(a5),d0
+	mulu.w	#PAL_LINES,d0
+	move.w	d0,ProfMarks+2*\1(a5)
+	move.l	vposr(a6),d0
+	lsr.l	#8,d0
+	and.w	#$1ff,d0
+	add.w	d0,ProfMarks+2*\1(a5)
+	move.l	(sp)+,d0
+	endc
+	endm

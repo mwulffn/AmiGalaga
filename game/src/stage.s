@@ -28,6 +28,7 @@
 	xdef	StageTick
 	xdef	StageIdle
 	xref	FormationInit
+	xref	FormationEmpty
 	xref	DivesInit
 	xref	TransformInit
 	xref	StarsStage
@@ -241,14 +242,12 @@ Random:	move.w	RandomSeed(a5),d1
 
 ;--
 ; StageIdle
-; No stage: nothing flying, nothing to launch, the formation empty. For a game's opening.
-; In:       a5 = state, a6 = CUSTOM
+; No stage: nothing flying, nothing to launch, the formation empty. For a game's opening,
+; and for when a game is over.
+; In:       a5 = state
 ; Out:      -
-; Clobbers: d0-d7, a0-a3
+; Clobbers: d0, a0
 StageIdle:
-	; A strip wipes only its own old image, and only if it has moved a line or two: a
-	; formation taken away with enemies still in it has to be wiped from both screens.
-	move.b	#SCREENS,ClearField(a5)
 	move.b	#WAVE_END,WaveTable(a5)
 	clr.w	WaveAt(a5)
 	clr.w	WasFlying(a5)
@@ -263,7 +262,10 @@ StageIdle:
 .Slot	clr.b	fl_flags(a0)
 	lea	fl_SIZEOF(a0),a0
 	dbf	d0,.Slot
-	bra	FormationInit
+	; The formation is emptied where it stands, not put back at rest: a strip wipes only
+	; its own place, so the strips, now empty, have to be drawn once more where their
+	; enemies were. The next stage puts it at rest.
+	bra	FormationEmpty
 
 ;--
 ; StageTick

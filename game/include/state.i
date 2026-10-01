@@ -22,7 +22,10 @@ StatFrames	rs.w	1		;   and how many frames
 StatWorstAt	rs.w	1		;   which frame the worst was
 StatOver	rs.w	1		;   how many took more than a frame
 StatLate	rs.w	3*STAT_LATE	;   the first of those: frame, lines, and what was on: flights, landed, bombs, blasts (a nibble each)
-STAT_SIZE	equ	12+6*STAT_LATE
+ProfWorst	rs.w	PROF_MARKS	;   the profile: the worst frame's marks, in lines from the frame's start
+ProfSum		rs.l	PROF_MARKS	;   and every frame's, added up
+STAT_SIZE	equ	12+6*STAT_LATE+6*PROF_MARKS
+ProfMarks	rs.w	PROF_MARKS	;   this frame's
 FormRows	rs.w	2*FORM_ROWS	; formation: per row, x and y of its strip, set when composed
 FormPresent	rs.w	FORM_ROWS	;   per row: bit n set if the enemy in column n is there
 Score		rs.l	1		; six decimal digits, two to a byte, in the low three bytes
@@ -162,7 +165,7 @@ ShotCount	rs.w	1		; results: shots fired this game
 HitCount	rs.w	1		;   and how many times one hit
 ResultLine	rs.b	26		;   a line of the results being put together
 ResultStep	rs.b	1		;   how much of the results is set up: 0 nothing yet, then a line a frame
-ClearField	rs.b	1		; drawing: screens whose playfield is still to be wiped (see StageIdle)
+ResultPad	rs.b	1
 ObjKind		rs.b	OBJECTS/2	; what each enemy looks like (a KIND_ from gfx.i), by object / 2
 Sound		rs.b	snd_SIZEOF	; the sound driver's state: see sound.i
 State_SIZEOF	rs.b	0

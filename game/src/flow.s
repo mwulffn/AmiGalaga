@@ -30,6 +30,7 @@
 	xdef	FlowTick
 	xref	StageInit
 	xref	StageIdle
+	xref	CaptureInit
 	xref	PlayerEnter
 	xref	ScoreAdd
 	xref	TextShow
@@ -303,7 +304,8 @@ Playing:
 
 ;--
 ; GameResults
-; The game is over: the stage is taken away, and the results are set up, a line a frame
+; The game is over: the stage is taken away (its formation's strips wipe it over the next
+; two frames), and the results are set up, a line a frame
 ; (a line of text takes a while to build): shots fired, hits, and hits per hundred shots.
 ; The arcade works the ratio out with an approximate division; this one is exact.
 ; In:       a5 = state, a6 = CUSTOM
@@ -312,12 +314,16 @@ Playing:
 GameResults:
 	moveq	#0,d0
 	move.b	ResultStep(a5),d0
-	cmp.w	#RESULT_LINES,d0
+	cmp.w	#RESULT_LINES+1,d0
 	bcc	.Done
 	addq.b	#1,ResultStep(a5)
-	move.w	d0,d6				; the line
-	bne	.Line
+	move.w	d0,d6
+	subq.w	#1,d6				; the line
+	bcc	.Line
+	; first the stage goes
 	bsr	StageIdle
+	bsr	CaptureInit			; no captured fighter, and no beam left on the screen
+	move.b	#SCREENS,BeamWipe(a5)
 	lea	Blasts(a5),a0
 	moveq	#BLASTS-1,d0
 .Blast	clr.b	bl_live(a0)
@@ -328,7 +334,7 @@ GameResults:
 .Bomb	clr.w	bm_x(a0)
 	addq.l	#bm_SIZEOF,a0
 	dbf	d0,.Bomb
-	moveq	#0,d6				; StageIdle keeps no register
+	rts
 	; its text, then what it counts
 .Line	move.w	d6,d0
 	lsl.w	#2,d0

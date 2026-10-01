@@ -76,8 +76,11 @@ decision is made or changed.
 - A strip only wipes its own old image if it moves a line or two. A
   cleared stage ends with the formation empty, so the jump back to the
   rest position leaves nothing behind. When a formation with enemies in
-  it is taken away (a game is over: `StageIdle`), the playfield is wiped
-  in both screens (`VideoClearField`, two blits a screen).
+  it is taken away (a game is over: `StageIdle`), it is emptied where it
+  stands, not put back at rest: its strips, rebuilt empty, are drawn
+  once more where the enemies were and wipe them, at no extra cost. The
+  next stage's start puts the formation at rest. (Wiping the whole
+  playfield with the blitter was tried first: about 270 lines a screen.)
 - **Flyers** (divers, bombs, explosions, score pop-ups): masked bobs,
   erased with a clear blit of the old position.
 - **Text:** panel text is drawn by the CPU when it changes. Text inside
@@ -422,12 +425,6 @@ positions need a one-word blit, not two.
 The user keeps the arcade's 8 and accepts the thin margin for now
 (2026-10-01).
 
-With the stage flow in, a self-playing run averages 158 lines. Its
-worst frame, 292, is the one that sets a game's first stage up: the
-stage's tables, five strips and a line of text are all built in that
-frame, with nothing else on screen. Building a line of text is slow (a
-byte at a time); if that frame ever matters, start there.
-
 With capture in (2026-10-01), self-playing runs of 4,000 frames:
 
 | Run | Average | Worst frame |
@@ -442,25 +439,41 @@ then copying the beam took a frame over 313 lines; one pass (the copy
 for the rows that are out, a clear for the rest) does not. The margin
 in the worst frame is 7 lines.
 
-With the fly-through and transforming enemies in (2026-10-01), runs of
-4,000 frames from three stages. The report now gives the worst frame's
-number and lists the late ones (`tools/test.sh 4000 -DFIRST_STAGE=6`):
+With everything up to the results screen in (2026-10-01), self-playing
+runs of 4,000 frames. The report gives the worst frame's number and
+lists the late frames with what was on screen
+(`tools/test.sh 4000 -DFIRST_STAGE=6`):
 
 | From stage | Average | Worst frame | Frames over 313 |
 |---|---|---|---|
-| 1 | 161 | 310 | 0 |
-| 6 | 164 | 333 | 8 |
-| 9 | 158 | 337 | 3 |
+| 1 | 167 | 310 | 0 |
+| 6 | 174 | 331 | 6 |
 
 **The game is over budget in its busiest frames from stage 6 on.** A
 late frame is shown a frame late: a hitch of 1/50 s, no tearing (double
 buffered; stars and sound run from interrupts and are not affected).
-Two kinds of frame are late: the one that sets a stage up (frame 266
-above: 332 to 337 lines with the wave table now built with its extras;
-nothing moves on screen then), and play frames in a busy entrance (10
-to 12 flying with bombs: 318 to 331). Not yet profiled. Candidates:
-the cheaper bomb, the sound driver, splitting the stage set-up over two
-frames.
+The late ones are play frames in a busy entrance: 8 to 10 flying, 4
+bombs and 1 to 4 explosions (a big explosion frame is four flyers),
+318 to 331 lines; and one frame at 321 when a game's last stage is
+taken away, with nothing moving on screen.
+
+`-DPROFILE=1` adds where a frame's lines go (marks cost about 15 lines
+a frame themselves, and a blit is paid for in the part after it). From
+stage 6, average lines: drawing the formation 65, rebuilding strips
+20, drawing the flights 18, logic 17, text and the last flyer blits
+16, erasing flyers 12, shots and hits 9, moving flights 6, sprites and
+panel 5, blasts 4, bombs 4. **Copying the five strips is the largest
+item**, and it is paid in full even when most of the formation is
+empty or flying. That is where an optimisation pass should start
+(copy only the part of a strip that has enemies in it), then the
+explosions (one 32x32 bob instead of four 16x16), the cheaper bomb,
+and the sound driver.
+
+Found and fixed with the profile: building a line of text took about
+13 lines a flyer (a byte at a time); it now builds both letters of a
+flyer a row at a time, about four times faster, which took the frame
+that sets a stage up from 330 lines to under 313. The results' four
+lines are built one a frame.
 
 A measuring error was fixed on the way: the frame count and the beam's
 line were read one after the other, and a vertical blank between the
@@ -497,8 +510,9 @@ included, so the real figure is a little lower.
 - **Game logic** not ported yet: title, attract mode and high score
   entry.
 - **Over budget in busy frames from stage 6 on** (see Measured budget):
-  about 2 frames in 1,000 are late, by up to 20 lines. An optimisation
-  pass is due; the user has not yet said when.
+  about 1.5 frames in 1,000 are late, by up to 20 lines. An
+  optimisation pass is due, starting with the strips; the user has not
+  yet said when.
 - **Sound cost: deferred, by decision.** The driver works and the user
   has confirmed it sounds right on the emulated A500 (2026-10-01). At up
   to 19 lines a frame it is the largest CPU item measured, and it lifts

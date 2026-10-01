@@ -55,14 +55,11 @@ TextShow:
 .Cell	moveq	#0,d0
 	move.b	(a0)+,d0
 	beq	.Shown
-	bsr	Glyph				; the left letter, in the high bytes
-	moveq	#' ',d0
+	moveq	#' ',d1
 	tst.b	(a0)
 	beq	.Right
-	move.b	(a0)+,d0
-.Right	addq.l	#1,a2
-	bsr	Glyph
-	lea	CELL_BYTES-1(a2),a2
+	move.b	(a0)+,d1
+.Right	bsr	Cell
 	addq.w	#1,d5
 	cmp.w	#TEXT_CELLS,d5
 	bne	.Cell
@@ -70,32 +67,51 @@ TextShow:
 	rts
 
 ;--
-; Glyph
-; Write one letter into half of a flyer's image and mask.
-; In:       d0.w = the letter, a2 = the image, or the image + 1 for its right half,
-;           d3.w = colour
-; Out:      -
+; Cell
+; Build one flyer of a line: two letters side by side, a row of both at a time; the image
+; in the planes of the colour, the mask in all of them.
+; In:       d0.w = the left letter, d1.w = the right one, a2 = the flyer, d3.w = colour
+; Out:      a2 = the next flyer
 ; Clobbers: d0-d2, a3
-Glyph:	move.l	a1,-(sp)
+Cell:	movem.l	a0-a1,-(sp)
 	lea	MASK_OFFSET(a2),a1
 	lsl.w	#3,d0
 	lea	Font-FIRST_GLYPH*GLYPH_ROWS,a3
 	add.w	d0,a3
-	moveq	#0,d1				; offset in the image
+	lsl.w	#3,d1
+	lea	Font-FIRST_GLYPH*GLYPH_ROWS,a0
+	add.w	d1,a0
+	moveq	#GLYPH_ROWS-1,d2
 .Row	move.b	(a3)+,d0
-	moveq	#0,d2				; plane
-.Plane	move.b	d0,(a1,d1.w)
-	clr.b	(a2,d1.w)
-	btst	d2,d3
-	beq	.Blank
-	move.b	d0,(a2,d1.w)
-.Blank	addq.w	#2,d1
-	addq.w	#1,d2
-	cmp.w	#PLANES,d2
-	bne	.Plane
-	cmp.w	#GLYPH_ROWS*IMAGE_ROW,d1
-	bne	.Row
-	move.l	(sp)+,a1
+	lsl.w	#8,d0
+	move.b	(a0)+,d0
+	move.w	d0,(a1)+
+	clr.w	(a2)
+	btst	#0,d3
+	beq	.Blank0
+	move.w	d0,(a2)
+.Blank0	addq.l	#2,a2
+	move.w	d0,(a1)+
+	clr.w	(a2)
+	btst	#1,d3
+	beq	.Blank1
+	move.w	d0,(a2)
+.Blank1	addq.l	#2,a2
+	move.w	d0,(a1)+
+	clr.w	(a2)
+	btst	#2,d3
+	beq	.Blank2
+	move.w	d0,(a2)
+.Blank2	addq.l	#2,a2
+	move.w	d0,(a1)+
+	clr.w	(a2)
+	btst	#3,d3
+	beq	.Blank3
+	move.w	d0,(a2)
+.Blank3	addq.l	#2,a2
+	dbf	d2,.Row
+	lea	CELL_BYTES-GLYPH_ROWS*IMAGE_ROW(a2),a2
+	movem.l	(sp)+,a0-a1
 	rts
 
 ;--

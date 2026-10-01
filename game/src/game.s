@@ -46,7 +46,7 @@
 	xref	StageIdle
 	xref	StarsTick
 	xref	CaptureInit
-	xref	VideoClearField
+	xref	FormationInit
 	xref	TransformTick
 	xref	TransformHome
 	xref	CaptureTick
@@ -85,6 +85,7 @@ GameInit:
 	if	STAGE_TEST
 	move.l	#StageLog,StageLogPtr(a5)
 	endc
+	bsr	FormationInit			; from then on a stage's start puts the formation at rest
 .Again
 	clr.b	NewGame(a5)
 	clr.l	Score(a5)
@@ -139,6 +140,7 @@ GameFrame:
 	addq.w	#FRAME_FIFTHS,Clock(a5)
 	bra	.Tick
 .Ticked	subq.w	#FIFTHS,Clock(a5)
+	MARK	PROF_LOGIC
 	move.w	StarSteps(a5),StarSpeed(a5)	; the vertical blank scrolls the stars by this
 	if	STAGE_TEST
 	; checksum = (checksum rol 1) + x, over the formation's 16 positions
@@ -193,6 +195,7 @@ GameFrame:
 	move.w	ArcadeFrame(a5),d0
 	sub.w	TicksNow(a5),d0
 	move.w	d0,TickFrame(a5)
+	MARK	PROF_MOVED
 	move.w	TicksNow(a5),d0
 	bra	.Shoot
 .Shots	move.w	d0,-(sp)
@@ -203,6 +206,7 @@ GameFrame:
 	move.w	(sp)+,d0
 .Shoot	dbf	d0,.Shots
 	addq.w	#1,FlightFrame(a5)
+	MARK	PROF_SHOTS
 
 	; A row's strip is rebuilt when someone has just left it; otherwise one row each frame in
 	; turn. Whoever has landed in a row is part of its strip from then on.
@@ -238,14 +242,14 @@ GameFrame:
 	cmp.w	#FORM_ROWS,d0
 	bne	.Rows
 
+	MARK	PROF_STRIPS
 	bsr	FlyersErase
-	tst.b	ClearField(a5)
-	beq	.Field
-	subq.b	#1,ClearField(a5)
-	bsr	VideoClearField
-.Field	bsr	FormationDraw
+	MARK	PROF_ERASED
+	bsr	FormationDraw
+	MARK	PROF_FORMATION
 	bsr	BeamDraw
 	bsr	CaptivePlace
+	MARK	PROF_BEAM
 	bsr	FlyersBegin
 	lea	Flights(a5),a3
 	moveq	#FLIGHT_SLOTS-1,d7
@@ -273,9 +277,13 @@ GameFrame:
 	bsr	FlyerDraw
 .Drawn	lea	fl_SIZEOF(a3),a3
 	dbf	d7,.Draw
+	MARK	PROF_FLIGHTS
 	bsr	BlastsDraw
+	MARK	PROF_BLASTS
 	bsr	BombsDraw
+	MARK	PROF_BOMBS
 	bsr	TextDraw
+	MARK	PROF_TEXT
 	move.w	(sp)+,d6
 
 	rts

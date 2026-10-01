@@ -8,6 +8,21 @@ FLIGHT_SLOTS	equ	12		; as many as the arcade flies at once
 OBJECTS		equ	$80
 STAGE_WAVES	equ	5			; a stage's enemies arrive in 5 waves of 8
 STAT_LATE	equ	16			; test builds: how many late frames the report lists
+; test builds: places in a frame's work where the profile notes the time (see MARK)
+PROF_START	equ	0			; the frame's work begins
+PROF_PANEL	equ	1			; sprites and panel done
+PROF_LOGIC	equ	2			; the arcade frames' logic done
+PROF_MOVED	equ	3			; flights moved
+PROF_SHOTS	equ	4			; shots, bombs and hits done
+PROF_STRIPS	equ	5			; strips rebuilt
+PROF_ERASED	equ	6			; flyers erased
+PROF_FORMATION	equ	7			; formation drawn
+PROF_BEAM	equ	8			; beam drawn
+PROF_FLIGHTS	equ	9			; flights drawn
+PROF_BLASTS	equ	10			; blasts drawn
+PROF_BOMBS	equ	11			; bombs drawn
+PROF_TEXT	equ	12			; text drawn
+PROF_MARKS	equ	13
 WAVE_PAIRS	equ	6			; a wave's eight and up to four that only fly through, in pairs
 WAVE_BYTES	equ	STAGE_WAVES*(1+4*WAVE_PAIRS)+1	; a start mark and the (control, object) pairs each, an end mark
 WAVE_PLACES	equ	16			; places for a wave being put together: 8 for each half

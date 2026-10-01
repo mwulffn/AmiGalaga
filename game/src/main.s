@@ -58,10 +58,12 @@ Main:	bsr	StarsInit
 	move.w	FrameCount(a5),FrameStart(a5)
 	endc
 
+	MARK	PROF_START
 	bsr	SpritesUpdate
 	bsr	PanelScore
 	bsr	PanelShips
 	bsr	PanelStage
+	MARK	PROF_PANEL
 	bsr	GameFrame
 	WAITBLIT				; nothing may still be drawing when the screens swap
 
@@ -142,7 +144,7 @@ StatLoad:
 ; Record how many raster lines this frame's work took.
 ; In:       a5 = state, a6 = CUSTOM
 ; Out:      -
-; Clobbers: d0-d1, a0
+; Clobbers: d0-d1, a0-a1
 FrameStats:
 	; lines = whole frames overrun * 313 + the line the beam is on now. The frame count
 	; and the beam's line must belong together: if the vertical blank comes between
@@ -160,6 +162,11 @@ FrameStats:
 	bls	.NotWorst
 	move.w	d0,StatWorst(a5)
 	move.w	StatFrames(a5),StatWorstAt(a5)
+	lea	ProfMarks(a5),a0
+	lea	ProfWorst(a5),a1
+	moveq	#PROF_MARKS-1,d1
+.Worst	move.w	(a0)+,(a1)+
+	dbf	d1,.Worst
 .NotWorst
 	cmp.w	#PAL_LINES,d0
 	bls	.InTime
@@ -177,5 +184,12 @@ FrameStats:
 .InTime
 	add.l	d0,StatTotal(a5)
 	addq.w	#1,StatFrames(a5)
+	lea	ProfMarks(a5),a0
+	lea	ProfSum(a5),a1
+	moveq	#PROF_MARKS-1,d1
+.Sum	moveq	#0,d0
+	move.w	(a0)+,d0
+	add.l	d0,(a1)+
+	dbf	d1,.Sum
 	rts
 	endc

@@ -39,6 +39,7 @@
 	include	"gfx.i"
 
 	xdef	FormationInit
+	xdef	FormationEmpty
 	xdef	FormationCompose
 	xdef	FormationDraw
 	xdef	FormationTick
@@ -91,6 +92,29 @@ PLACED		equ	$60				; objects below this have a place in the formation
 ALT_IMAGE	equ	1<<KIND_SHIFT			; from a row's image to its other one: the next kind
 
 	section	code,code
+
+;--
+; FormationEmpty
+; Take everyone out of the formation, where it stands: the strips that had someone are
+; rebuilt, empty, and drawn in their present place, which wipes the enemies that were there.
+; In:       a5 = state
+; Out:      -
+; Clobbers: d0, a0
+FormationEmpty:
+	lea	FormPresent(a5),a0
+	moveq	#0,d0
+.Empty	tst.w	(a0)
+	beq	.Was
+	bset	d0,FormDirty(a5)		; only a row that had someone needs it
+.Was	clr.w	(a0)+
+	addq.w	#1,d0
+	cmp.w	#FORM_ROWS,d0
+	bne	.Empty
+	lea	FormAlt(a5),a0
+	moveq	#FORM_ROWS-1,d0
+.Plain	clr.w	(a0)+
+	dbf	d0,.Plain
+	rts
 
 ;--
 ; FormationInit

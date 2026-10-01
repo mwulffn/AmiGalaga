@@ -41,6 +41,10 @@ FIRST_STAGE	equ	1		; the stage a game starts at; tests start elsewhere
 CAPTURE		equ	1		; 0: no boss tries to capture the fighter (the stage test's
 	endc				;    model does not have the tractor beam yet)
 
+	ifnd	PROFILE
+PROFILE		equ	0		; 1: with TEST_FRAMES, the report says where a frame's lines go.
+	endc				;    Noting the time costs some itself: about 15 lines a frame
+
 	ifnd	DUAL_START
 DUAL_START	equ	0		; 1: a game starts with two fighters, to try them out
 	endc

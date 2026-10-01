@@ -75,16 +75,16 @@ def model(rom: G.Rom, fifths: int, frames: int, first: int = 1) -> list[tuple[in
         launcher = W.Launcher(rom, stage, rnd=rnd)
         return stage, launcher, F.Formation(rom), dives, parms, S.colours(stage), row[0], row[1]
 
-    def idle() -> tuple:
-        """No stage yet (src/stage.s StageIdle): nothing to launch, the formation empty."""
+    def idle() -> W.Launcher:
+        """No stage (src/stage.s StageIdle): nothing to launch. The formation stays where it is."""
         launcher = W.Launcher(rom, 1)
         launcher.table = bytes([W.WAVE_END])
-        return launcher, F.Formation(rom)
+        return launcher
 
     # a game's opening (src/game.s GameInit, src/flow.s FlowInit)
     stage, parms, colour, bomb_reload, entry_bombs = first - 1, [0] * 10, S.colours(1), 0, 0
     dives = D.Dives(rom, parms, capturing=1, special=0xFF)
-    launcher, form = idle()
+    launcher, form = idle(), F.Formation(rom)
     present: set[int] = set()
     dirty: set[int] = set()
     alive, stage_time, flying_hits = 0, 0, 0
@@ -145,7 +145,7 @@ def model(rom: G.Rom, fifths: int, frames: int, first: int = 1) -> list[tuple[in
             lives, game_timer, fighter_step, new_game = RESERVE, 0, 0, False
             shots, blasts = [[0, 0], [0, 0]], []
             bombs = [[0, 0, 0, 0] for _ in range(B.BOMBS)]
-            launcher, form = idle()
+            launcher = idle()
             present, dirty, alive, stage = set(), set(), 0, first - 1
             slots, landed = [None] * SLOTS, [False] * SLOTS
             env.home_loc, env.home_x = form.home_loc, form.home_x
@@ -286,13 +286,13 @@ def model(rom: G.Rom, fifths: int, frames: int, first: int = 1) -> list[tuple[in
             splash = False
             if flow == PLAY and state == SHOWN:
                 if result_step == 0:
-                    launcher, form = idle()
+                    launcher = idle()
                     present, dirty, alive = set(), set(), 0
                     slots, landed = [None] * SLOTS, [False] * SLOTS
                     env.home_loc, env.home_x = form.home_loc, form.home_x
                     blasts = []
                     bombs = [[0, 0, 0, 0] for _ in range(B.BOMBS)]
-                result_step = min(result_step + 1, 4)
+                result_step = min(result_step + 1, 5)
             elif flow == PLAY:
                 if launcher.all_in and not alive and state == PLAYING and not blasts and not any(slots):
                     flow, flow_timer = CLEARED, CLEARED_PAUSE
