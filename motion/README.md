@@ -14,6 +14,7 @@ committed or distributed.
 | `trace_motion.lua` | MAME script: plays the game and dumps the motion queue every frame |
 | `validate.py` | replays a trace through `step()` and compares every byte |
 | `pal_scale.py` | prototype of the stepper at 1.2 arcade frames per PAL frame, compared with `step()` |
+| `render_compare.py` | animates arcade timing and PAL timing side by side into `build/compare.gif` (needs pillow) |
 
 ## How the arcade does it
 
