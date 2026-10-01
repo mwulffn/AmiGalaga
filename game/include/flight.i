@@ -99,7 +99,8 @@ fl_pad		rs.b	1
 fl_SIZEOF	rs.b	0
 
 ; the fighter's shots: where each is, as the arcade's sprite hardware counts
-SHOTS		equ	2
+SHOTS		equ	2			; shots in flight at once, as the arcade has it
+MAX_SHOTS	equ	4			;   and the most the options allow
 	rsreset
 sh_x		rs.w	1			; 0: not in flight
 sh_y		rs.w	1

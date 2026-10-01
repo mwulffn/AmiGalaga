@@ -19,6 +19,9 @@
 
 	xdef	SoundInit
 	xdef	SoundStop
+	xdef	SoundPause
+	xdef	SoundResume
+	xdef	SoundReset
 	xref	State
 	if	SOUND_TEST
 	xdef	SoundLog
@@ -131,6 +134,44 @@ SoundStop:
 	lea	AUD_SIZE(a0),a0
 	dbf	d0,.Mute
 	move.w	#DMA_AUDIO,dmacon(a6)
+	rts
+
+;--
+; SoundPause
+; Hold the sound where it is: the driver stops and Paula is silent, until SoundResume.
+; In:       a6 = CUSTOM
+; Out:      -
+; Clobbers: d0, a0
+SoundPause:
+	move.w	#INT_EXTER,intena(a6)
+	lea	aud0lc(a6),a0
+	moveq	#AUD_CHANNELS-1,d0
+.Mute	clr.w	aud_vol(a0)
+	lea	AUD_SIZE(a0),a0
+	dbf	d0,.Mute
+	rts
+
+;--
+; SoundResume
+; Let the driver go on from where SoundPause held it.
+; In:       a6 = CUSTOM
+; Out:      -
+; Clobbers: -
+SoundResume:
+	move.w	#INT_SET|INT_EXTER,intena(a6)
+	rts
+
+;--
+; SoundReset
+; Forget every sound asked for or playing. Call while the driver is held.
+; In:       a5 = state
+; Out:      -
+; Clobbers: d0, a0
+SoundReset:
+	lea	Sound(a5),a0
+	move.w	#snd_SIZEOF/2-1,d0
+.Clear	clr.w	(a0)+
+	dbf	d0,.Clear
 	rts
 
 ;--

@@ -102,7 +102,7 @@ PlayerInit:
 	clr.w	ShotCount(a5)
 	clr.w	HitCount(a5)
 	lea	Shots(a5),a0
-	rept	SHOTS*sh_SIZEOF/2
+	rept	MAX_SHOTS*sh_SIZEOF/2
 	clr.w	(a0)+
 	endr
 	clr.b	PadLeft(a5)
@@ -149,8 +149,12 @@ PlayerEnter:
 ; Out:      -
 ; Clobbers: d0-d1
 PlayerInput:
-	if	REPORTING
-	; a test build plays itself: from side to side, a press every AUTO_FIRE frames
+	if	REPORTING=0
+	tst.b	Demo(a5)
+	beq	.Stick
+	endc
+	; a test build and the attract mode play by themselves: from side to side, a press
+	; every AUTO_FIRE frames
 	move.w	ShipX(a5),d0
 	add.w	#DISPLAY_SX,d0
 	move.w	#SHIP_RIGHT,d1
@@ -171,8 +175,9 @@ PlayerInput:
 	and.w	FlightFrame(a5),d0
 	bne	.Read
 	st	FirePending(a5)
-	else
-	move.w	joy1dat(a6),d0
+	rts
+	if	REPORTING=0
+.Stick	move.w	joy1dat(a6),d0
 	btst	#JOYB_RIGHT,d0
 	sne	PadRight(a5)
 	btst	#JOYB_LEFT,d0
@@ -310,21 +315,28 @@ PlayerTick:
 	beq	.Lost				; no firing before the fighter is in play
 	tst.b	FirePending(a5)
 	beq	.Done
+	; the first shot that is not in flight, of as many as the options allow
 	lea	Shots(a5),a0
-	lea	sh_SIZEOF(a0),a1		; the other shot
-	tst.w	sh_x(a0)
-	beq	.Free
-	exg	a0,a1
-	tst.w	sh_x(a0)
-	bne	.Lost				; both are in flight: the press is lost
-.Free	tst.w	sh_x(a1)
-	beq	.Launch
-	; both shots share a sprite: the press waits until the other shot has made room
+	moveq	#0,d1
+	move.b	OptShots(a5),d1
+	subq.w	#1,d1
+	move.w	d1,d0
+.Free	tst.w	sh_x(a0)
+	beq	.Room
+	lea	sh_SIZEOF(a0),a0
+	dbf	d0,.Free
+	bra	.Lost				; all are in flight: the press is lost
+	; the shots share a sprite: the press waits until the last one has made room
+.Room	lea	Shots(a5),a1
+.Near	tst.w	sh_x(a1)
+	beq	.Far
 	move.w	#SHIP_SY,d0
 	sub.w	sh_y(a1),d0
 	cmp.w	#SHOT_GAP,d0
 	blt	.Done
-.Launch	move.w	d2,sh_x(a0)
+.Far	lea	sh_SIZEOF(a1),a1
+	dbf	d1,.Near
+	move.w	d2,sh_x(a0)
 	move.b	Dual(a5),sh_wide(a0)
 	addq.w	#1,ShotCount(a5)
 	move.w	#SHIP_SY,sh_y(a0)
@@ -340,8 +352,10 @@ PlayerTick:
 ; Clobbers: d0-d7, a0-a3
 ShotsTick:
 	lea	Shots(a5),a3
+	rept	MAX_SHOTS-1
 	bsr	Shot
-	lea	Shots+sh_SIZEOF(a5),a3
+	lea	sh_SIZEOF(a3),a3
+	endr
 	; falls through
 
 ;--

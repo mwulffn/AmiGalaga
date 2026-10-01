@@ -111,7 +111,7 @@ Sprites pair up and each pair shares three colours.
 | 6 | free, two usable colours; candidate for a second star layer |
 | 7 | stars |
 
-Both bullets on one sprite needs them 9 lines apart (the bullet's image
+Every bullet on one sprite needs them 9 lines apart (the bullet's image
 trimmed to its 8 lines, plus the line the hardware needs between two
 uses of a sprite). A bullet climbs 6 lines an arcade frame and two
 bullets keep their distance, so the only constraint is at launch: a
@@ -120,8 +120,8 @@ shot is 9 lines up, instead of firing at once. **Accepted drift from the
 arcade** (2026-10-01, the user tried the arcade and could not see the
 overlap): at most a frame or two on a double tap faster than a hand can
 do. A press while both shots are in flight is lost, as in the arcade.
-Sprite reuse would also allow more than the arcade's two shots; that
-option is kept for later.
+Sprite reuse also allows more than the arcade's two shots: the SHOTS
+option, up to four.
 
 ### Starfield
 - One sprite pixel, repositioned and recoloured per raster line by a
@@ -250,8 +250,9 @@ option is kept for later.
   from inside the beam (the arcade's can, the way it points); a
   captured fighter that flies off alone after its boss is shot does not
   come back with a later stage's bosses, it is just gone.
-- The user has not yet seen or played capture; it was checked on
-  screenshots of self-playing builds only (2026-10-01).
+- The user has played and confirmed capture, rescue, the dual fighter
+  and the transformation into scorpions, and the results screen
+  (2026-10-01).
 - An enemy transforms as in the arcade (`game/src/transform.s`, model
   `motion/transform.py`): from stage 4 on, not on challenging stages,
   once the waves are in and fewer than 10 enemies are left, the first
@@ -348,7 +349,8 @@ option is kept for later.
   gives the arcade's scores; a read-only floppy image ends at the
   AmigaDOS prompt with no requester and the image unchanged.
 - Options: FIGHTERS 3 or 6 (the user's choice; the arcade's switch has
-  2 to 5) and DIFFICULTY, which is the arcade's own switch: easy (its
+  2 to 5), SHOTS 2 to 4 (how many can be in flight at once; 2 is the
+  arcade's) and DIFFICULTY, which is the arcade's own switch: easy (its
   default, and what the traces and tests use), medium, hard, hardest.
   It picks the rank's row of the stage index and of the stage settings
   at run time (`Rank` in the state; `RANK` in `config.i` is only the
@@ -356,7 +358,23 @@ option is kept for later.
 - The arcade's other switches: bonus fighters (eight schedules; the
   game has the default, 20000, 70000 and every 70000), demo sounds,
   freeze, rack test (skip a stage), cabinet, coinage. None offered.
-- Still stubs: there is no attract mode that plays by itself; the title
+- Attract mode: after the best scores a game plays by itself with one
+  fighter, silently, under PUSH FIRE TO PLAY, until the fighter is lost
+  (45 seconds at most) or the button is pressed; then the title. The
+  player is the test builds' (side to side, a press every 16 frames),
+  and the score counts for nothing. It is the game itself, not the
+  arcade's scripted demonstration, which is not ported.
+- P pauses a game and lets it go on (`keys.s`: the keyboard is asked
+  directly, once a frame, and answered with the beam for a clock;
+  `main.s`): nothing moves, the sound is held, PAUSED shows in the
+  panel. Not in the attract mode or the menus. Written without being
+  tried: nothing here can press a key.
+- More shots: all of a fighter's shots are on one sprite, top one
+  first, each 9 lines or more under the one above; firing waits for
+  that room as it did for two. With SHOTS at 2 the game is as before
+  (the stage test is unchanged and identical). Tried on screenshots at
+  4 with two fighters and fast automatic fire.
+- Still a stub: the title
   is the game's font, capitals only (AMIGALAGA), not a logo. Starting
   from Workbench (an icon) is not handled: the game is started from the
   shell or a startup-sequence.
@@ -569,9 +587,9 @@ included, so the real figure is a little lower.
   (2026-10-01). Also open there:
   firing from inside the beam, and the captured fighter that comes back
   in a later stage.
-- **Title, second pass:** an attract mode that plays by itself, a proper
-  logo. The menus and the initials have only been seen on screenshots:
-  nobody has worked them with a joystick yet (2026-10-01).
+- **Title, second pass:** a proper logo; the arcade's own scripted
+  demonstration, if wanted. Not yet confirmed by the user: entering
+  initials, the pause key, the SHOTS option, the attract mode.
 - **The frame budget is thin** (see Measured budget): no late frame in
   the self-playing runs, with 8 lines to spare in the worst one. More
   to gain is listed there.

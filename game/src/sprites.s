@@ -42,6 +42,7 @@ SPRITE_X0	equ	$80			; sprite position of the playfield's left edge
 FIGHTER_LINES	equ	16
 BULLET_TOP	equ	4			; the bullet's image starts this far down its 16x16 cell
 BULLET_LINES	equ	8
+BULLET_BLOCK	equ	(CONTROL_WORDS+BULLET_LINES*LINE_WORDS)*2	; a bullet in a sprite: its control words and image
 LINE_WORDS	equ	2			; a sprite line is two words
 CONTROL_WORDS	equ	2
 NOT_SHOWN	equ	-$4000			; a display line no shot can have
@@ -229,50 +230,51 @@ BangPlace:
 
 ;--
 ; Bullets
-; Put the shots' bullets on one sprite: the upper one first, the other below it.
+; Put the shots' bullets on one sprite, the top one first. A sprite can show them only one
+; under the other with a line between, which the firing sees to (player.s); one that is
+; too close to the one above it all the same is left out.
 ; In:       a0 = the sprite, d5.w = 0 for every shot's own bullet, or how far right of it
 ;           the second bullet of a shot from two fighters is, a5 = state
 ; Out:      -
-; Clobbers: d0-d4, a0-a1
+; Clobbers: d0-d4, a0-a2
 Bullets:
+	; the bullets that show, sorted by line into ShotList
 	lea	Shots(a5),a1
-	bsr	ShotPlace
-	move.w	d0,d4
-	move.w	d1,d3
-	lea	sh_SIZEOF(a1),a1
-	bsr	ShotPlace
-	; the upper bullet in d0, d1, the other in d4, d3
+	lea	ShotList(a5),a2
+	moveq	#0,d4				; how many
+	moveq	#MAX_SHOTS-1,d3
+.Shot	bsr	ShotPlace
 	cmp.w	#NOT_SHOWN,d1
-	beq	.Swap
-	cmp.w	#NOT_SHOWN,d3
-	beq	.Ordered
-	cmp.w	d1,d3
-	bge	.Ordered
-.Swap	exg	d0,d4
-	exg	d1,d3
-.Ordered
-	cmp.w	#NOT_SHOWN,d1
-	beq	.None
-	cmp.w	#NOT_SHOWN,d3
-	beq	.Upper
-	move.w	d3,d2
-	sub.w	d1,d2				; how far below the upper one the lower one is
+	beq	.Next
+	move.w	d4,d2
+	lsl.w	#2,d2				; where it goes if none above it is lower
+.Above	beq	.Put
+	cmp.w	-2(a2,d2.w),d1
+	bge	.Put
+	move.l	-4(a2,d2.w),(a2,d2.w)
+	subq.w	#4,d2
+	bra	.Above
+.Put	move.w	d0,(a2,d2.w)
+	move.w	d1,2(a2,d2.w)
+	addq.w	#1,d4
+.Next	lea	sh_SIZEOF(a1),a1
+	dbf	d3,.Shot
+	move.w	#NOT_SHOWN,a1			; the line of the one above
+.Show	subq.w	#1,d4
+	bmi	.End
+	move.w	(a2)+,d0
+	move.w	(a2)+,d1
+	move.w	d1,d2
+	sub.w	a1,d2
 	cmp.w	#BULLET_LINES+1,d2
-	bge	.Upper
-	move.w	#NOT_SHOWN,d3			; too close for one sprite to show both
-.Upper	move.w	d3,-(sp)
+	blt	.Show
+	move.w	d1,a1
 	addq.w	#BULLET_TOP,d1
 	moveq	#BULLET_LINES,d2
 	bsr	Place
-	move.w	(sp)+,d1
-	lea	BulletSecond-BulletPair(a0),a0
-	cmp.w	#NOT_SHOWN,d1
-	beq	.None
-	move.w	d4,d0
-	addq.w	#BULLET_TOP,d1
-	moveq	#BULLET_LINES,d2
-	bra	Place
-.None	clr.l	(a0)				; empty control words end the sprite
+	lea	BULLET_BLOCK(a0),a0
+	bra	.Show
+.End	clr.l	(a0)				; empty control words end the sprite
 	rts
 
 ;--
@@ -384,21 +386,19 @@ HALF	set	0
 HALF	set	HALF+1
 	endr
 
+; a sprite of bullets: MAX_SHOTS of them, each with its control words, and the end
+BULLETS	macro
+	rept	MAX_SHOTS
+	dc.w	0,0
+	incbin	"sprites.bin",SPR_BULLET+BULLET_TOP*LINE_WORDS*2,BULLET_LINES*LINE_WORDS*2
+	endr
+	dc.w	0,0
+	endm
 BulletPair:
-	dc.w	0,0
-	incbin	"sprites.bin",SPR_BULLET+BULLET_TOP*LINE_WORDS*2,BULLET_LINES*LINE_WORDS*2
-BulletSecond:
-	dc.w	0,0
-	incbin	"sprites.bin",SPR_BULLET+BULLET_TOP*LINE_WORDS*2,BULLET_LINES*LINE_WORDS*2
-	dc.w	0,0
-
+	BULLETS
 ; two fighters' second bullets
 BulletPair2:
-	dc.w	0,0
-	incbin	"sprites.bin",SPR_BULLET+BULLET_TOP*LINE_WORDS*2,BULLET_LINES*LINE_WORDS*2
-	dc.w	0,0
-	incbin	"sprites.bin",SPR_BULLET+BULLET_TOP*LINE_WORDS*2,BULLET_LINES*LINE_WORDS*2
-	dc.w	0,0
+	BULLETS
 
 	section	data,data
 

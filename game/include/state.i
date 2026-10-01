@@ -31,7 +31,7 @@ FormPresent	rs.w	FORM_ROWS	;   per row: bit n set if the enemy in column n is th
 Score		rs.l	1		; six decimal digits, two to a byte, in the low three bytes
 ScoreText	rs.b	8		; scratch for printing it
 ShipX		rs.w	1		; the fighter, in playfield pixels
-Shots		rs.b	SHOTS*sh_SIZEOF	; its shots
+Shots		rs.b	MAX_SHOTS*sh_SIZEOF	; its shots
 PadLeft		rs.b	1		; player: nonzero while the stick is held left,
 PadRight	rs.b	1		;   right
 FireWas		rs.b	1		;   nonzero if the button was down last frame
@@ -185,6 +185,13 @@ PadHold		rs.b	1		;   frames the stick has been held to one side
 ScoresLoaded	rs.b	1		; nonzero: the best scores were read from disk at the start
 ScoresDirty	rs.b	1		; nonzero: they have changed since, and are saved when the game quits
 QuitWanted	rs.b	1		; nonzero: QUIT was taken; the main loop ends
+OptShots	rs.b	1		; options: how many shots can be in flight at once
+Demo		rs.b	1		; nonzero: the game on is the attract mode's, playing by itself
+Paused		rs.b	1		; nonzero: the game stands still (the P key)
+DemoPad		rs.b	1
+DemoTimer	rs.w	1		; attract mode: frames it has played
+DemoScore	rs.l	1		;   the score that was showing before it, to put back
+ShotList	rs.w	2*MAX_SHOTS	; sprites: the bullets to show, top one first: x, line
 ObjKind		rs.b	OBJECTS/2	; what each enemy looks like (a KIND_ from gfx.i), by object / 2
 Sound		rs.b	snd_SIZEOF	; the sound driver's state: see sound.i
 State_SIZEOF	rs.b	0

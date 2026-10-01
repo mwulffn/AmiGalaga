@@ -95,6 +95,11 @@ CIA_CRA_RUN	equ	$11		; load the latch and run continuously
 CIA_E_CLOCK	equ	709379		; PAL: timer ticks per second
 
 CIAA_PRA	equ	$bfe001
+CIAA_SDR	equ	$bfec01		; the keyboard's serial data
+CIAA_ICR	equ	$bfed01
+CIAA_CRA	equ	$bfee01
+CIA_ICR_SP	equ	3		; ICR bit: a byte has come in on the serial line
+CIA_CRA_SPOUT	equ	6		; CRA bit: the serial line is an output
 CIAAB_FIRE0	equ	6		; left mouse button, active low
 CIAAB_FIRE1	equ	7		; the joystick's fire button, active low
 ; joy1dat

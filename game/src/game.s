@@ -52,6 +52,9 @@
 	xref	TitleShow
 	xref	EntryShow
 	xref	ScoresInsert
+	xref	DemoTick
+	xref	SoundReset
+	xref	SoundResume
 	endc
 	xdef	GameStart
 	xref	FormationInit
@@ -98,6 +101,7 @@ GameInit:
 	move.b	#RANK,Rank(a5)			; the options as they are until someone changes them
 	clr.b	OptRank(a5)
 	move.b	#RESERVE,OptLives(a5)
+	move.b	#SHOTS,OptShots(a5)
 	bsr	ScoresInit
 .Again
 	clr.b	NewGame(a5)
@@ -115,8 +119,18 @@ GameInit:
 	if	REPORTING
 	; a test build plays itself: straight into a game
 	else
+	; the attract mode's game counts for nothing: the score that showed before it is put
+	; back, and the sound comes on again
+	tst.b	Demo(a5)
+	beq	.Played
+	clr.b	Demo(a5)
+	move.l	DemoScore(a5),Score(a5)
+	move.l	Scores(a5),HighScore(a5)
+	bsr	SoundReset
+	bsr	SoundResume
+	bra	TitleShow
 	; the game that is over may have one of the best scores: then its initials are asked for
-	bsr	ScoresInsert
+.Played	bsr	ScoresInsert
 	tst.w	d0
 	bmi	TitleShow
 	bra	EntryShow
@@ -148,7 +162,14 @@ GameFrame:
 .Play	tst.b	Mode(a5)			; the title or the options: the stick works them
 	beq	.Game
 	bsr	TitleTick
-.Game	move.w	ShipX(a5),d0
+.Game
+	if	REPORTING=0
+	tst.b	Demo(a5)			; the attract mode's game: the button ends it
+	beq	.Input
+	bsr	DemoTick
+.Input
+	endc
+	move.w	ShipX(a5),d0
 	add.w	#DISPLAY_SX,d0
 	move.b	d0,FighterX(a5)
 	bsr	PlayerInput

@@ -15,6 +15,7 @@
 
 	xdef	PanelInit
 	xdef	PanelScore
+	xdef	PanelPaused
 	xdef	PanelShips
 	xdef	PanelStage
 	xref	Badges
@@ -32,6 +33,7 @@ SCORE_AT	equ	PANEL+50*ROW_BYTES+2
 HIGH_AT		equ	PANEL+18*ROW_BYTES+2
 SHIPS_AT	equ	PANEL+232*ROW_BYTES
 BADGES_AT	equ	PANEL+192*ROW_BYTES
+PAUSED_AT	equ	PANEL+104*ROW_BYTES+2
 FIRST_BADGE	equ	$36				; the arcade's number of the first badge tile
 BADGE_BYTES	equ	GLYPH_ROWS*PLANES		; a tile: 8 rows of 4 plane bytes
 NO_SCORE	equ	-1				; scr_score: nothing drawn yet
@@ -77,6 +79,40 @@ PanelDraw:
 	move.l	d1,a0
 	bra	.Label
 .Icons	rts
+
+;--
+; PanelPaused
+; Show PAUSED in the panel of both screens, or take it off.
+; In:       d4.b = nonzero to show it, a5 = state
+; Out:      -
+; Clobbers: d0-d3, a0-a2
+PanelPaused:
+	move.l	FrontScreen(a5),a1
+	bsr	PausedPrint
+	move.l	BackScreen(a5),a1
+	; falls through
+
+;--
+; PausedPrint
+; PAUSED, or blanks over it, in one screen's panel.
+; In:       a1 = the screen (a scr_ structure), d4.b = nonzero to show it
+; Out:      -
+; Clobbers: d0-d3, a0-a2
+PausedPrint:
+	move.l	scr_bitmap(a1),a1
+	add.l	#PAUSED_AT,a1
+	lea	PausedText(pc),a0
+	tst.b	d4
+	bne	.Print
+	lea	NoPausedText(pc),a0
+.Print	moveq	#WHITE,d0
+	bra	TextPrint
+
+PausedText:
+	dc.b	"PAUSED",0
+NoPausedText:
+	dc.b	"      ",0
+	even
 
 ;--
 ; PanelShips

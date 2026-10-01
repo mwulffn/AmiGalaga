@@ -13,6 +13,12 @@
 	xref	VideoWaitFrame
 	xref	VideoFlip
 	xref	StarsInit
+	if	REPORTING=0
+	xref	KeyRead
+	xref	PanelPaused
+	xref	SoundPause
+	xref	SoundResume
+	endc
 	xref	GameInit
 	xref	GameFrame
 	xref	PanelInit
@@ -35,6 +41,8 @@
 
 METER_COLOUR	equ	$004		; the raster meter's idle colour
 
+KEY_P		equ	$19			; the P key's raw code
+
 	section	code,code
 
 ;--
@@ -55,6 +63,27 @@ Main:	bsr	StarsInit
 	bra	.Done
 	endc
 .Frame	bsr	VideoWaitFrame
+	if	REPORTING=0
+	; P holds a game where it is, and lets it go on
+	bsr	KeyRead
+	cmp.w	#KEY_P,d0
+	bne	.NoKey
+	tst.b	Mode(a5)			; only a game: not the title, not the attract mode
+	bne	.NoKey
+	tst.b	Demo(a5)
+	bne	.NoKey
+	not.b	Paused(a5)
+	move.b	Paused(a5),d4
+	bsr	PanelPaused
+	tst.b	Paused(a5)
+	beq	.Resume
+	clr.w	StarSpeed(a5)			; the stars stand still too
+	bsr	SoundPause
+	bra	.NoKey
+.Resume	bsr	SoundResume
+.NoKey	tst.b	Paused(a5)
+	bne	.Frame
+	endc
 	if	TEST_FRAMES
 	move.w	FrameCount(a5),FrameStart(a5)
 	endc

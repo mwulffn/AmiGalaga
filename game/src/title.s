@@ -20,9 +20,15 @@
 ;     play: its own for the best score of all, a loop for the others.
 ; A game that ends comes back here by way of GameInit.
 ;
-; While any of this shows, the game runs with no stage and no fighter; the
-; text is the game's own (text.s). Not here yet: an attract mode that plays
-; by itself.
+;   The attract mode: after the best scores a game plays by itself, silently,
+;     with one fighter that goes from side to side and fires (the test builds'
+;     player). It lasts until that fighter is lost, 45 seconds at most, and
+;     the button ends it at once; then the title again. Its score counts for
+;     nothing. This is not the arcade's own demonstration, which is a scripted
+;     scene; it is the game itself.
+;
+; While the title, options or scores show, the game runs with no stage and no
+; fighter; the text is the game's own (text.s).
 
 	include	"config.i"
 	include	"hw.i"
@@ -35,9 +41,12 @@
 	xdef	TitleShow
 	xdef	TitleTick
 	xdef	EntryShow
+	xdef	DemoTick
 	xdef	ScoresInit
 	xdef	ScoresInsert
 	xref	GameStart
+	xref	CaptureInit
+	xref	SoundPause
 	xref	TextShow
 	xref	TextHide
 
@@ -53,6 +62,10 @@ JOYB_UP		equ	8			;   this one and the next when it is up
 TITLE_FRAMES	equ	8*50			; the title gives way to the best scores after this long,
 SCORES_FRAMES	equ	8*50			;   and they to the title
 ENTRY_FRAMES	equ	20*50			; initials left alone this long are taken as they are
+DEMO_FRAMES	equ	45*50			; the attract mode's game lasts this long at most
+DEMO_ROW	equ	1
+DEMO_COLUMN	equ	6
+DEMO_LINE	equ	5			; the line of text the attract mode's notice is on
 REPEAT_DELAY	equ	20			; frames the stick is held before the letter runs on,
 REPEAT_EVERY	equ	6			;   and frames between letters then
 BLINK_FRAMES	equ	16			; the letter being chosen shows and hides this often
@@ -68,11 +81,12 @@ TITLE_ITEMS	equ	3
 ITEM_QUIT	equ	2
 MENU_ROW	equ	16			; the title's lines, ITEM_PITCH rows apart
 ITEM_COLUMN	equ	5
-ITEM_ROW	equ	14			; the options' lines, ITEM_PITCH rows apart
 ITEM_PITCH	equ	3
 OPTIONS_COLUMN	equ	10
-OPTION_ITEMS	equ	3
-ITEM_BACK	equ	2
+OPTION_ITEMS	equ	4
+ITEM_SHOTS	equ	2
+ITEM_BACK	equ	3
+ITEM_ROW_TOP	equ	12			; the options' lines, ITEM_PITCH rows apart
 SCORE_COLUMN	equ	6
 SCORE_ROW	equ	12			; the best scores' lines, SCORE_PITCH rows apart
 SCORE_PITCH	equ	2
@@ -287,12 +301,58 @@ TitleTick:
 .Idle	cmp.w	#TITLE_FRAMES,MenuTimer(a5)
 	bcc	ScoresShow
 	rts
-	; the best scores: back to the title at a touch, or after a while
+	; the best scores: back to the title at a touch; left alone, the attract mode
 .Scores	tst.b	d7
 	bne	TitleShow
 	cmp.w	#SCORES_FRAMES,MenuTimer(a5)
-	bcc	TitleShow
+	bcc	DemoStart
 	rts
+
+;--
+; DemoStart
+; The attract mode: a game that plays by itself, silently, with one fighter.
+; In:       a5 = state, a6 = CUSTOM
+; Out:      -
+; Clobbers: d0-d5, a0-a3
+DemoStart:
+	move.l	Score(a5),DemoScore(a5)
+	clr.b	Mode(a5)			; MODE_GAME
+	st	Demo(a5)
+	clr.w	DemoTimer(a5)
+	bsr	GameStart
+	bsr	SoundPause			; the start theme it asked for is never heard
+	clr.b	Lives(a5)
+	st	PadRight(a5)
+	clr.b	PadLeft(a5)
+	lea	DemoText(pc),a0
+	moveq	#DEMO_COLUMN,d1
+	moveq	#DEMO_ROW,d2
+	moveq	#TEXT_WHITE,d3
+	moveq	#DEMO_LINE,d0
+	bra	TextShow
+
+;--
+; DemoTick
+; A frame of the attract mode's game: it ends at the button, when its fighter is lost, or
+; after DEMO_FRAMES. GameInit then puts everything back and shows the title.
+; In:       a5 = state, a6 = CUSTOM
+; Out:      -
+; Clobbers: d0-d2, a0
+DemoTick:
+	bsr	ReadPad
+	btst	#PADB_FIRE,d0
+	bne	.End
+	addq.w	#1,DemoTimer(a5)
+	cmp.w	#DEMO_FRAMES,DemoTimer(a5)
+	bcc	.End
+	cmp.b	#PS_OVER,PlayerState(a5)
+	bne	.Done
+.End	bsr	CaptureInit			; no captured fighter, and no beam left on the screen
+	move.b	#SCREENS,BeamWipe(a5)
+	moveq	#DEMO_LINE,d0
+	bsr	TextHide
+	st	NewGame(a5)
+.Done	rts
 
 ;--
 ; OptionsShow
@@ -340,6 +400,15 @@ OptionLines:
 	bne	.Name
 	moveq	#1,d6
 	bsr	OptionLine
+	; SHOTS and how many can be in flight
+	lea	ShotsText(pc),a1
+	bsr	Label
+	moveq	#'0',d0
+	add.b	OptShots(a5),d0
+	move.b	d0,(a0)+
+	clr.b	(a0)
+	moveq	#ITEM_SHOTS,d6
+	bsr	OptionLine
 	lea	BackText(pc),a1
 	bsr	Label
 	clr.b	(a0)
@@ -357,7 +426,7 @@ OptionLine:
 	moveq	#ITEM_COLUMN,d1
 	move.w	d6,d2
 	mulu.w	#ITEM_PITCH,d2
-	add.w	#ITEM_ROW,d2
+	add.w	#ITEM_ROW_TOP,d2
 	move.w	d6,d0
 	bsr	ItemColour
 	move.w	d6,d0
@@ -393,8 +462,25 @@ Options:
 	move.b	MenuItem(a5),d0
 	subq.w	#1,d0
 	beq	.Rank
-	bcc	.Back
+	bcs	.Fighters
+	subq.w	#ITEM_SHOTS-1,d0
+	bne	.Back
+	; shots in flight at once: the arcade's two, up to MAX_SHOTS, round and round
+	moveq	#1,d0
+	btst	#PADB_LEFT,d7
+	beq	.More
+	moveq	#-1,d0
+.More	add.b	OptShots(a5),d0
+	cmp.b	#SHOTS,d0
+	bcc	.Least
+	moveq	#MAX_SHOTS,d0
+.Least	cmp.b	#MAX_SHOTS,d0
+	bls	.Most
+	moveq	#SHOTS,d0
+.Most	move.b	d0,OptShots(a5)
+	bra	OptionLines
 	; three fighters or six
+.Fighters
 	moveq	#RESERVE,d0
 	cmp.b	OptLives(a5),d0
 	bne	.Lives
@@ -695,6 +781,10 @@ DifficultyText:
 	dc.b	"DIFFICULTY  ",0
 BackText:
 	dc.b	"BACK",0
+ShotsText:
+	dc.b	"SHOTS       ",0
+DemoText:
+	dc.b	"PUSH FIRE TO PLAY",0
 ScoresText:
 	dc.b	"BEST SCORES",0
 EnterText:

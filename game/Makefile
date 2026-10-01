@@ -12,7 +12,7 @@ KICK   ?= $(HOME)/Documents/FS-UAE/Kickstarts/kick34005.A500
 UAE     = fs-uae --amiga_model=A500 --kickstart_file=$(KICK) --slow_memory=0
 
 # startup.o must be first: the program starts at the top of the first object
-OBJECTS = build/startup.o build/main.o build/game.o build/stage.o build/dives.o build/player.o build/blasts.o build/bombs.o build/text.o build/flow.o build/capture.o build/transform.o build/title.o build/video.o build/stars.o \
+OBJECTS = build/startup.o build/main.o build/game.o build/stage.o build/dives.o build/player.o build/blasts.o build/bombs.o build/text.o build/flow.o build/capture.o build/transform.o build/title.o build/keys.o build/video.o build/stars.o \
 	build/formation.o build/flyers.o build/flight.o build/flighttest.o build/panel.o build/sprites.o build/sound.o \
 	build/gfx.o build/state.o
 # built from the user's own ROM set; never committed
