@@ -239,6 +239,27 @@ option is kept for later.
   come back with a later stage's bosses, it is just gone.
 - The user has not yet seen or played capture; it was checked on
   screenshots of self-playing builds only (2026-10-01).
+- An enemy transforms as in the arcade (`game/src/transform.s`, model
+  `motion/transform.py`): from stage 4 on, not on challenging stages,
+  once the waves are in and fewer than 10 enemies are left, the first
+  bee in its place (or else the first butterfly) is picked, flashes for
+  64 arcade frames between its own colours and those of what it will
+  become, and dives as a scorpion, a spy ship or a flagship by stage
+  ((stage / 4) mod 3). Two more split off it on the way: the script's
+  spawn command, which takes the first idle one of objects $38 to $3E
+  and the last free flight. All three shot: 1000, 2000 or 3000. One
+  that comes home is its old self again. One transformation a stage at
+  most; none if the one picked is shot or dives while it flashes.
+  Against the traces: the manager's timer, pick and launch are as the
+  arcade's on all 13,693 frames it runs, with 5 picked and sent off;
+  all 10 spawns take the arcade's slot and object and fly its first
+  frame (the four bytes of a slot the arcade leaves as they were, among
+  them the chances to bomb, are not compared: in the game a spawned
+  enemy never bombs).
+- The flashing is drawn in the row's strip: the picked enemy's bit in
+  `FormAlt` makes the strip use its shape in the new colours
+  (`flash.bin`: bee and butterfly, wings open and closed, in the three
+  colour sets, 3 KB).
 - The high score follows the score. An extra fighter comes at 20000, at
   70000 and every 70000 after (MAME's default switch setting).
 - The wave timer was found because the launcher model started a
@@ -248,9 +269,11 @@ option is kept for later.
   every 16 frames) and compares every launch, landing, hit, kill, score,
   bomb, lost fighter and stage start with the models, in both builds:
   6,000 frames from stage 1 (through a stage change and a game over
-  into the next game) and 5,500 from stage 3 (a challenging stage, its
+  into the next game), 5,500 from stage 3 (a challenging stage, its
   results and bonus, and stage 4 with its fly-through enemies, some
-  shot and some gone). All identical.
+  shot and some gone) and 6,000 from stage 6 (an enemy transforms in
+  both builds). All identical. `STAGES="6:6000" tools/test_stage.sh`
+  runs one of them.
 - The stage index row is the arcade's difficulty switch; `RANK` 3 is
   what MAME's default (and the trace) uses.
 - A flying enemy is turned the way it is heading by the arcade's rule
@@ -404,6 +427,30 @@ then copying the beam took a frame over 313 lines; one pass (the copy
 for the rows that are out, a clear for the rest) does not. The margin
 in the worst frame is 7 lines.
 
+With the fly-through and transforming enemies in (2026-10-01), runs of
+4,000 frames from three stages. The report now gives the worst frame's
+number and lists the late ones (`tools/test.sh 4000 -DFIRST_STAGE=6`):
+
+| From stage | Average | Worst frame | Frames over 313 |
+|---|---|---|---|
+| 1 | 161 | 310 | 0 |
+| 6 | 164 | 333 | 8 |
+| 9 | 158 | 337 | 3 |
+
+**The game is over budget in its busiest frames from stage 6 on.** A
+late frame is shown a frame late: a hitch of 1/50 s, no tearing (double
+buffered; stars and sound run from interrupts and are not affected).
+Two kinds of frame are late: the one that sets a stage up (frame 266
+above: 332 to 337 lines with the wave table now built with its extras;
+nothing moves on screen then), and play frames in a busy entrance (10
+to 12 flying with bombs: 318 to 331). Not yet profiled. Candidates:
+the cheaper bomb, the sound driver, splitting the stage set-up over two
+frames.
+
+A measuring error was fixed on the way: the frame count and the beam's
+line were read one after the other, and a vertical blank between the
+two made a frame that ended on its last line count as 625 lines.
+
 A flyer costs about 6.4 lines to draw, the starfield 11-14. The arcade
 never has more than 12 enemies flying at once; the rest of its
 off-formation objects are bombs and explosions.
@@ -425,7 +472,6 @@ included, so the real figure is a little lower.
   with its text, challenging stages with their results, and capture,
   rescue and the dual fighter. All to the
   style guide and linted.
-- **Not in the dives yet:** transforming enemies and their convoys.
 - **Capture has no model.** A Python model of the beam, the rescue and
   the dual fighter, checked against a MAME trace with a capture in it,
   would let `test_stage.sh` run with capture on. The user knows of the
@@ -435,6 +481,9 @@ included, so the real figure is a little lower.
   in a later stage.
 - **Game logic** not ported yet: the results after GAME OVER
   (shots, hits, ratio); title, attract mode and high score entry.
+- **Over budget in busy frames from stage 6 on** (see Measured budget):
+  about 2 frames in 1,000 are late, by up to 20 lines. An optimisation
+  pass is due; the user has not yet said when.
 - **Sound cost: deferred, by decision.** The driver works and the user
   has confirmed it sounds right on the emulated A500 (2026-10-01). At up
   to 19 lines a frame it is the largest CPU item measured, and it lifts
@@ -465,8 +514,9 @@ included, so the real figure is a little lower.
   bottom 8 lines. The user has seen the clipping; not decided yet
   (2026-10-01).
 - **Not drawn yet:** the two-tile score
-  pop-ups (2000 and 3000 for a challenging stage's wave from stage 19:
-  the points are given, nothing shows).
+  pop-ups (2000 and 3000, for a challenging stage's wave from stage 19
+  and for all three spy ships or flagships of a transformed enemy: the
+  points are given, nothing shows).
 - Second star layer on sprite 6: decide once logic shows the frame time
   left.
 
@@ -483,6 +533,7 @@ included, so the real figure is a little lower.
 | `docs/style.md` | assembly style guide for the game's code |
 | `asmlint/` | the header linter the style guide requires: a standalone Python tool (`uv run pytest` in its directory); the game's build runs it |
 | `reference/` | local-only reading material, ignored by git |
+| `cfg/` | MAME's own settings, written when the arcade is run from here; not ours, untracked |
 | `original/` | the user's ROM set, ignored by git |
 
 Python tooling follows the user's global rules: `uv`, ruff, type hints.

@@ -19,7 +19,10 @@ FrameStart	rs.w	1		; test builds: FrameCount when this frame's work began
 StatWorst	rs.w	1		; test builds: most raster lines a frame's work took
 StatTotal	rs.l	1		;   their sum
 StatFrames	rs.w	1		;   and how many frames
-STAT_SIZE	equ	8
+StatWorstAt	rs.w	1		;   which frame the worst was
+StatOver	rs.w	1		;   how many took more than a frame
+StatLate	rs.w	2*STAT_LATE	;   the first of those: frame, lines
+STAT_SIZE	equ	12+4*STAT_LATE
 FormRows	rs.w	2*FORM_ROWS	; formation: per row, x and y of its strip, set when composed
 FormPresent	rs.w	FORM_ROWS	;   per row: bit n set if the enemy in column n is there
 Score		rs.l	1		; six decimal digits, two to a byte, in the low three bytes
@@ -148,7 +151,13 @@ WaveTable	rs.b	WAVE_BYTES	; launcher: the stage's waves, see stage.s
 WavePlaces	rs.b	WAVE_PLACES	;   a wave being put together
 RandomSeed	rs.w	1		; the random numbers' state
 WaveCount	rs.b	1		; launcher: which wave is coming in, 1 to 5
-WavePad		rs.b	1
+TransformDone	rs.b	1		; transform: nonzero once the stage has had its one, or lost it
+TransformTimer	rs.b	1		;   0 nobody picked; else counts up from $c0 to $ff while the one picked flashes
+TransformKind	rs.b	1		;   what it becomes: KIND_GALAXIAN, KIND_SCORPION or KIND_BOSCONIAN
+SpecialKind	rs.b	1		;   what it was
+TrioLeft	rs.b	1		;   of it and the two that split off it: how many are still to shoot for the bonus
+FlashImage	rs.l	1		;   its image in its new colours, wings open; wings closed follows
+FormOther	rs.l	1		; formation: the other image of the row being composed
 ObjKind		rs.b	OBJECTS/2	; what each enemy looks like (a KIND_ from gfx.i), by object / 2
 Sound		rs.b	snd_SIZEOF	; the sound driver's state: see sound.i
 State_SIZEOF	rs.b	0

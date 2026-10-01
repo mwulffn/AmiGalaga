@@ -105,20 +105,37 @@ Main:	bsr	StarsInit
 ; Record how many raster lines this frame's work took.
 ; In:       a5 = state, a6 = CUSTOM
 ; Out:      -
-; Clobbers: d0-d1
+; Clobbers: d0-d1, a0
 FrameStats:
-	; lines = whole frames overrun * 313 + the line the beam is on now
+	; lines = whole frames overrun * 313 + the line the beam is on now. The frame count
+	; and the beam's line must belong together: if the vertical blank comes between
+	; reading them, a frame that ended on its last line would count as two.
+.Read	move.w	FrameCount(a5),d1
 	move.l	vposr(a6),d0
+	cmp.w	FrameCount(a5),d1
+	bne	.Read
 	lsr.l	#8,d0
 	and.l	#$1ff,d0
-	move.w	FrameCount(a5),d1
 	sub.w	FrameStart(a5),d1
 	mulu.w	#PAL_LINES,d1
 	add.w	d1,d0
 	cmp.w	StatWorst(a5),d0
 	bls	.NotWorst
 	move.w	d0,StatWorst(a5)
+	move.w	StatFrames(a5),StatWorstAt(a5)
 .NotWorst
+	cmp.w	#PAL_LINES,d0
+	bls	.InTime
+	move.w	StatOver(a5),d1
+	addq.w	#1,StatOver(a5)
+	cmp.w	#STAT_LATE,d1
+	bcc	.InTime
+	lsl.w	#2,d1
+	lea	StatLate(a5),a0
+	add.w	d1,a0
+	move.w	StatFrames(a5),(a0)+
+	move.w	d0,(a0)
+.InTime
 	add.l	d0,StatTotal(a5)
 	addq.w	#1,StatFrames(a5)
 	rts

@@ -54,6 +54,7 @@ class State:
     active: bool = True
     bomb_timer: int = 0  # arcade frames to its next chance to bomb
     bomb_bits: int = 0  # its chances: one bit a time, low bit first
+    spawn: tuple[int, int, int, int] | None = None  # asked for by the script: script, y, x, heading
 
 
 def from_slot(s: bytes) -> State:
@@ -145,7 +146,8 @@ def load(st: State, rom: G.Rom, env: G.Env) -> bool:
             a = 0x29 if a < 0x29 else 0xC9 if a >= 0xCA else a
             st.h = (G.heading_to(0x48, a >> 1, st.y >> 8, st.x >> 8) << 22) & 0xFFFFFFFF
             st.ptr = p + 1
-        else:  # 0xF2: the escort is spawned elsewhere
+        else:  # 0xF2: another flight splits off here; the caller makes it (see transform.py)
+            st.spawn = (sub[p + 1] | sub[p + 2] << 8, st.y, st.x, st.h)
             st.ptr = p + 3
 
 

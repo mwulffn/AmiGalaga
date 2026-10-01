@@ -96,12 +96,21 @@ To repeat it (the trace is about 17 MB):
         -sound none -nothrottle -skip_gameinfo -autoboot_script trace_motion.lua
     python3 validate.py ../original/galaga.zip motion.bin
 
+`transform.py` is the model of the enemy that transforms (stage 4 on):
+when one is picked, how long it flashes, when it dives, and the two that
+split off it on the way (the script's spawn command, which
+`pal_scale.py` passes up to its caller). Against the traces:
+
+    python3 transform.py ../original/galaga.zip game.bin motion.bin
+
+the manager's timer, pick and launch are the arcade's on every frame it
+runs, and every spawn takes the arcade's slot and object and flies its
+first frame.
+
 ## Not covered yet
 
-- The capture sequence (in the game, `game/src/capture.s`, but with no
-  model here) and the transforming enemies and their
-  convoys. The scripts are extracted; the logic that starts them is in
-  the main CPU and has not been ported.
+- The capture sequence: in the game (`game/src/capture.s`), but with no
+  model here.
 - Choosing the sprite frame and flips from the heading is ported in the
   game (`game/src/game.s`) but not validated against MAME: its result
   goes to sprite RAM, not to the slot, and the trace does not record it.

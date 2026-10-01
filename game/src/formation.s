@@ -24,8 +24,10 @@
 ; bosses the rows are 12 pixels apart at rest, so those strips are 12
 ; lines: butterflies and bees are 10 rows tall when upright.
 ;
-; A row's enemies all look alike, except that a boss that has been hit
-; once shows the next kind's image (FormAlt).
+; A row's enemies all look alike, except those with their bit set in
+; FormAlt, which show the row's other image: for a boss that has been hit
+; once, the next kind's; for a bee or butterfly about to transform, the
+; one in its new colours (FlashImage).
 
 	include	"config.i"
 	include	"hw.i"
@@ -198,6 +200,17 @@ FormationCompose:
 	and.w	#FRAME_SIZE,d0
 	add.w	d0,a0
 	add.w	row_from(a3),a0
+	; the row's other image
+	move.l	a0,d2
+	add.l	#ALT_IMAGE,d2
+	cmp.l	#RowTable,a3
+	beq	.Other				; the bosses: the next kind
+	and.l	#FRAME_SIZE,d0			; the others: the flashing one, wings as the row's
+	add.l	FlashImage(a5),d0
+	moveq	#0,d2
+	move.w	row_from(a3),d2
+	add.l	d0,d2
+.Other	move.l	d2,FormOther(a5)
 	add.w	row_into(a3),a1
 	add.w	d1,d1
 	subq.w	#CELL_WORDS*2,d1		; the strip's modulo
@@ -230,7 +243,7 @@ FormationCompose:
 	move.l	a0,d2
 	btst	d5,d0
 	beq	.Image
-	add.l	#ALT_IMAGE,d2
+	move.l	FormOther(a5),d2
 .Image	WAITBLIT
 	move.l	d4,bltcon0(a6)
 	move.l	d2,bltapt(a6)

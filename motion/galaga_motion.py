@@ -55,6 +55,10 @@ DIVES = {
     0x046B: "boss_after_capture",
     0x0502: "escort_leaves",
     0x00F1: "script_00f1",  # started from the boss dive code; purpose not yet identified
+    # what a transformed enemy flies, by its colour set (4, 5, 6); see transform.py
+    0x04EA: "flagship_dive",
+    0x0473: "scorpion_dive",
+    0x04AB: "spy_ship_dive",
 }
 CAPTURE_HOVER = (0x045D, 0x0460)  # the capture boss's "hold still" step
 

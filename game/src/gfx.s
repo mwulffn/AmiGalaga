@@ -3,6 +3,7 @@
 	xdef	Enemies
 	xdef	Font
 	xdef	Beam
+	xdef	Flash
 	xdef	Badges
 
 	section	chip_data,data_c
@@ -15,6 +16,7 @@ Enemies:	incbin	"enemies.bin"
 
 ; the tractor beam: three colour sets of 48 x 80, each line 4 planes of 3 words
 Beam:	incbin	"beam.bin"
+Flash:	incbin	"flash.bin"
 
 	section	data,data
 

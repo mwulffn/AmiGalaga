@@ -7,6 +7,7 @@ FLIGHT_SLOTS	equ	12		; as many as the arcade flies at once
 ; through, $40-$5e the 16 butterflies, $00-$06 captured fighters.
 OBJECTS		equ	$80
 STAGE_WAVES	equ	5			; a stage's enemies arrive in 5 waves of 8
+STAT_LATE	equ	16			; test builds: how many late frames the report lists
 WAVE_PAIRS	equ	6			; a wave's eight and up to four that only fly through, in pairs
 WAVE_BYTES	equ	STAGE_WAVES*(1+4*WAVE_PAIRS)+1	; a start mark and the (control, object) pairs each, an end mark
 WAVE_PLACES	equ	16			; places for a wave being put together: 8 for each half

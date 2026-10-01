@@ -46,6 +46,8 @@
 	xref	StageIdle
 	xref	StarsTick
 	xref	CaptureInit
+	xref	TransformTick
+	xref	TransformHome
 	xref	CaptureTick
 	xref	BeamDraw
 	xref	HomeRc
@@ -123,6 +125,7 @@ GameFrame:
 	bcc	.Ticked
 	bsr	StageTick
 	bsr	DivesTick
+	bsr	TransformTick
 	bsr	FormationTick
 	bsr	PlayerTick
 	bsr	CaptureTick
@@ -161,6 +164,10 @@ GameFrame:
 	cmp.b	#FIRST_ENEMY,fl_obj(a0)
 	bcs	.Captive
 	bset	#FLB_LANDED,fl_flags(a0)
+	move.b	fl_obj(a0),d0
+	cmp.b	Special(a5),d0
+	bne	.Flown
+	bsr	TransformHome			; the one that transformed is its old self again
 	bra	.Flown
 	; the captured fighter is back in its place, which is no strip's
 .Captive

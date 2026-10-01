@@ -38,9 +38,9 @@ ENEMIES = [
     ("bosshit", 1, 0x08, 8),
     ("butterfly", 2, 0x10, 8),
     ("bee", 3, 0x18, 8),
-    ("scorpion", 4, 0x50, 7),
-    ("bosconian", 5, 0x58, 7),
-    ("galaxian", 6, 0x60, 7),
+    ("galaxian", 4, 0x50, 7),  # these three are also what an enemy transforms into:
+    ("scorpion", 5, 0x58, 7),  # the kind's number is its colour set
+    ("bosconian", 6, 0x60, 7),
     ("dragonfly", 2, 0x68, 7),
     ("satellite", 2, 0x70, 7),
     ("enterprise", 2, 0x78, 7),
@@ -218,6 +218,25 @@ def main() -> None:
             for row in pix:
                 frames += sum(1 << (15 - x) for x in range(16) if row[x]).to_bytes(2, "big") * 4
     (out / "enemies.bin").write_bytes(frames)
+
+    # A bee and a butterfly, upright with wings open and closed, in the colours of each of the
+    # three things one can transform into: what the one picked flashes between its own colours and.
+    flash = bytearray()
+    for code in (4, 5, 6):
+        cols = colours(code)
+        for first in (0x18, 0x10):
+            for t in (first + 6, first + 7):
+                pix = [[0 if cols[p] is None else PALETTE.index(cols[p]) for p in r] for r in tile_pens(rom, t)]
+                data, mask = bytearray(), bytearray()
+                for row in pix:
+                    m = sum(1 << (15 - x) for x in range(16) if row[x])
+                    for plane in range(4):
+                        data += sum(1 << (15 - x) for x in range(16) if row[x] >> plane & 1).to_bytes(2, "big")
+                        mask += m.to_bytes(2, "big")
+                flash += data + mask
+    (out / "flash.bin").write_bytes(flash)
+    inc.append("FLASH_SHAPE\tequ\t2*FRAME_SIZE\t; flash.bin: from the bee's images to the butterfly's")
+    inc.append("FLASH_SET\tequ\t2*FLASH_SHAPE\t;   and from one colour set's to the next")
 
     spr = bytearray()
     for label, (code, tile) in (("FIGHTER", FIGHTER), ("BULLET", BULLET)):

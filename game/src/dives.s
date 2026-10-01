@@ -30,6 +30,8 @@
 
 	xdef	DivesInit
 	xdef	DivesTick
+	xdef	InPlace
+	xdef	DiveLaunch
 	xref	FlightLaunch
 	xref	HomeRc
 	xref	DiveScripts

@@ -29,6 +29,7 @@
 	xdef	StageIdle
 	xref	FormationInit
 	xref	DivesInit
+	xref	TransformInit
 	xref	StarsStage
 	xref	FlightLaunch
 	xref	EntryPaths
@@ -212,12 +213,13 @@ StageInit:
 	lea	fl_SIZEOF(a0),a0
 	dbf	d0,.Slot
 	bsr	DivesInit
+	bsr	TransformInit
 	bra	FormationInit
 
 ; what a challenging stage's enemies look like, by stage / 4 mod 8
 ChallengeKinds:
-	dc.b	KIND_BEE,KIND_BUTTERFLY,KIND_DRAGONFLY,KIND_BOSCONIAN
-	dc.b	KIND_SATELLITE,KIND_GALAXIAN,KIND_SCORPION,KIND_ENTERPRISE
+	dc.b	KIND_BEE,KIND_BUTTERFLY,KIND_DRAGONFLY,KIND_SCORPION
+	dc.b	KIND_SATELLITE,KIND_BOSCONIAN,KIND_GALAXIAN,KIND_ENTERPRISE
 
 ;--
 ; Random

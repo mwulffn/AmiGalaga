@@ -22,6 +22,7 @@ import formation as F  # noqa: E402
 import galaga_motion as G  # noqa: E402
 import pal_scale as P  # noqa: E402
 import shots as S  # noqa: E402
+import transform as TF  # noqa: E402
 import waves as W  # noqa: E402
 
 SLOTS, FORM_ROWS, BLASTS = 12, 5, 8  # as in the game's sources
@@ -86,6 +87,7 @@ def model(rom: G.Rom, fifths: int, frames: int, first: int = 1) -> list[tuple[in
     present: set[int] = set()
     dirty: set[int] = set()
     alive, stage_time, flying_hits = 0, 0, 0
+    tf, tf_armed, trio_left, own_colour = TF.Transform(), False, 0, 0
     flow, flow_timer, flow_step, first_stage, next_bonus = INTRO, INTRO_PAUSE, 0, True, 20000
     state, in_play = ABSENT, False
 
@@ -107,13 +109,19 @@ def model(rom: G.Rom, fifths: int, frames: int, first: int = 1) -> list[tuple[in
         points = S.POINTS[colour[obj]]
         score += points * (2 if flying else 1)
         popup = -1
+        nonlocal trio_left
         if flying:
             flying_hits += 1
             launcher.wave_hits = (launcher.wave_hits - 1) & 0xFF
             if not launcher.wave_hits and stage & 3 == 3:  # all eight of a challenging stage's wave
                 score += WAVE_POINTS[min(stage >> 3, 3)]
                 popup = WAVE_POPUPS[min(stage >> 3, 3)]
-            elif colour[obj] == S.BLUE_BOSS and obj & 0x38 != 0x38:
+            elif obj & 0x38 == 0x38 or obj == dives.special:  # one of a transformed enemy's three
+                trio_left = (trio_left - 1) & 0xFF
+                if not trio_left:
+                    score += TF.BONUS[tf.colour]
+                    popup = 3 if TF.BONUS[tf.colour] == 1000 else -1
+            elif colour[obj] == S.BLUE_BOSS:
                 popup = dives.bonus[(obj & 7) >> 1]
                 score += S.BOSS_BONUS[popup]
         alive -= 1
@@ -185,6 +193,24 @@ def model(rom: G.Rom, fifths: int, frames: int, first: int = 1) -> list[tuple[in
                     present.discard(go.obj)
                     dirty.add(row_of(go.obj))
                     log.append((frame, LAUNCHED, go.obj))
+            # the enemy that transforms (src/transform.s)
+            if launcher.all_in and not tf_armed:
+                tf.on = tf_armed = True
+            go = tf.tick(alive, stage, present.__contains__, in_play)
+            if tf.picked:
+                dives.special, own_colour = tf.obj, colour[tf.obj]
+            free = next((i for i, s in enumerate(slots) if s is None), None)
+            if go is not None and free is not None:
+                row, col = rc(go)
+                slots[free] = P.State(
+                    y=(352 - env.home_x[row]) << 7, x=env.home_x[col] << 7, h=1 << 30, ptr=TF.SCRIPTS[tf.colour],
+                    obj=go, mirror=bool(go & 2), left=clock, pause=True,
+                    bomb_timer=B.DIVE_TIMER, bomb_bits=dives.bomb_flags,
+                )  # fmt: skip
+                present.discard(go)
+                dirty.add(row_of(go))
+                colour[go], trio_left = tf.colour, 3
+                log.append((frame, LAUNCHED, go))
             form.tick(arcade, launcher.all_in, not present)
             env.home_loc, env.home_x = form.home_loc, form.home_x
             # the fighter (src/player.s PlayerTick)
@@ -288,6 +314,7 @@ def model(rom: G.Rom, fifths: int, frames: int, first: int = 1) -> list[tuple[in
                     stage, launcher, form, dives, parms, colour, bomb_reload, entry_bombs = start(stage)
                     launcher.wave_hits = 8 if stage & 3 == 3 else 0
                     present, dirty, alive, stage_time, flying_hits = set(), set(), 0, D.STAGE_TIME, 0
+                    tf, tf_armed, trio_left = TF.Transform(), False, 0
                     slots, landed = [None] * SLOTS, [False] * SLOTS
                     env.home_loc, env.home_x = form.home_loc, form.home_x
                     log.append((frame, BEGUN, stage & 0xFF))
@@ -312,9 +339,22 @@ def model(rom: G.Rom, fifths: int, frames: int, first: int = 1) -> list[tuple[in
             if st is None or landed[i]:
                 continue
             event = P.frame(st, rom, env, fifths)
+            if st.spawn:  # another splits off it: the first idle spare object, in the last free slot
+                script, y, x, h = st.spawn
+                st.spawn = None
+                busy = {s.obj for s in slots if s is not None} | {b[0] for b in blasts}
+                obj = next((o for o in TF.EXTRAS if o not in busy), None)
+                spot = next((j for j in range(SLOTS - 1, -1, -1) if slots[j] is None), None)
+                if obj is not None and spot is not None:
+                    slots[spot] = P.State(y=y, x=x, h=h, ptr=script, obj=obj, mirror=st.mirror)
+                    colour[obj] = colour[st.obj]
+                    alive += 1
+                    log.append((frame, LAUNCHED, obj))
             if event == "home":
                 landed[i] = True
                 log.append((frame, HOME, st.obj))
+                if st.obj == dives.special:  # the one that transformed is its old self again
+                    colour[st.obj], dives.special = own_colour, 0xFF
             elif event == "end":
                 slots[i] = None
                 log.append((frame, GONE, st.obj))

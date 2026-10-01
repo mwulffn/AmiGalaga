@@ -20,6 +20,7 @@
 	include	"flight.i"
 	include	"sound.i"
 	include	"state.i"
+	include	"macros.i"
 
 	xdef	FlightLaunch
 	xdef	FlightStep
@@ -51,7 +52,8 @@ HEADING_SHIFT	equ	22			; the arcade's 10-bit heading to ours
 QUARTER_TURN	equ	$100			; in the arcade's heading
 TOP_OF_SCREEN	equ	$9c			; y, in two-pixel units, just above the screen
 HOME_ROW_ABOVE	equ	$20			; "home row" flights start this far above their row
-TRANSIENT_MASK	equ	$38			; objects $38-$3f only fly through
+TRANSIENT_MASK	equ	$38			; objects $38-$3f only fly through, or are split off another
+SPARES		equ	4			; how many of them there are
 PLACED		equ	$60			; objects below this have a place in the formation
 AIM_TABLE	equ	8			; an aim command is followed by this many step lengths
 CAPTURE_Y	equ	$48			; where a capturing boss stops, in two-pixel units
@@ -465,7 +467,10 @@ LoadStep:
 	bra	.Token
 
 .SpawnEscort
-	addq.l	#3,a1				; the escort itself is the game's business
+	if	FLIGHT_TEST=0			; the flight test flies one at a time
+	bsr	Spawn
+	endc
+	addq.l	#3,a1
 	bra	.Token
 
 	; d0 = frames for a moving step
@@ -478,6 +483,75 @@ LoadStep:
 .Loaded	sub.l	#MotionScripts,a1
 	move.w	a1,fl_script(a0)
 	moveq	#1,d0
+	rts
+
+;--
+; Spawn
+; A flight splits another off itself: the first of the four spare objects that is idle, in
+; the last free slot, starting where its leader is and flying the script the command names.
+; It looks as its leader does, and never bombs. If all four objects are busy (flying or
+; blowing up) or no slot is free, nothing happens.
+; In:       a0 = the leader's slot, a1 = the command, a5 = state
+; Out:      -
+; Clobbers: d0-d2, a2
+Spawn:	move.l	a3,-(sp)
+	moveq	#TRANSIENT_MASK,d1		; the first spare object
+.Object	lea	Flights(a5),a2
+	moveq	#FLIGHT_SLOTS-1,d0
+.Flying	moveq	#1<<FLB_ACTIVE|1<<FLB_LANDED,d2
+	and.b	fl_flags(a2),d2
+	beq	.NotIt
+	cmp.b	fl_obj(a2),d1
+	beq	.Busy
+.NotIt	lea	fl_SIZEOF(a2),a2
+	dbf	d0,.Flying
+	lea	Blasts(a5),a2
+	moveq	#BLASTS-1,d0
+.Blown	tst.b	bl_live(a2)
+	beq	.Whole
+	cmp.b	bl_obj(a2),d1
+	beq	.Busy
+.Whole	lea	bl_SIZEOF(a2),a2
+	dbf	d0,.Blown
+	bra	.Slot
+.Busy	addq.w	#2,d1
+	cmp.w	#TRANSIENT_MASK+2*SPARES,d1
+	bne	.Object
+	bra	.None
+.Slot	lea	Flights+FLIGHT_SLOTS*fl_SIZEOF(a5),a2
+	moveq	#FLIGHT_SLOTS-1,d0
+.Free	lea	-fl_SIZEOF(a2),a2
+	moveq	#1<<FLB_ACTIVE|1<<FLB_LANDED,d2
+	and.b	fl_flags(a2),d2
+	beq	.Take
+	dbf	d0,.Free
+	bra	.None
+.Take	moveq	#fl_SIZEOF/2-1,d0
+	move.l	a2,a3
+.Clear	clr.w	(a3)+
+	dbf	d0,.Clear
+	move.w	fl_y(a0),fl_y(a2)
+	move.w	fl_x(a0),fl_x(a2)
+	move.l	fl_head(a0),fl_head(a2)
+	move.b	1(a1),d0
+	lsl.w	#8,d0
+	move.b	2(a1),d0
+	move.w	d0,fl_script(a2)		; its first step is loaded when it is next moved
+	move.b	fl_flags(a0),d0
+	and.b	#1<<FLB_ACTIVE|1<<FLB_MIRROR,d0
+	move.b	d0,fl_flags(a2)
+	move.b	d1,fl_obj(a2)
+	lea	ObjKind(a5),a3
+	moveq	#0,d0
+	move.b	fl_obj(a0),d0
+	lsr.w	#1,d0
+	move.b	(a3,d0.w),d0
+	move.w	d1,d2
+	lsr.w	#1,d2
+	move.b	d0,(a3,d2.w)
+	addq.b	#1,Alive(a5)
+	LOG	#STAGE_LAUNCHED,d1
+.None	move.l	(sp)+,a3
 	rts
 
 ;--

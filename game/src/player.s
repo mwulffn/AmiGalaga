@@ -769,16 +769,31 @@ Destroy:
 	move.w	(a0,d2.w),d2
 	bsr	ScoreAdd
 	bra	.Scored
-.Boss	cmp.b	#RED_FIGHTER,d3
+	; one of the three a transformed enemy became: the last of them brings their bonus
+.Boss	moveq	#EXTRA_OBJECTS,d2
+	and.w	d5,d2
+	cmp.w	#EXTRA_OBJECTS,d2
+	beq	.Trio
+	cmp.b	Special(a5),d5
+	bne	.Red
+.Trio	subq.b	#1,TrioLeft(a5)
+	bne	.Scored
+	moveq	#0,d2
+	move.b	TransformKind(a5),d2
+	subq.w	#KIND_GALAXIAN,d2
+	lea	TrioPopups(pc),a0
+	move.b	(a0,d2.w),d4
+	add.w	d2,d2
+	lea	TrioPoints(pc),a0
+	move.w	(a0,d2.w),d2
+	bsr	ScoreAdd
+	bra	.Scored
+.Red	cmp.b	#RED_FIGHTER,d3
 	bne	.Blue
 	moveq	#POPUP_1000,d4			; the captured fighter shot while flying: 1000 shows
 	bra	.Scored
 .Blue	cmp.b	#BLUE_BOSS,d3
 	bne	.Scored
-	moveq	#EXTRA_OBJECTS,d2		; not one that only flies through: it set off with nobody
-	and.w	d5,d2
-	cmp.w	#EXTRA_OBJECTS,d2
-	beq	.Scored
 	; a boss shot while diving: more for the escorts it set off with, and the total pops up
 	moveq	#BOSS_MASK,d2
 	and.w	d5,d2
@@ -822,6 +837,13 @@ WavePoints:
 ; and the pop-up that shows it (the 2000 and 3000 ones are two tiles wide: not drawn yet)
 WavePopups:
 	dc.b	3,4,POPUP_NONE,POPUP_NONE
+; all three that a transformed enemy became, by what it became: flagships 3000,
+; scorpions 1000, spy ships 2000
+TrioPoints:
+	dc.w	$3000,$1000,$2000
+TrioPopups:
+	dc.b	POPUP_NONE,POPUP_1000,POPUP_NONE
+	even
 ; and what a boss shot while diving adds for 0, 1 or 2 escorts: 400, 800, 1600 in all
 BonusPoints:
 	dc.w	$0100,$0500,$1300
