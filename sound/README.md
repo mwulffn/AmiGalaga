@@ -13,6 +13,8 @@ or distributed.
 | `extract.py` | plays every sound on its own; writes `build/wav/`, `build/stream/`, `build/waves.bin`, `build/sounds.txt` |
 | `trace_sound.lua` | MAME script: plays the game and logs every sound driver tick |
 | `validate.py` | replays a trace through the driver and compares what it writes to the chip |
+| `trace_noise.lua` | MAME script: silences the tone chip and logs every explosion command, for use with `-wavwrite` |
+| `noise_analyse.py` | cuts the explosions out of that recording into `build/noise/` and measures them (needs numpy) |
 
 ## How the arcade does it
 
@@ -31,8 +33,9 @@ pulsing formation sound, the two tractor beam sounds, the rescue theme and
 two others. Sounds are processed in a fixed order each tick and later ones
 overwrite the voices of earlier ones; that is the whole of the mixing.
 
-Explosions do not come from this chip. Request `$19` goes to a separate
-noise generator, which is not modelled here.
+Enemy hits are tones from this chip. The one sound that is not is the
+fighter's own explosion: request `$19` makes the main CPU send a four-byte
+command to a separate noise generator.
 
 ## The model
 
@@ -58,9 +61,27 @@ sound stays between 94 and 2143 Hz. Paula tops out near 28 kHz, so the
 32-sample waveforms reach about 875 Hz; `waves.bin` therefore also holds
 16-, 8- and 4-sample copies, and no sound needs shorter than 8.
 
+## The fighter explosion
+
+Recorded from MAME with the tone chip silenced (15 instances, including
+the one in the power-on sound test):
+
+    mame galaga -rompath ../original -video none -sound none -samplerate 48000 \
+        -wavwrite noise.wav -nothrottle -skip_gameinfo -autoboot_script trace_noise.lua
+    uv run --with numpy python3 noise_analyse.py noise.wav noise_events.txt build/noise
+
+- It is the only noise sound in the game, always sent with the same
+  parameters, and the instances differ by 2% in loudness.
+- It lasts about 2.7 seconds: full level at once, then a steady fall to
+  silence in visible steps.
+- It is a low rumble. 96% of its energy is between 100 and 800 Hz, half
+  of it below about 260 Hz, and almost nothing above 1600 Hz.
+
+The recordings are MAME's output and are for listening and measuring only.
+
 ## Not done yet
 
-- The noise generator (explosions).
+- A noise sound of our own that matches the measurements above.
 - The Amiga player, and the choice between porting the driver logic and
   playing back streams.
 - The sound names are from the reference disassembly's comments and from
