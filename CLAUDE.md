@@ -136,9 +136,8 @@ option is kept for later.
   pairs built from the stage's row, and a launcher that runs once per
   arcade frame. `motion/waves.py` is the model: all 160 launches of the
   trace's stages without fly-through enemies (1, 2, 3, 7) happen at the
-  frame the arcade made them. The 68000 version is `game/src/stage.s`;
-  `game/tools/test_stage.sh` compares its launches and landings over
-  2,600 frames with the models, in both builds: identical.
+  frame the arcade made them. The 68000 version is `game/src/stage.s`,
+  checked by `game/tools/test_stage.sh` (see below).
 - Dives are scheduled as the arcade does it (`game/src/dives.s`, model
   `motion/dives.py`): three timers (boss, butterfly, bee) counted every
   16 arcade frames, a limit on how many fly at once, restart values from
@@ -148,8 +147,7 @@ option is kept for later.
   (`trace_game.lua`, one with the bot firing and one without), the model
   matches the arcade's timers, queue and launches on 37,756 of 37,758
   frames and 298 of 299 launches; the misses are inputs that changed
-  within the frame. `test_stage.sh` compares the game with the models
-  over 3,600 frames in both builds: identical.
+  within the frame.
 - A diver leaves its row's strip in the same frame: a row someone has
   left is rebuilt at once instead of waiting for its turn.
 - The fighter and its shots are the arcade's (`game/src/player.s`, model
@@ -177,8 +175,7 @@ option is kept for later.
   32 frames, then the next fighter comes on once the divers are home,
   can move for 3 counts, and is then in play. Attacks, new waves and
   bombs stop while it is out of play. With none left in reserve the game
-  is over and a new one starts after 6 counts. No READY or GAME OVER
-  text yet.
+  is over and a new one starts after 6 counts.
 - Bombs are drawn as flyers of half height (their image is 8 lines).
 - The flow between stages follows the arcade's sequence and its timer
   of 32-frame counts (`game/src/flow.s`): a game opens with PLAYER 1 and
