@@ -30,6 +30,9 @@ X_RANGE		equ	GUARD+PLAY_WIDTH-1	; fully hidden at the left to fully in the gap
 Y_RANGE		equ	GUARD+DISPLAY_LINES	; fully hidden above to fully hidden below
 FLAP_FRAMES	equ	16
 BREATHE_FRAMES	equ	8			; the formation's spread changes this often
+SCORE_FRAMES	equ	8			; and so does the score
+BULLET_SPEED	equ	6
+BULLET_START	equ	SHIP_Y-16
 
 	section	code,code
 
@@ -40,6 +43,33 @@ BREATHE_FRAMES	equ	8			; the formation's spread changes this often
 ; Out:      -
 ; Clobbers: d0-d7, a0-a3
 DemoFrame:
+	; the fighter goes from side to side, firing; the score climbs
+	lea	DemoShip,a3
+	move.w	ShipX(a5),d0
+	add.w	(a3),d0
+	cmp.w	#SHIP_X_MAX,d0
+	bls	.Ship
+	neg.w	(a3)
+	add.w	(a3),d0
+.Ship	move.w	d0,ShipX(a5)
+	lea	Bullets(a5),a0
+	moveq	#2-1,d1
+.Bullet	subq.w	#BULLET_SPEED,2(a0)
+	bpl	.Flying
+	move.w	d0,(a0)
+	move.w	#BULLET_START,2(a0)
+.Flying	addq.l	#4,a0
+	dbf	d1,.Bullet
+	moveq	#SCORE_FRAMES-1,d0
+	and.w	FrameCount(a5),d0
+	bne	.Scored
+	lea	Score+4(a5),a0			; add 30, in decimal
+	lea	DemoPoints+4,a1
+	sub.w	d0,d0				; clears the extend flag
+	abcd	-(a1),-(a0)
+	abcd	-(a1),-(a0)
+	abcd	-(a1),-(a0)
+.Scored
 	; the formation sways every frame and breathes every eighth; one strip is rebuilt a frame
 	lea	DemoForm,a3
 	move.w	FormSway(a5),d0
@@ -118,6 +148,11 @@ FLYER	macro
 	dc.w	(1+(Seed>>5)//2)*(1-((Seed>>12)&2))	; dy: 1 or 2 either way
 	dc.l	Enemies+\1+\2*FRAME_SIZE,Enemies+\1+\3*FRAME_SIZE
 	endm
+
+DemoShip:
+	dc.w	2				; the fighter's direction and speed
+DemoPoints:
+	dc.b	0,0,0,$30
 
 DemoForm:
 	dc.w	1,1,0				; sway direction, spread direction, next row to rebuild

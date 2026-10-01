@@ -14,6 +14,10 @@
 	xref	StarsInit
 	xref	DemoFrame
 	xref	FormationInit
+	xref	PanelInit
+	xref	PanelScore
+	xref	SpritesInit
+	xref	SpritesUpdate
 	xref	SoundInit
 	xref	SoundStop
 	if	SOUND_TEST
@@ -33,6 +37,11 @@ METER_COLOUR	equ	$004		; the raster meter's idle colour
 Main:	bsr	StarsInit
 	bsr	VideoInit
 	bsr	FormationInit
+	bsr	PanelInit
+	bsr	SpritesInit
+	move.w	#SHIP_X_MAX/2,ShipX(a5)
+	move.l	#$00640000+100,Bullets(a5)	; until there is a game: two bullets in flight
+	move.l	#$00640000+220,Bullets+4(a5)
 	bsr	SoundInit
 	if	SOUND_TEST=0
 	move.b	#1,Sound+SND_START(a5)	; until there is a game: the start theme
@@ -42,6 +51,8 @@ Main:	bsr	StarsInit
 	move.w	FrameCount(a5),FrameStart(a5)
 	endc
 
+	bsr	SpritesUpdate
+	bsr	PanelScore
 	bsr	DemoFrame
 	WAITBLIT				; nothing may still be drawing when the screens swap
 

@@ -35,3 +35,7 @@ scr_SIZEOF	rs.b	0
 FORM_ROWS	equ	5
 FORM_SWAY	equ	16			; FormSway runs from 0 to this
 FORM_SPREAD_MAX	equ	4			; FormSpread runs from 0 to this: column pitch 16 to 20
+
+; the player's fighter
+SHIP_Y		equ	240			; its display line
+SHIP_X_MAX	equ	PLAY_WIDTH-16

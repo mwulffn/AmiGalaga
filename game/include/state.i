@@ -18,5 +18,9 @@ STAT_SIZE	equ	8
 FormSway	rs.w	1		; formation: pixels right of its leftmost position
 FormSpread	rs.w	1		;   how far it has spread: 0 closed
 FormRows	rs.w	2*FORM_ROWS	;   per row: x and y of its strip, set when composed
+Score		rs.l	1		; six decimal digits, two to a byte, in the low three bytes
+ScoreText	rs.b	8		; scratch for printing it
+ShipX		rs.w	1		; the fighter, in playfield pixels
+Bullets		rs.w	4		; x, y of each of its two bullets; y < 0: not there
 Sound		rs.b	snd_SIZEOF	; the sound driver's state: see sound.i
 State_SIZEOF	rs.b	0

@@ -182,9 +182,13 @@ objects are bombs and explosions.
 - **The 68000 flight stepper** (both the PAL and the exact build) is not
   written; its cost, estimated at about 8 raster lines for 12 flyers, is
   not measured.
-- **The game** (`game/`) so far: startup and shutdown, video, the sound
-  driver. Next: the display pieces from the experiments (starfield, blit
-  primitives, formation strips, flyers), then the 68000 flight stepper.
+- **The game** (`game/`) so far: startup and shutdown, video, sound,
+  starfield, flyers, formation strips, score panel, fighter and bullet
+  sprites, all to the style guide and linted. `demo.s` stands in for the
+  game and moves things; it is to be replaced. With it, formation + 10
+  flyers + stars + panel + sprites + the start theme take 170 raster
+  lines (worst 197); with 20 flyers 245 (worst 273). Next: the 68000
+  flight stepper.
 - **Game logic** is not ported or measured: formation drift and
   breathing, dive scheduling, bombs, capture, scoring.
 - **Sound cost: deferred, by decision.** The driver works and the user
