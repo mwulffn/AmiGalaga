@@ -19,6 +19,14 @@ SCREEN_ROWS	equ	DISPLAY_LINES+2*GUARD
 SCREEN_SIZE	equ	ROW_BYTES*SCREEN_ROWS
 VISIBLE		equ	GUARD*ROW_BYTES+GUARD/8	; first displayed byte of a buffer
 SCREENS		equ	2			; the one shown and the one drawn
+; the part of a formation strip that is copied to the screen: where it starts and ends, in
+; bytes of a strip row, as composed now and as it was at the two drawings before
+	rsreset
+fs_from		rs.b	1
+fs_to		rs.b	1
+fs_before	rs.b	2*SCREENS
+fs_SIZEOF	rs.b	0
+NO_SPAN		equ	$7e			; fs_from of a strip with nothing in it (its fs_to is 0)
 
 DISPLAY_TOP	equ	44			; raster line of the first displayed line
 

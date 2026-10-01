@@ -90,6 +90,7 @@ CLOSING		equ	7				; FormCount: on the way back in
 PATTERN_SETS	equ	4
 PLACED		equ	$60				; objects below this have a place in the formation
 ALT_IMAGE	equ	1<<KIND_SHIFT			; from a row's image to its other one: the next kind
+SPAN_BLANKS	equ	2				; blank words copied after a strip's last enemy
 
 	section	code,code
 
@@ -164,6 +165,10 @@ FormationInit:
 	st	FormDrifting(a5)
 	clr.b	FormLeftwards(a5)
 	clr.b	FormCount(a5)
+	lea	FormSpans(a5),a0		; nothing of any strip is on the screens
+	moveq	#FORM_ROWS*fs_SIZEOF/2-1,d0
+.Span	move.w	#NO_SPAN<<8,(a0)+
+	dbf	d0,.Span
 ROW	set	0
 	rept	FORM_ROWS
 	moveq	#ROW,d0
@@ -179,6 +184,9 @@ ROW	set	ROW+1
 ; Out:      -
 ; Clobbers: d0-d7, a0-a3
 FormationCompose:
+	move.w	d0,SpanRow(a5)
+	move.b	#NO_SPAN,SpanFrom(a5)
+	clr.b	SpanLast(a5)
 	move.w	d0,d1
 	mulu.w	#row_SIZEOF,d1
 	lea	RowTable(pc),a3
@@ -263,7 +271,13 @@ FormationCompose:
 	clr.w	d4				; bltcon0:bltcon1
 	lsr.w	#3,d3
 	and.l	#$fffe,d3
-	add.l	a1,d3				; the word in the strip
+	cmp.b	SpanFrom(a5),d3			; the strip bytes the enemies start at: first and last
+	bcc	.From
+	move.b	d3,SpanFrom(a5)
+.From	cmp.b	SpanLast(a5),d3
+	bcs	.Last
+	move.b	d3,SpanLast(a5)
+.Last	add.l	a1,d3				; the word in the strip
 	move.l	a0,d2
 	btst	d5,d0
 	beq	.Image
@@ -276,26 +290,77 @@ FormationCompose:
 	move.w	row_cell(a3),bltsize(a6)
 .Next	addq.w	#1,d5
 	dbf	d1,.Cell
+	; The part of the strip that is copied to the screen: from a blank word before the
+	; first enemy to two blank words after the last one's two (its own and the one its
+	; shift spills into). The blank words wipe what a move of a pixel or two leaves
+	; behind, and the last one keeps the copy's shift from carrying into the next line.
+	move.w	SpanRow(a5),d0
+	mulu.w	#fs_SIZEOF,d0
+	lea	FormSpans(a5),a0
+	add.w	d0,a0
+	moveq	#0,d0
+	move.b	SpanFrom(a5),d0
+	moveq	#0,d1
+	move.b	SpanLast(a5),d1
+	beq	.Span				; nobody in the row
+	subq.w	#2,d0
+	addq.w	#2*(2+SPAN_BLANKS),d1
+	move.w	row_words(a3),d2
+	add.w	d2,d2
+	cmp.w	d2,d1
+	bls	.Span
+	move.w	d2,d1
+.Span	move.b	d0,fs_from(a0)
+	move.b	d1,fs_to(a0)
 	rts
 
 ;--
 ; FormationDraw
-; Copy the strips into the back screen: draws the formation and erases where it was.
+; Copy the strips into the back screen: draws the formation and erases where it was. Only
+; the part of a strip that has enemies in it is copied, or had at one of the two drawings
+; before (each screen is drawn every other frame), so a strip with nobody left is wiped
+; from both screens and then costs nothing.
 ; In:       a5 = state, a6 = CUSTOM
 ; Out:      -
-; Clobbers: d0-d5, a0-a3
+; Clobbers: d0-d7, a0-a3
 FormationDraw:
 	lea	RowTable(pc),a3
 	lea	FormRows(a5),a2
 	move.l	BackScreen(a5),a0
 	move.l	scr_bitmap(a0),a0
 	moveq	#FORM_ROWS-1,d5
+	moveq	#0,d6				; the row's place in FormSpans
 	WAITBLIT
 	moveq	#-1,d0
 	move.l	d0,bltafwm(a6)
-.Row	move.w	(a2)+,d0
+.Row	lea	FormSpans(a5),a1
+	add.w	d6,a1
+	addq.w	#fs_SIZEOF,d6
+	; from the lowest start to the highest end of the three
+	moveq	#0,d7
+	move.b	fs_from(a1),d7
+	moveq	#0,d2
+	move.b	fs_to(a1),d2
+	cmp.b	fs_before(a1),d7
+	bls	.From1
+	move.b	fs_before(a1),d7
+.From1	cmp.b	fs_before+1(a1),d2
+	bcc	.To1
+	move.b	fs_before+1(a1),d2
+.To1	cmp.b	fs_before+2(a1),d7
+	bls	.From2
+	move.b	fs_before+2(a1),d7
+.From2	cmp.b	fs_before+3(a1),d2
+	bcc	.To2
+	move.b	fs_before+3(a1),d2
+.To2	move.w	fs_before(a1),fs_before+2(a1)
+	move.w	fs_from(a1),fs_before(a1)
+	move.w	(a2)+,d0
 	add.w	FormDrift(a5),d0
 	move.w	(a2)+,d1
+	sub.w	d7,d2				; bytes of a strip row to copy
+	bls	.Skip
+	lsr.w	#1,d2
 	mulu.w	#ROW_BYTES,d1
 	moveq	#15,d4
 	and.w	d0,d4
@@ -305,30 +370,34 @@ FormationDraw:
 	clr.w	d4				; bltcon0:bltcon1
 	lsr.w	#3,d0
 	and.w	#$fffe,d0
+	add.w	d7,d0
 	add.w	d0,d1
 	lea	(a0,d1.l),a1
 	moveq	#PANEL_BYTE,d3
 	sub.w	d0,d3
+	ble	.Skip
 	lsr.w	#1,d3				; words left before the panel
-	move.w	row_words(a3),d0
-	move.w	d0,d2
+	move.w	d2,d0
 	cmp.w	d3,d0
 	bls	.Fits
-	move.w	d3,d0				; drop the strip's blank tail
-.Fits	sub.w	d0,d2
+	move.w	d3,d0				; drop what would reach the panel: blank
+.Fits	move.w	row_words(a3),d2
+	sub.w	d0,d2
 	add.w	d2,d2				; the strip's modulo
 	moveq	#PLANE_BYTES,d3
 	sub.w	d0,d3
 	sub.w	d0,d3				; the screen's modulo
 	or.w	row_height(a3),d0
+	move.l	row_strip(a3),d1
+	add.l	d7,d1
 	WAITBLIT
 	move.l	d4,bltcon0(a6)
 	move.w	d2,bltamod(a6)
 	move.w	d3,bltdmod(a6)
-	move.l	row_strip(a3),bltapt(a6)
+	move.l	d1,bltapt(a6)
 	move.l	a1,bltdpt(a6)
 	move.w	d0,bltsize(a6)
-	lea	row_SIZEOF(a3),a3
+.Skip	lea	row_SIZEOF(a3),a3
 	dbf	d5,.Row
 	rts
 

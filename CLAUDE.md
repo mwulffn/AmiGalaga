@@ -49,7 +49,12 @@ decision is made or changed.
 ### Rendering
 - **Formation:** not 40 bobs. Each of its 5 rows is a pre-composed strip
   copied with one plain blit per frame; one strip is rebuilt per frame.
-  No erase, no mask, and it repairs damage from flyer erases.
+  No erase, no mask, and it repairs damage from flyer erases. Only the
+  part of a strip with enemies in it is copied: from a blank word
+  before the first to two blank words after the last, joined with what
+  was copied at the two drawings before (each screen is drawn every
+  other frame), so what an enemy leaves behind when it goes is wiped
+  from both screens and an empty row then costs nothing.
   The formation is where the arcade's is, read from the arcade's own
   two tables (`HomeLoc`, `HomeX` in the state), which the flights read
   too. At rest the rows' tops are at 36 (bosses), 52, 64, 76 and 88, 12
@@ -446,28 +451,29 @@ lists the late frames with what was on screen
 
 | From stage | Average | Worst frame | Frames over 313 |
 |---|---|---|---|
-| 1 | 167 | 310 | 0 |
-| 6 | 174 | 331 | 6 |
+| 1, whole strips copied | 167 | 310 | 0 |
+| 6, whole strips copied | 174 | 331 | 6 |
+| 1 | 128 | 278 | 0 |
+| 6 | 138 | 305 | 0 |
+| 9 | 124 | 300 | 0 |
 
-**The game is over budget in its busiest frames from stage 6 on.** A
-late frame is shown a frame late: a hitch of 1/50 s, no tearing (double
-buffered; stars and sound run from interrupts and are not affected).
-The late ones are play frames in a busy entrance: 8 to 10 flying, 4
-bombs and 1 to 4 explosions (a big explosion frame is four flyers),
-318 to 331 lines; and one frame at 321 when a game's last stage is
-taken away, with nothing moving on screen.
+From stage 6 on the game was over budget in its busiest frames (a
+busy entrance: 8 to 10 flying, 4 bombs, 1 to 4 explosions). The profile
+(`-DPROFILE=1`: where a frame's lines go; the marks cost about 15 lines
+a frame themselves, and a blit is paid for in the part after it) showed
+that copying the five strips was the largest item, 65 lines a frame,
+paid in full even with most of the formation empty or flying. Now only
+the part of a strip that has enemies in it is copied (see Rendering):
+29 lines on average, and no late frame in these runs. The margin in
+the worst frame is 8 lines, so it is still thin.
 
-`-DPROFILE=1` adds where a frame's lines go (marks cost about 15 lines
-a frame themselves, and a blit is paid for in the part after it). From
-stage 6, average lines: drawing the formation 65, rebuilding strips
-20, drawing the flights 18, logic 17, text and the last flyer blits
-16, erasing flyers 12, shots and hits 9, moving flights 6, sprites and
-panel 5, blasts 4, bombs 4. **Copying the five strips is the largest
-item**, and it is paid in full even when most of the formation is
-empty or flying. That is where an optimisation pass should start
-(copy only the part of a strip that has enemies in it), then the
-explosions (one 32x32 bob instead of four 16x16), the cheaper bomb,
-and the sound driver.
+Average lines from stage 6 after that: formation 29, rebuilding strips
+21, drawing the flights 18, logic 17, text and the last flyer blits 16,
+erasing flyers 11, shots and hits 9, moving flights 6, sprites and
+panel 5, blasts 4, bombs 4. Next candidates, none done: rebuild only
+the part of a strip that changes (a rebuild clears and refills the
+whole strip), explosions as one 32x32 bob instead of four 16x16, the
+cheaper bomb, the sound driver.
 
 Found and fixed with the profile: building a line of text took about
 13 lines a flyer (a byte at a time); it now builds both letters of a
@@ -509,10 +515,9 @@ included, so the real figure is a little lower.
   in a later stage.
 - **Game logic** not ported yet: title, attract mode and high score
   entry.
-- **Over budget in busy frames from stage 6 on** (see Measured budget):
-  about 1.5 frames in 1,000 are late, by up to 20 lines. An
-  optimisation pass is due, starting with the strips; the user has not
-  yet said when.
+- **The frame budget is thin** (see Measured budget): no late frame in
+  the self-playing runs, with 8 lines to spare in the worst one. More
+  to gain is listed there.
 - **Sound cost: deferred, by decision.** The driver works and the user
   has confirmed it sounds right on the emulated A500 (2026-10-01). At up
   to 19 lines a frame it is the largest CPU item measured, and it lifts
