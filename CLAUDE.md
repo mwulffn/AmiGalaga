@@ -171,8 +171,13 @@ objects are bombs and explosions.
   - play some sounds from pre-computed per-tick streams;
   - run two driver steps per interrupt at 60 Hz and write Paula once.
   Any change must still pass `experiment-6/tools/measure.sh sndtest`.
-- The explosion's loudness against the tones is a guess; nobody has
-  compared it with the arcade's mix.
+- Loudness balance: in MAME's mix the explosion is 10.5 dB louder than
+  the start theme. The first Amiga build had it 5 dB quieter (the user
+  heard it as muted). Now the noise loop has its peaks flattened (rms 64
+  of 127, same spectrum) and tones play at 1.5 x their arcade level
+  (Paula volume 0-23), which puts the explosion 8.9 dB above the theme.
+  Not yet judged by ear. Paula's channels are hard-panned (0 and 3 left,
+  1 and 2 right) while the arcade is mono; nothing is done about that.
 - **Not drawn yet:** tractor beam, 32x32 explosions, dual fighter,
   READY/STAGE text.
 - Second star layer on sprite 6: decide once logic shows the frame time

@@ -25,6 +25,7 @@ import native as N  # noqa: E402
 
 PAULA_CLOCK = 3546895  # PAL
 NOISE_RATE, NOISE_LEN = 8000, 4000
+NOISE_ROUNDS, NOISE_CREST = 6, 1.6  # peak flattening: rounds, clip level in rms
 # Relative power of the arcade's fighter explosion at these frequencies (Hz).
 SPECTRUM = [
     (40, 0.0186), (46, 0.0250), (53, 0.0260), (62, 0.0422), (71, 0.0685), (83, 0.1006), (95, 0.1240),
@@ -55,23 +56,49 @@ def paula_entry(freq16: int) -> int:
 
 
 def noise_loop() -> bytes:
-    """A seamless loop of noise with the measured spectrum, signed 8-bit."""
+    """A seamless loop of noise with the measured spectrum, signed 8-bit.
+
+    Plain random-phase noise has rare tall peaks, so scaled to fit 8 bits it
+    is quiet on average. A few rounds of "clip the peaks, then put the
+    spectrum back" keep the same spectrum but flatten the peaks, which makes
+    the loop about 5 dB louder at Paula's full volume.
+    """
     rng = random.Random(1981)
+    n = NOISE_LEN
+    cos = [math.cos(2 * math.pi * i / n) for i in range(n)]
+    sin = [math.sin(2 * math.pi * i / n) for i in range(n)]
     logf = [math.log(f) for f, _ in SPECTRUM]
-    out = [0.0] * NOISE_LEN
-    for k in range(1, NOISE_LEN // 2):
-        f = k * NOISE_RATE / NOISE_LEN
-        if not SPECTRUM[0][0] <= f <= SPECTRUM[-1][0]:
+    bins = {}
+    for k in range(1, n // 2):
+        f = k * NOISE_RATE / n
+        if not SPECTRUM[0][0] <= f <= 1000:  # under 1% of the power lies above 1 kHz
             continue
         i = max(j for j in range(len(SPECTRUM)) if SPECTRUM[j][0] <= f)
         j = min(i + 1, len(SPECTRUM) - 1)
         t = 0 if i == j else (math.log(f) - logf[i]) / (logf[j] - logf[i])
-        amp = math.sqrt(SPECTRUM[i][1] + (SPECTRUM[j][1] - SPECTRUM[i][1]) * t)
-        phase, w = rng.random() * 2 * math.pi, 2 * math.pi * k / NOISE_LEN
-        for n in range(NOISE_LEN):
-            out[n] += amp * math.cos(w * n + phase)
-    peak = max(abs(v) for v in out)
-    return bytes(round(v / peak * 127) & 0xFF for v in out)
+        bins[k] = (math.sqrt(SPECTRUM[i][1] + (SPECTRUM[j][1] - SPECTRUM[i][1]) * t), rng.random() * 2 * math.pi)
+
+    def build() -> list[float]:
+        x = [0.0] * n
+        for k, (amp, phase) in bins.items():
+            c, s_ = amp * math.cos(phase), amp * math.sin(phase)
+            for i in range(n):
+                m = k * i % n
+                x[i] += c * cos[m] - s_ * sin[m]
+        return x
+
+    x = build()
+    for _ in range(NOISE_ROUNDS):
+        rms = math.sqrt(sum(v * v for v in x) / n)
+        limit = NOISE_CREST * rms
+        x = [max(-limit, min(limit, v)) for v in x]
+        for k, (amp, _) in bins.items():  # keep each bin's new phase, restore its level
+            re = sum(x[i] * cos[k * i % n] for i in range(n))
+            im = -sum(x[i] * sin[k * i % n] for i in range(n))
+            bins[k] = (amp, math.atan2(im, re))
+        x = build()
+    peak = max(abs(v) for v in x)
+    return bytes(round(v / peak * 127) & 0xFF for v in x)
 
 
 def dcb(data: bytes, width: int = 16) -> list[str]:
@@ -124,7 +151,10 @@ def main() -> None:
     chip += noise_loop()
     (out / "snd_chip.bin").write_bytes(chip)
     tables = 69 + 23 + 1 + 94 + 64 + 512 + 512 + len(tracks)
-    print(f"tables {tables} bytes (tracks {len(tracks)}), waveforms {waves} bytes, noise loop {NOISE_LEN} bytes")
+    noise = [b - 256 if b > 127 else b for b in chip[waves:]]
+    rms = math.sqrt(sum(v * v for v in noise) / len(noise))
+    print(f"tables {tables} bytes (tracks {len(tracks)}), waveforms {waves} bytes, "
+          f"noise loop {NOISE_LEN} bytes at rms {rms:.0f} of 127")
 
 
 if __name__ == "__main__":
