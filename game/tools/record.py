@@ -1,6 +1,6 @@
 """Record video of the game, with its sound, from the emulator.
 
-    tools/record.py out_dir clip [clip ...]      clips: title, stage-1, stage-3, ...
+    tools/record.py out_dir clip [clip ...]      clips: title, stage-1, dual-5, ...
 
 Each clip is recorded in an emulator of its own (amiga.py), at the Amiga's own speed
 so that every frame is drawn, and comes out as out_dir/<clip>.mp4: 1920x1080 at the
@@ -172,10 +172,12 @@ def record_title(work: Path, out: Path) -> None:
     finish(amiga, work, out)
 
 
-def record_stage(stage: int, work: Path, out: Path) -> None:
-    """A game from a stage, played by PLAYER, until the next stage has begun."""
+def record_stage(stage: int, work: Path, out: Path, dual: bool = False) -> None:
+    """A game from a stage, played by PLAYER, until the next stage has begun. `dual`: with
+    two fighters from the start (a DUAL_START build)."""
+    defs = f"-DFIRST_STAGE={stage}" + (" -DDUAL_START=1" if dual else "")
     subprocess.run(
-        ["make", "-s", f"build/{PROGRAM}", f"DEFS=-DFIRST_STAGE={stage}"],
+        ["make", "-s", f"build/{PROGRAM}", f"DEFS={defs}"],
         cwd=GAME,
         check=True,
         stdout=subprocess.DEVNULL,
@@ -229,10 +231,9 @@ def main() -> None:
         work.mkdir(parents=True)
         if clip == "title":
             record_title(work, out_dir / "title.mp4")
-        else:
-            record_stage(
-                int(clip.removeprefix("stage-")), work, out_dir / f"{clip}.mp4"
-            )
+        else:  # stage-N, or dual-N for two fighters
+            kind, _, stage = clip.partition("-")
+            record_stage(int(stage), work, out_dir / f"{clip}.mp4", dual=kind == "dual")
         print(f"{clip}: {out_dir / (clip + '.mp4')}")
 
 
