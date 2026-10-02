@@ -96,6 +96,8 @@ fl_obj		rs.b	1		; which enemy this is: selects its place in the formation
 fl_wait		rs.b	1		; arcade frames to its next chance to drop a bomb
 fl_chances	rs.b	1		; its chances: a bit each, low bit first; set = it drops one
 fl_pad		rs.b	1
+fl_px		rs.w	1		; where it is drawn, in buffer pixels and rows: worked out once
+fl_py		rs.w	1		;   a frame, when the flights have moved (FlightPlace)
 fl_SIZEOF	rs.b	0
 
 ; the fighter's shots: where each is, as the arcade's sprite hardware counts

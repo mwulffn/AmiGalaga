@@ -245,6 +245,20 @@ GameFrame:
 	cmp.l	a3,a0
 	bne	.Fly
 
+	; Where each one is now, worked out once. Nothing moves a flight or the formation for
+	; the rest of the frame, and every shot, each fighter and the drawing ask where they are.
+	lea	Flights(a5),a0
+	moveq	#FLIGHT_SLOTS-1,d4
+.Where	moveq	#FLYING_BITS,d0
+	and.b	fl_flags(a0),d0
+	beq	.Nowhere
+	bsr	FlightPlace
+	move.w	d0,fl_px(a0)
+	move.w	d1,fl_py(a0)
+.Nowhere
+	lea	fl_SIZEOF(a0),a0
+	dbf	d4,.Where
+
 	; now that the enemies have moved: the shots and bombs move, and hit, once for each
 	; arcade frame that began in this displayed frame
 	move.w	ArcadeFrame(a5),d0
@@ -311,8 +325,8 @@ GameFrame:
 .Draw	moveq	#FLYING_BITS,d4
 	and.b	fl_flags(a3),d4
 	beq	.Drawn
-	move.l	a3,a0
-	bsr	FlightPlace
+	move.w	fl_px(a3),d0
+	move.w	fl_py(a3),d1
 	cmp.b	#FIRST_ENEMY,fl_obj(a3)
 	bcc	.Bob
 	; the captured fighter in flight is its sprite, turned as it flies
@@ -475,7 +489,7 @@ FlightImage:
 
 ;--
 ; FlightPlace
-; Where a flight is drawn.
+; Where a flight is drawn. Once the frame's flights have moved, fl_px and fl_py have it.
 ; In:       a0 = its slot, a5 = state
 ; Out:      d0.w = x in buffer pixels, d1.w = y in buffer rows
 ; Clobbers: d2-d3, a1-a2

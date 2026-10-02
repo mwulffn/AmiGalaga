@@ -184,8 +184,12 @@ option, up to four.
   shot while diving by the escorts it set off with, shown as a pop-up.
   The hit box was tested against the firing trace: of 336 arcade hits
   the model finds 333, and 3 that the arcade did not have. An enemy
-  blows up as in the arcade: three 16x16 frames and two 32x32 ones (four
-  flyers each), stepped every fourth arcade frame. A score that
+  blows up as in the arcade: three 16x16 frames and two 32x32 ones,
+  stepped every fourth arcade frame. A 32x32 frame is one blitter
+  object with its own list to erase from (`BigDraw` in `flyers.s`),
+  which is not clipped: one that would hang over an edge of the buffer
+  or show in the gap is drawn as four flyers instead, as they all were
+  before. A score that
   follows (400 to 1600 for a boss, 1000 to 3000 for a challenging
   stage's wave or a transformed enemy's three) shows for 19 steps where
   the enemy was; 2000 and 3000 are two images side by side, as in the
@@ -490,6 +494,8 @@ emulation on, and several at once. Decided 2026-10-02.
   score put back), `initials` and `floppy` (see Saving). Sound is
   checked by watching the CPU's writes to Paula's volume registers.
 - `run_tests.py stress` is not part of `make test`: see Measured budget.
+  `run_tests.py stress -DSOMETHING=1` gives every stress build a switch,
+  to compare two ways of doing a thing on the same game.
 - `game/tools/compat.py` (`make compat`) boots the released disk on
   other Amigas and plays for half a minute: no crash, the title's
   picture pixel for pixel the stock A500's, the game's and the sound's
@@ -613,31 +619,65 @@ the worst frame is 8 lines, so it is still thin.
 Average lines from stage 6 after that: formation 29, rebuilding strips
 21, drawing the flights 18, logic 17, text and the last flyer blits 16,
 erasing flyers 11, shots and hits 9, moving flights 6, sprites and
-panel 5, blasts 4, bombs 4. Next candidates, none done: rebuild only
+panel 5, blasts 4, bombs 4. Next candidates, not done: rebuild only
 the part of a strip that changes (a rebuild clears and refills the
-whole strip), explosions as one 32x32 bob instead of four 16x16, the
-cheaper bomb, the sound driver.
+whole strip), the cheaper bomb, and looking only at the formation's
+columns near a shot. Done since: explosions as one 32x32 object, and
+the flights placed once a frame (see Stress).
 
 **Stress** (2026-10-02, `tools/run_tests.py stress`). The test builds'
-player presses the button every 16 frames. A build played from outside
-with the button hammered (down every other frame) and the stick going
-from side to side, the reserve topped up so the game lasts, counts the
-passes of the main loop that took more than one frame, over 6,000
-frames. The games differ from run to run (the random numbers have the
-beam in them), so the counts vary:
+player presses the button every 16 frames. The stress runs play a build
+from outside with the button hammered (down every other frame) and the
+stick going from side to side, the reserve topped up so the game lasts,
+and time every pass of the main loop over 6,000 of them; a pass that
+misses a frame is a late frame. So that two builds can be compared, the
+same game is played whatever the code costs: the stick and the button go
+by the game's own passes, and the beam's position, which the game mixes
+into its random numbers, is read as nought there. The scores in the
+report say that it was the same game.
 
-| Run | Late frames |
-|---|---|
-| From stage 1, 2 shots | 0 to 1 |
-| From stage 9, 2 shots | 2 to 3 |
-| From stage 9, 4 shots, two fighters | 4 to 7 |
-| From stage 14, 4 shots, two fighters | 16 to 46 |
+Late frames, and the worst frame's lines of work, with what was done
+about them:
 
-One is the frame that sets a stage up; the rest come in runs, every
-sixth frame or so of a busy entrance. A late frame is shown for two
-frames; the sound and the stars do not notice. The same three timing
-runs as above, as the code is now: 131 lines on average and 281 at
-worst from stage 1, 140 and 307 from stage 6, 126 and 302 from stage 9.
+| Run | As it was | Explosions as one object | and flights placed once a frame |
+|---|---|---|---|
+| From stage 1, 2 shots | 0 (297) | 0 (291) | 0 (284) |
+| From stage 9, 2 shots | 0 (301) | 0 (301) | 0 (283) |
+| From stage 9, 4 shots, two fighters | 18 (343) | 11 (335) | 0 (301) |
+| From stage 14, 4 shots, two fighters | 16 (354) | 13 (339) | 1 (324) |
+| From stage 20, 4 shots, two fighters | 73 (381) | 50 (369) | 9 (333) |
+
+- **Explosions:** a big frame is one 32x32 object, not four flyers (see
+  Rendering). The picture is the same: 224 frames with a big explosion
+  in them compared between the two.
+- **Flights placed once a frame:** where the late frames' lines went was
+  measured from outside (breakpoints on the routines a frame calls in
+  turn; no marks in the program). The largest item was not drawing: the
+  shots' and fighters' hit tests took 83 lines of a 320-line frame,
+  because every shot, each arcade frame, worked out where each of up to
+  12 flights is (`FlightPlace`, some 280 cycles). Now that is done once
+  a frame, when the flights have moved (`fl_px`, `fl_py`), and the hit
+  tests and the drawing read it. The stage test is identical, so the
+  game is the same. It costs about a line in a quiet frame.
+- **The sound driver was looked at and left alone.** With the driver
+  switched off altogether the worst frames are 12 to 14 lines shorter,
+  so that is all there is to gain. Its own cost over the sound test's
+  script (the blitter off, so nothing holds the CPU up) is 3,570 cycles
+  a tick; of that the interrupt's coming and going is about 340, the 22
+  tests for sounds that are off 480, the tracks 1,020 (304 each), and
+  the rest handling and Paula. What can be had without making it harder
+  to read (a table for a waveform's address, a pointer carried from
+  track to track, testing two sounds at once where their numbers are
+  next to each other) comes to 150 to 250 cycles a tick, about a line a
+  frame. The larger ideas under Open change how it sounds or what it is.
+- What is left in the heaviest frames (stage 20, 11 flying, 7 bombs):
+  drawing the flights 70 lines, logic and moving them 47, shots and
+  hits 43 (now mostly the formation's columns, ten tests a row in
+  reach), the formation 34, erasing 34, bombs 23, strips 22.
+
+The three timing runs, as the code is now: 132 lines on average and 255
+at worst from stage 1, 142 and 297 from stage 6, 127 and 281 from
+stage 9 (before: 281, 307 and 302 at worst).
 
 Found and fixed with the profile: building a line of text took about
 13 lines a flyer (a byte at a time); it now builds both letters of a
@@ -681,12 +721,12 @@ included, so the real figure is a little lower.
   demonstration, if wanted. Entering initials, the pause key, the
   SHOTS option and the attract mode are checked by the play scenes (see
   Tests) but the user has not yet seen them.
-- **The frame budget is exceeded in hard play** (see Measured budget,
-  Stress): no late frame in the self-playing test runs, with 6 lines to
-  spare in the worst one, but a player who hammers the button gets late
-  frames: up to 7 in 6,000 on stages 1 to 12, and up to 46 in 6,000 on
-  stages 14 to 16 with four shots and two fighters. More to gain is listed
-  there.
+- **A few late frames are left in the hardest play** (see Measured
+  budget, Stress): none in the self-playing test runs, with 16 lines to
+  spare in the worst one, and none with the button hammered and the
+  arcade's two shots. With four shots and two fighters: none on stages
+  9 to 12, 1 in 6,000 on stages 14 to 16, 9 in 6,000 on stages 20 to
+  22. The user prefers a few late frames to messy code (2026-10-02).
 - **The initials screen is late one frame in 16.** It takes about 265
   lines a frame (the best scores 232, the title 104: six lines of text
   drawn as flyers every frame), and rebuilding the blinking line costs
@@ -700,14 +740,16 @@ included, so the real figure is a little lower.
   has confirmed it sounds right on the emulated A500 (2026-10-01). At up
   to 19 lines a frame it is the largest CPU item measured, and it lifts
   the worst frame with 20 flyers to 294 of 313 lines. Make it fast later
-  ("first work, then fast"). Ideas, none tried yet:
+  ("first work, then fast"). Looked at on 2026-10-02 and left as it is:
+  see Stress under Measured budget for what it costs and why. Ideas,
+  none tried:
   - test two sounds per instruction by laying the request bytes out in
     handling order;
   - a lighter path for the one-voice sounds (shots, hits, dive), which
     are most of a busy stretch;
   - play some sounds from pre-computed per-tick streams;
   - run two driver steps per interrupt at 60 Hz and write Paula once.
-  Any change must still pass `experiment-6/tools/measure.sh sndtest`.
+  Any change must still pass `tools/run_tests.py sound`.
 - Loudness balance: in MAME's mix the explosion is 10.5 dB louder than
   the start theme. The first Amiga build had it 5 dB quieter (the user
   heard it as muted). Now the noise loop has its peaks flattened (rms 79

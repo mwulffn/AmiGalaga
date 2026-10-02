@@ -31,7 +31,6 @@
 	xdef	FighterHits
 	xdef	PlayerEnter
 	xdef	ScoreAdd
-	xref	FlightPlace
 	xref	FlightImage
 	xref	Enemies
 	xref	RescueStart
@@ -435,7 +434,8 @@ Shot:	move.w	sh_x(a3),d6
 .Flight	moveq	#1<<FLB_ACTIVE|1<<FLB_LANDED,d0
 	and.b	fl_flags(a0),d0
 	beq	.NextFlight
-	bsr	FlightPlace
+	move.w	fl_px(a0),d0
+	move.w	fl_py(a0),d1
 	move.w	d1,d2
 	add.w	#SPRITE_Y,d2
 	and.w	#SY_MASK,d2
@@ -490,7 +490,7 @@ Aside:	tst.b	sh_wide(a3)
 ; so is the enemy.
 ; In:       a5 = state
 ; Out:      -
-; Clobbers: d0-d7, a0-a3
+; Clobbers: d0-d7, a0-a1, a3
 FighterHits:
 	if	BOMB_STRESS
 	rts					; the timing test: nothing hurts the fighter
@@ -557,7 +557,7 @@ HalfLost:
 ; Is a fighter touched by an enemy or a bomb? The enemy is destroyed, the bomb used up.
 ; In:       d6.w = the fighter's sprite x, a5 = state
 ; Out:      d7.w = nonzero if it is
-; Clobbers: d0-d6, a0-a3
+; Clobbers: d0-d6, a0-a1, a3
 Touched:
 	moveq	#0,d7				; nonzero once something has touched it
 	; an enemy in flight: only once the stage's waves are all in. If several touch, the
@@ -570,7 +570,8 @@ Touched:
 	moveq	#FLIGHT_SLOTS-1,d4
 .Flight	btst	#FLB_ACTIVE,fl_flags(a0)
 	beq	.NextFlight
-	bsr	FlightPlace
+	move.w	fl_px(a0),d0
+	move.w	fl_py(a0),d1
 	move.w	d0,d2
 	addq.w	#SPRITE_X,d2
 	sub.b	d6,d2
@@ -596,7 +597,8 @@ Touched:
 	beq	.Bombs
 	moveq	#1,d7
 	move.l	a3,a0
-	bsr	FlightPlace
+	move.w	fl_px(a0),d0
+	move.w	fl_py(a0),d1
 	movem.w	d6-d7,-(sp)
 	bsr	HitFlying			; it is hit as by a shot
 	movem.w	(sp)+,d6-d7
