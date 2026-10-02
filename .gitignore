@@ -9,3 +9,6 @@ reference/*
 __pycache__/
 .DS_Store
 .claude/settings.local.json
+
+# Disk images put here to try things with (a Workbench disk): not ours to pass on.
+/*.adf

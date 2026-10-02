@@ -449,9 +449,15 @@ option, up to four.
   window shows the icon; a double click starts the game; the left mouse
   button ends it and Workbench is as it was (the same graphics memory
   free); a second start works; a best score entered is written to the
-  floppy and read back at the next start from the icon. Not tried on
-  Workbench 1.3: there is no Workbench 1.3 disk here. The disk has no
-  icon of its own: Workbench shows its usual one.
+  floppy and read back at the next start from the icon. The same on
+  Workbench 1.3 on a stock A500 with 512K (Workbench from its disk in
+  DF0, the game's in DF1: 341,000 bytes are free, and the game fits):
+  the icon shows, the game starts from it twice with a quit between,
+  and the scores go to the game's disk, not Workbench's. The user has
+  seen the logo and the icon on Workbench 3.1 and approved both. The
+  disk has no icon of its own: Workbench shows its usual one.
+  Commodore's Workbench disks are not ours: `*.adf` in the repository's
+  root is ignored by git.
 - While the title, the options or the best scores show, the stars
   drift slowly: a quarter of a line per arcade frame, 15 lines a second
   (`TITLE_SPEED` in `stars.s`). Asked for and confirmed on screen by
