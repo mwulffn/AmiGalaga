@@ -103,8 +103,19 @@ decision is made or changed.
   that no frame was late, was written first; the user called it
   overdoing it, rightly.) A test build never does it: it has no title.
   The play scene `clear` puts marks in both screens' gap, where nothing
-  draws or erases, and sees them gone after each change. What the user
-  saw was not found or reproduced.
+  draws or erases, and sees them gone after each change.
+- What the user had seen was then found (it was in the recorded title
+  clip): a tractor beam left under the title when the attract mode's
+  game ended with the beam out. Both screens were cleared, and then
+  one was drawn into again. `CaptureInit` switched the beam off but
+  left the rows that were out (`BeamTop`, `BeamBottom`) as they were,
+  and the two frames of clearing the beam's place that follow
+  (`BeamWipe`) copy whatever rows are out: so they drew the beam, once
+  before the screens were cleared and once after. `CaptureInit` now
+  says that no rows are out. The same happened when a real game ended
+  with the beam out, before its results. The play scene `beam` puts a
+  beam out in the attract mode, ends it, and finds none of it in
+  either screen; without the fix it finds it in one.
 - **Flyers** (divers, bombs, explosions, score pop-ups): masked bobs,
   erased with a clear blit of the old position.
 - **Text:** panel text is drawn by the CPU when it changes. Text inside

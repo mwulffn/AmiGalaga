@@ -109,6 +109,10 @@ RS_DOWN		equ	3
 CaptureInit:
 	clr.b	ApproachOn(a5)
 	clr.b	BeamOn(a5)
+	; none of the beam shows: whoever has its place cleared after this (BeamWipe) would
+	; otherwise have the rows that were out drawn there again, into screens just cleared
+	clr.b	BeamTop(a5)
+	clr.b	BeamBottom(a5)
 	clr.b	PullOn(a5)
 	clr.b	CarryOn(a5)
 	clr.b	CapText(a5)

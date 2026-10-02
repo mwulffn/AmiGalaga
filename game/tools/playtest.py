@@ -200,6 +200,7 @@ def attract(work: Path) -> list[str]:
 STAIN_ROWS = (20, 100, 143, 144, 200, 270)  # screen rows in both halves of a wipe
 STAIN_BYTE = 30  # in a plane's row: the gap between the playfield and the panel
 CLEARED = 4  # frames after a change by which the screens have been cleared
+BEAM_X = 96  # where the scene `beam` has a beam: its left edge in buffer pixels
 
 
 def marks(game: Game, put: bool) -> int:
@@ -249,6 +250,40 @@ def clear(work: Path) -> list[str]:
     return [
         f"{made} marks put in both screens are gone after every change of what is on"
     ]
+
+
+def beam(work: Path) -> list[str]:
+    """The attract mode's game ends with a tractor beam out: none of the beam is on
+    either screen under the title. (It once was: both screens were cleared, and
+    then the beam's own clearing-up drew the rows that had been out again.)"""
+    with Game(work) as game:
+        v = game.v
+        patience = v["TITLE_FRAMES"] + v["SCORES_FRAMES"] + 100
+        game.wait_for("Demo", 0, patience, differs=True)
+        game.wait(400)
+        # a beam is out, all ten rows of it, and the button ends the attract mode
+        game.set("BeamX", BEAM_X, 2)
+        game.set("BeamTop", 0)
+        game.set("BeamBottom", 10)
+        game.set("BeamOn", 255)
+        game.wait(3)
+        game.press("fire")
+        game.wait_for("Mode", v["MODE_TITLE"], 20)
+        game.wait(CLEARED)
+        # where the beam was, below the title's lines: nothing in either screen
+        first, last = BEAM_X // 16, BEAM_X // 16 + 3
+        ink = game.amiga.lua(
+            "local count = {} "
+            f"for _, name in ipairs({{'ScreenInfo1', 'ScreenInfo2'}}) do "
+            f"local bitmap = mem.peek_u32(dbg.symbol(name) + {v['scr_bitmap']}) local n = 0 "
+            f"for row = {v['GUARD'] + 200}, {v['GUARD'] + 247} do "
+            f"for word = {first}, {last} do "
+            f"if mem.peek_u16(bitmap + row * {v['ROW_BYTES']} + word * 2) ~= 0 "
+            "then n = n + 1 end end end count[#count + 1] = n end return count"
+        )[0]
+        game.screenshot("title-after-beam")
+        expect("words of the beam left in each screen", ink, [0, 0])
+    return ["a beam that is out when the attract mode ends is on neither screen after"]
 
 
 def play_to_initials(game: Game, score: int, place: int) -> None:
@@ -447,4 +482,5 @@ SCENES: dict[str, Callable[[Path], list[str]]] = {
     "initials": initials,
     "floppy": floppy,
     "clear": clear,
+    "beam": beam,
 }
