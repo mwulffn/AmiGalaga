@@ -150,8 +150,9 @@ option, up to four.
 - **The far stars: experimental** (2026-10-02, the user's wish: "a
   slower dimmer field on the last available sprite"). A second layer of
   24 stars on sprite 6, in two dim colours (`FAR_DIM`, `FAR_DIMMER` in
-  `video.s`), scrolling a quarter as fast as the near ones
-  (`FAR_SLOWER` in `stars.s`), downwards only: they stand still while
+  `video.s`), scrolling half as fast as the near ones (`FAR_SLOWER` in
+  `stars.s`; a quarter was tried first and the user found it too
+  slow), downwards only: they stand still while
   the near ones run backwards. They cannot be in the near stars' copper
   table, which scrolls as one, so they are an ordinary sprite: a list
   of one-line images in chip RAM, one for each star, 4 lines apart at
@@ -160,12 +161,12 @@ option, up to four.
   list again (`FarPlace`, some 90 cycles a star), starting with the
   highest on the screen: the star that leaves at the bottom comes in
   at the top and is the first from then on. `tools/make_stars.py` makes
-  them (`stars2.bin`). Seen on screenshots: all 24 show, and scroll 30
-  lines while the near ones scroll 120. What it costs, on the same
-  stress games as before it: 0.7 lines a frame on average; the worst
-  frames 304, 263, 300, 286 and 336 lines (were 303, 269, 291, 285 and
-  330), late frames 0, 0, 0, 0 and 16 (were 11 in the last). The user
-  has not seen it yet.
+  them (`stars2.bin`). Seen on screenshots: all 24 show and scroll.
+  What it costs at half speed, on the same stress games as before it:
+  about a line a frame on average; the worst frames 302, 263, 290, 286
+  and 337 lines (were 303, 269, 291, 285 and 330), late frames 1, 0, 0,
+  0 and 16 (were 0, 0, 0, 0 and 11). At a quarter it was 0.7 lines and
+  0, 0, 0, 0 and 16.
 
 ### The fighter is 10 lines higher than the arcade's (decided 2026-10-02)
 - The arcade's fighter is at sprite y 297: display lines 241 to 256, its

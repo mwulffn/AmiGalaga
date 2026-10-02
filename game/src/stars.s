@@ -18,8 +18,8 @@
 ; raster lines 128-255 carry that bit. Scrolling by n lines moves 2n
 ; entries across those boundaries.
 ;
-; Behind them is a second layer, the far stars: fewer, dim, and scrolling a
-; quarter as fast. They cannot be in the same table, which scrolls as one,
+; Behind them is a second layer, the far stars: fewer, dim, and scrolling
+; half as fast. They cannot be in the same table, which scrolls as one,
 ; so they are an ordinary sprite (sprite 6): a list of one-line images, one
 ; for each star, which the hardware shows from the top down. When they move
 ; a line, every star's place in the list is written again; the one that
@@ -59,7 +59,7 @@ TITLE_SPEED	equ	16			; 64ths of a line per arcade frame while no game is on: 15 
 BACK_LINES	equ	3			; lines per arcade frame when they run backwards
 CARRY_MASK	equ	(1<<CARRY_BITS)-1
 ; the far stars
-FAR_SLOWER	equ	4			; lines the near stars scroll for one of theirs
+FAR_SLOWER	equ	2			; lines the near stars scroll for one of theirs
 FAR_PIXEL	equ	$8000			; a star: the sprite's leftmost pixel
 RASTER_LINES	equ	256			; a sprite's line has a ninth bit from here on
 SPR_START8	equ	4			; in a sprite's second control word: the ninth bit of its first line,
