@@ -42,7 +42,7 @@ run on real hardware.
 
 To build it:
 
-- The arcade ROM set, as a zip (see below)
+- The arcade ROM set, `galaga.zip` (see [Bring your own ROM](#bring-your-own-rom))
 - [vasm](http://sun.hasenbraten.de/vasm/) built as `vasmm68k_mot`, and
   [vlink](http://sun.hasenbraten.de/vlink/)
 - `xdftool` from [amitools](https://github.com/cnvogelg/amitools), to make
@@ -52,24 +52,54 @@ To build it:
 
 ## Bring your own ROM
 
-The build reads MAME's `galaga` ROM set: `galaga.zip`, the Namco revision B
-set, with files named `gg1_1b.3p`, `gg1_9.4l`, `prom-5.5n` and so on. You
-have to supply it. Put it at `original/galaga.zip`, or say where it is with
-`ROM=`.
+The game is built from MAME's `galaga` ROM set, the Namco revision B one: a
+file called `galaga.zip` with `gg1_1b.3p`, `gg1_9.4l`, `prom-5.5n` and eleven
+more files in it. It is not in this repository and you have to supply it.
 
-Everything made from it lands in `build/` directories, which git ignores.
-That includes the finished program and disk image: they contain the
+**Where it goes:** in a directory called `original` at the top of the
+repository, beside `game`. The directory is not there in a fresh clone (git
+ignores it), so make it:
+
+```sh
+cd AmiGalaga                  # the top of the repository, wherever you cloned it
+mkdir original
+cp /path/to/your/galaga.zip original/galaga.zip
+```
+
+which gives:
+
+```
+AmiGalaga/
+├── README.md
+├── game/
+│   └── Makefile
+└── original/
+    └── galaga.zip            <- here
+```
+
+Leave it zipped. If you would rather keep the file somewhere else, say where
+every time you run make: `make ROM=/path/to/galaga.zip`.
+
+The build checks the set before it makes anything, each file by its name and
+checksum. If the file is missing, or is another revision or a clone of the
+game (their files have other names, or the same names and other contents),
+it stops and says which.
+
+Everything made from the ROM set lands in `build/` directories, which git
+ignores. That includes the finished program and disk image: they contain the
 arcade's graphics and data, so **do not distribute what you build**.
 
 ## Building
 
+With the ROM set in place:
+
 ```sh
 cd game
-make                          # or: make ROM=/path/to/galaga.zip
+make
 ```
 
 This makes `build/AmiGalaga`, the program, and `build/AmiGalaga.adf`, a
-bootable floppy image with the program on it.
+bootable floppy image with the program and its icon on it.
 
 ## Running
 

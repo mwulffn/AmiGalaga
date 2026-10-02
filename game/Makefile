@@ -32,19 +32,30 @@ build/%.o: src/%.s $(INCLUDES) $(GENERATED) FORCE
 	@mkdir -p build
 	vasmm68k_mot -quiet -Fhunk -m68000 -Iinclude -Ibuild $(DEFS) -o $@ $<
 
-build/snd_data.i build/snd_chip.bin: tools/make_sound_data.py $(ROM)
+# Nothing is built from a ROM set that is not there or is not the one the game is made
+# from: the check says what is wrong and what to do. It is made every time (another set
+# may have been named with ROM=), but its stamp is only written anew when what it says
+# has changed, so nothing is built again for it. A set that is not there has no rule to
+# make it but the one below, which is the check saying so.
+build/rom.ok: tools/check_rom.py $(ROM) FORCE
+	@python3 tools/check_rom.py $(ROM) $@
+
+$(ROM):
+	@python3 tools/check_rom.py $(ROM)
+
+build/snd_data.i build/snd_chip.bin: tools/make_sound_data.py $(ROM) build/rom.ok
 	@mkdir -p build
 	python3 tools/make_sound_data.py $(ROM) build
 
-build/gfx.i build/enemies.bin build/sprites.bin build/font.bin build/badges.bin build/beam.bin build/flash.bin: tools/make_gfx.py $(ROM)
+build/gfx.i build/enemies.bin build/sprites.bin build/font.bin build/badges.bin build/beam.bin build/flash.bin: tools/make_gfx.py $(ROM) build/rom.ok
 	@mkdir -p build
 	python3 tools/make_gfx.py $(ROM) build
 
-build/motion_data.s: ../motion/extract.py $(ROM)
+build/motion_data.s: ../motion/extract.py $(ROM) build/rom.ok
 	@mkdir -p build
 	python3 ../motion/extract.py $(ROM) build >/dev/null
 
-build/flight_cases.i: tools/flighttest.py ../motion/extract.py ../motion/pal_scale.py $(ROM)
+build/flight_cases.i: tools/flighttest.py ../motion/extract.py ../motion/pal_scale.py $(ROM) build/rom.ok
 	@mkdir -p build
 	python3 tools/flighttest.py cases $(ROM) $@
 

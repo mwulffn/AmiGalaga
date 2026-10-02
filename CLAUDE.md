@@ -860,6 +860,7 @@ included, so the real figure is a little lower.
 | `sound/` | sound extraction, driver and chip model, validation against MAME |
 | `docs/style.md` | assembly style guide for the game's code |
 | `asmlint/` | the header linter the style guide requires: a standalone Python tool (`uv run pytest` in its directory); the game's build runs it |
+| `game/tools/check_rom.py` | run by the build before anything is made from the ROM set: every file the tools read is looked for by name and CRC-32 (the zip's own), and a set that is missing, is not a zip, has other file names (a clone) or other contents (another revision) stops the build with what is wrong and what to do. Tried with each of the four |
 | `game/tools/check_even.py` | also run by the build: fails it if a word or long field of a structure in `include/` is at an odd offset (vasm does not align `rs.w`, and a 68000 traps on the access; this happened once and the game came up with a blank screen) |
 | `reference/` | local-only reading material, ignored by git |
 | `cfg/` | MAME's own settings, written when the arcade is run from here; not ours, untracked |
