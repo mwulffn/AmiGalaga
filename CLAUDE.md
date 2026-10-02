@@ -91,6 +91,20 @@ decision is made or changed.
   once more where the enemies were and wipe them, at no extra cost. The
   next stage's start puts the formation at rest. (Wiping the whole
   playfield with the blitter was tried first: about 270 lines a screen.)
+- **The screens are cleared whenever what is on changes** (2026-10-02):
+  when a game begins (from the title, or the attract mode's) and when
+  one is over and the title or the initials come. The user saw
+  something of an attract mode's game left on the playfield in the
+  next one, and chose a clear over finding what had drawn it: nothing
+  can then be left behind, whatever drew it. `VideoClear` clears
+  everything left of the panel in both screens at once, with the
+  blitter, and the logo is drawn again. It takes a frame or two, which
+  at such a moment shows as nothing. (A wipe spread over 16 frames, so
+  that no frame was late, was written first; the user called it
+  overdoing it, rightly.) A test build never does it: it has no title.
+  The play scene `clear` puts marks in both screens' gap, where nothing
+  draws or erases, and sees them gone after each change. What the user
+  saw was not found or reproduced.
 - **Flyers** (divers, bombs, explosions, score pop-ups): masked bobs,
   erased with a clear blit of the old position.
 - **Text:** panel text is drawn by the CPU when it changes. Text inside
@@ -579,7 +593,8 @@ emulation on, and several at once. Decided 2026-10-02.
   there for these tests. The scenes: `menus` (the title, every option,
   a game with six fighters, HARD and four shots in flight), `pause`,
   `attract` (silent throughout, ended by the button and by itself, the
-  score put back), `initials` and `floppy` (see Saving). Sound is
+  score put back), `initials` and `floppy` (see Saving), `clear` (see
+  Rendering). Sound is
   checked by watching the CPU's writes to Paula's volume registers.
 - `run_tests.py stress` is not part of `make test`: see Measured budget.
   `run_tests.py stress -DSOMETHING=1` gives every stress build a switch,

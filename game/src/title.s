@@ -45,6 +45,7 @@
 	xdef	ScoresInit
 	xdef	ScoresInsert
 	xref	GameStart
+	xref	VideoClear
 	xref	CaptureInit
 	xref	SoundPause
 	xref	TextShow
@@ -275,6 +276,7 @@ TitleTick:
 	rts
 .Start	clr.b	Mode(a5)			; MODE_GAME
 	bsr	HideAll
+	bsr	VideoClear			; nothing of the title is left on the screens
 	bra	GameStart
 .Idle	cmp.w	#TITLE_FRAMES,MenuTimer(a5)
 	bcc	ScoresShow
@@ -297,6 +299,7 @@ DemoStart:
 	clr.b	Mode(a5)			; MODE_GAME
 	st	Demo(a5)
 	clr.w	DemoTimer(a5)
+	bsr	VideoClear			; nothing of what showed is left on the screens
 	bsr	GameStart
 	bsr	SoundPause			; the start theme it asked for is never heard
 	clr.b	Lives(a5)

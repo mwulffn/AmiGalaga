@@ -197,6 +197,60 @@ def attract(work: Path) -> list[str]:
     ]
 
 
+STAIN_ROWS = (20, 100, 143, 144, 200, 270)  # screen rows in both halves of a wipe
+STAIN_BYTE = 30  # in a plane's row: the gap between the playfield and the panel
+CLEARED = 4  # frames after a change by which the screens have been cleared
+
+
+def marks(game: Game, put: bool) -> int:
+    """Put marks in both screens' playfields, or count those still there. They are
+    where nothing in the game draws or erases: in the gap beside the playfield, in
+    every plane of some rows. One request does both screens: the two change places
+    every frame, and frames pass between requests."""
+    v = game.v
+    rows = ", ".join(str(row) for row in STAIN_ROWS)
+    return game.amiga.lua(
+        "local count = 0 "
+        f"for _, screen in ipairs({{{game.address('FrontScreen')}, "
+        f"{game.address('BackScreen')}}}) do "
+        f"local bitmap = mem.peek_u32(mem.peek_u32(screen) + {v['scr_bitmap']}) "
+        f"for _, row in ipairs({{{rows}}}) do for plane = 0, {v['PLANES'] - 1} do "
+        f"local at = bitmap + row * {v['ROW_BYTES']} + plane * {v['PLANE_BYTES']} "
+        f"+ {STAIN_BYTE} "
+        f"if {'true' if put else 'false'} then mem.poke_u16(at, 0xffff) end "
+        "if mem.peek_u16(at) ~= 0 then count = count + 1 end end end end return count"
+    )[0]
+
+
+def clear(work: Path) -> list[str]:
+    """Whenever what is on changes, both screens are cleared left of the panel:
+    whatever a game or the title left there, whoever drew it, is gone."""
+    with Game(work) as game:
+        v = game.v
+        made = marks(game, put=True)
+        game.wait(10)
+        expect("marks that stay while nothing changes", marks(game, put=False), made)
+        game.screenshot("marked")
+        # the title gives way to the best scores, and they to the attract mode's game
+        patience = v["TITLE_FRAMES"] + v["SCORES_FRAMES"] + 100
+        game.wait_for("Demo", 0, patience, differs=True)
+        game.wait(CLEARED)
+        expect("marks left when the attract mode begins", marks(game, put=False), 0)
+        marks(game, put=True)
+        game.press("fire")
+        game.wait_for("Mode", v["MODE_TITLE"], 20)
+        game.wait(CLEARED)
+        expect("marks left when it ends and the title comes", marks(game, put=False), 0)
+        game.screenshot("title-after")
+        marks(game, put=True)
+        game.press("fire")
+        game.wait(CLEARED)
+        expect("marks left when a game begins", marks(game, put=False), 0)
+    return [
+        f"{made} marks put in both screens are gone after every change of what is on"
+    ]
+
+
 def play_to_initials(game: Game, score: int, place: int) -> None:
     """A game with a given score and no fighter in reserve, left until it is over."""
     start_game(game)
@@ -392,4 +446,5 @@ SCENES: dict[str, Callable[[Path], list[str]]] = {
     "attract": attract,
     "initials": initials,
     "floppy": floppy,
+    "clear": clear,
 }

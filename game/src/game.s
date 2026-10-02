@@ -24,6 +24,9 @@
 	xref	StageTick
 	xref	FlightStep
 	xref	FlyersErase
+	if	REPORTING=0
+	xref	VideoClear
+	endc
 	xref	FlyersBegin
 	xref	FlyerDraw
 	xref	FormationCompose
@@ -120,6 +123,7 @@ GameInit:
 	if	REPORTING
 	; a test build plays itself: straight into a game
 	else
+	bsr	VideoClear			; nothing of the game that was is left on the screens
 	; the attract mode's game counts for nothing: the score that showed before it is put
 	; back, and the sound comes on again
 	tst.b	Demo(a5)

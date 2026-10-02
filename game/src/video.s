@@ -6,8 +6,10 @@
 	include	"flight.i"
 	include	"sound.i"
 	include	"state.i"
+	include	"macros.i"
 
 	xdef	VideoInit
+	xdef	VideoClear
 	xdef	VideoWaitFrame
 	xdef	VideoFlip
 	xdef	VideoSetSprite
@@ -27,6 +29,14 @@ COPPER_END	equ	$fffffffe
 STAR_LINE	equ	DISPLAY_TOP-1		; the star table takes over at the end of this line
 END_OF_LINE	equ	$df			; copper wait: horizontal position
 STAR_PIXEL	equ	$8000			; sprite 7's image: its leftmost pixel
+; clearing a screen left of the panel: a blit can be 1024 lines tall, and a screen's four
+; planes are more, so it takes two
+CLEAR_WORDS	equ	(GUARD+PLAY_WIDTH+16)/16	; the guard column, the playfield and the gap
+CLEAR_BLITS	equ	2
+CLEAR_ROWS	equ	SCREEN_ROWS/CLEAR_BLITS
+CLEAR_SIZE	equ	(CLEAR_ROWS*PLANES)<<6|CLEAR_WORDS
+CLEAR_MODULO	equ	PLANE_BYTES-CLEAR_WORDS*2
+CLEAR		equ	$0100			; bltcon0: D only, all zeros
 
 	section	code,code
 
@@ -83,6 +93,40 @@ VideoSetSprite:
 	move.w	d1,(a1)
 	swap	d1
 	move.w	d1,4(a1)
+	rts
+
+;--
+; VideoClear
+; Clear everything left of the panel in both screens, at once: for when what is on changes
+; (a game begins or is over), so that nothing can be left of what was there, whatever drew
+; it. It takes a frame or two of blitting, which shows as nothing at such a moment.
+; In:       a6 = CUSTOM
+; Out:      -
+; Clobbers: d0, a0-a1
+VideoClear:
+	lea	ScreenInfo1,a0
+	bsr	ScreenClear
+	lea	ScreenInfo2,a0
+	; falls through
+
+;--
+; ScreenClear
+; Clear everything left of the panel in one screen. What is drawn once and stays must be
+; drawn again: that is the logo, so the screen is said not to have it.
+; In:       a0 = the screen (a scr_ structure), a6 = CUSTOM
+; Out:      -
+; Clobbers: d0, a1
+ScreenClear:
+	clr.w	scr_logo(a0)
+	move.l	scr_bitmap(a0),a1
+	moveq	#CLEAR_BLITS-1,d0
+.Blit	WAITBLIT
+	move.l	#CLEAR<<16,bltcon0(a6)
+	move.w	#CLEAR_MODULO,bltdmod(a6)
+	move.l	a1,bltdpt(a6)
+	move.w	#CLEAR_SIZE,bltsize(a6)
+	lea	CLEAR_ROWS*ROW_BYTES(a1),a1
+	dbf	d0,.Blit
 	rts
 
 ;--
