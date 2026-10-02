@@ -27,6 +27,9 @@ FSUAE_LUA = Path(
 KICKSTARTS = Path(
     os.environ.get("KICKSTARTS", Path.home() / "Documents/FS-UAE/Kickstarts")
 )
+# The emulator's source the tests were checked with, against the released FS-UAE
+# (run_tests.py --stock). When it is moved on, run that check again and change this.
+FSUAE_COMMIT = "9ecc044b0d788bc2103ea094d9804893c7257ae4"
 
 
 @dataclass(frozen=True)
@@ -197,6 +200,25 @@ class Amiga:
         except Exception:  # noqa: BLE001  it is going away whatever happens
             self.process.kill()
             self.process.wait()
+
+
+def pin_warning() -> str | None:
+    """What to say if the emulator is not built from the source the tests were
+    checked with, as far as its checkout tells. None if it is."""
+    head = subprocess.run(
+        ["git", "-C", str(FSUAE_LUA.parent), "rev-parse", "HEAD"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    commit = head.stdout.strip()
+    if head.returncode == 0 and commit == FSUAE_COMMIT:
+        return None
+    return (
+        f"warning: the emulator is at {commit[:7] or 'an unknown commit'}, and the"
+        f" tests were checked with {FSUAE_COMMIT[:7]}: its timing may not be the same"
+        " (run_tests.py --stock checks it against the released FS-UAE)"
+    )
 
 
 def free_port() -> int:

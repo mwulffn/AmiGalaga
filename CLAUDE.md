@@ -450,6 +450,14 @@ The tests need the FS-UAE with Lua scripting (github.com/mwulffn/fs-uae;
 at full speed (about nine times the Amiga's) with the cycle-exact
 emulation on, and several at once. Decided 2026-10-02.
 
+- **The emulator is pinned** to the fork's commit `9ecc044` (UAE core
+  from WinUAE 6.0.3): `FSUAE_COMMIT` in `game/tools/amiga.py`, and the
+  tests warn if the checkout the emulator is in is at another. That is
+  the commit the comparison with the released FS-UAE below was made
+  with. Before moving it on, run `run_tests.py --stock` and the suite
+  on the new one and compare the reports in `build/tests` again; trust
+  no new timing figure until that is done.
+
 - `game/tools/amiga.py` starts an emulator and talks to it: Lua code in,
   values out. It watches for exceptions that mean a crash (not the
   ROM's own: Kickstart tries instructions to find out what CPU it has).

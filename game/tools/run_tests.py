@@ -37,7 +37,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
-from amiga import KICKSTARTS, STOCK_A500, Amiga, boot_directory
+from amiga import KICKSTARTS, STOCK_A500, Amiga, boot_directory, pin_warning
 from playtest import SCENES, STRESS, stress
 
 GAME = Path(__file__).resolve().parent.parent
@@ -226,6 +226,8 @@ def main() -> None:
     parser.add_argument("what", nargs="*")
     options, defs = parser.parse_known_args()
     what, arguments = (options.what or ["all"])[0], tuple(options.what[1:])
+    if not options.stock and (warning := pin_warning()):
+        print(warning)
 
     runs: list[Run] = []
     if what == "timing":

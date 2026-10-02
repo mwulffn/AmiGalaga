@@ -24,7 +24,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
-from amiga import STOCK_A500, Machine
+from amiga import STOCK_A500, Machine, pin_warning
 from game import GAME, Game
 
 WORK = GAME / "build/compat"
@@ -160,6 +160,8 @@ def trial(name: str) -> Trial:
 
 
 def main() -> None:
+    if warning := pin_warning():
+        print(warning)
     stock = next(iter(MACHINES))
     names = sys.argv[1:] or list(MACHINES)
     if stock not in names:
