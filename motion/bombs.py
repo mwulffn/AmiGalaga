@@ -42,10 +42,13 @@ def entry_bomber(rom: G.Rom, obj: int) -> bool:
     return bool(rom.main[ENTRY_BOMBERS + (k >> 3)] << (k & 7) & 0x80)
 
 
-def aim(fighter_x: int, x: int, y: int, index: int) -> int:
-    """The sideways rate of bomb `index` dropped at sprite (x, y): bit 7 = leftwards."""
+def aim(fighter_x: int, x: int, y: int, index: int, fighter_half_y: int = FIGHTER_HALF_Y) -> int:
+    """The sideways rate of bomb `index` dropped at sprite (x, y): bit 7 = leftwards.
+
+    `fighter_half_y` is the arcade's unless the fighter is somewhere else (the Amiga
+    game's is higher up)."""
     dx = abs(fighter_x - x)
-    dy = abs(FIGHTER_HALF_Y - (y >> 1))
+    dy = abs(fighter_half_y - (y >> 1))
     q = G.div16(dx << 8 | (FIRST_BOMB + 2 * index + 1), dy)  # the low byte is whatever was in L
     v = (((q >> 2) + q) & 0xFFFF) >> 2
     return min(v, MAX_RATE) >> 1 | (0x80 if fighter_x < x else 0)

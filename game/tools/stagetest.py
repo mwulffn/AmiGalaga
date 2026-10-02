@@ -26,7 +26,9 @@ import transform as TF  # noqa: E402
 import waves as W  # noqa: E402
 
 SLOTS, FORM_ROWS, BLASTS = 12, 5, 8  # as in the game's sources
-SHIP_START, SHIP_SX, SHIP_SY, SHIP_LEFT, SHIP_RIGHT = 104, 17, 297, 0x12, 0xE1
+SHIP_RAISED = 10  # lines the fighter is above the arcade's (include/layout.i)
+SHIP_START, SHIP_SX, SHIP_SY, SHIP_LEFT, SHIP_RIGHT = 104, 17, 297 - SHIP_RAISED, 0x12, 0xE1
+FIGHTER_HALF_Y = B.FIGHTER_HALF_Y - SHIP_RAISED // 2  # what the bombs are aimed at
 AUTO_FIRE, SHOT_GAP, BLAST_STEPS, POPUP_STEPS = 16, 9, 6, 19
 LAUNCHED, HOME, GONE, FORMATION, KILLED, BOSS_HIT, SCORE_HI, SCORE_LO, FIGHTER_LOST, BOMB = range(10)
 PLAYING, BLOWN, RETURNING, READY, OVER, ABSENT, TAKEN, SHOWN = range(8)  # what the fighter is doing (SHOWN: the results)
@@ -270,7 +272,7 @@ def model(rom: G.Rom, fifths: int, frames: int, first: int = 1) -> list[tuple[in
                 x, y = (x + 1) & 0xFF, (y + 40) & 0x1FF
                 n = next((n for n, b in enumerate(bombs) if not b[0]), None)
                 if n is not None:
-                    bombs[n] = [x, y, B.aim(ship + SHIP_SX, x, y, n), 0]
+                    bombs[n] = [x, y, B.aim(ship + SHIP_SX, x, y, n, FIGHTER_HALF_Y), 0]
                     log.append((frame, BOMB, bombs[n][2]))
             for blast in list(blasts):
                 if arcade & 3 == (3 if blast[0] & 2 else 1):
@@ -287,7 +289,8 @@ def model(rom: G.Rom, fifths: int, frames: int, first: int = 1) -> list[tuple[in
             if flow == PLAY and state == SHOWN:
                 if result_step == 0:
                     launcher = idle()
-                    present, dirty, alive = set(), set(), 0
+                    # the formation is emptied where it stands: the rows that had someone are rebuilt
+                    present, dirty, alive = set(), {row_of(obj) for obj in present}, 0
                     slots, landed = [None] * SLOTS, [False] * SLOTS
                     env.home_loc, env.home_x = form.home_loc, form.home_x
                     blasts = []

@@ -147,6 +147,38 @@ option, up to four.
   tractor beam pulls the fighter up, as the arcade's do (in the code,
   not yet looked at on screen).
 
+### The fighter is 10 lines higher than the arcade's (decided 2026-10-02)
+- The arcade's fighter is at sprite y 297: display lines 241 to 256, its
+  last line off this 256-line display, and its 32x32 explosion (233 to
+  264) cut off at the bottom. Here it is 10 lines higher (`SHIP_RAISED`
+  in `layout.i`): lines 231 to 246, the explosion 223 to 254. The user
+  looked at it 9 higher and approved; 10 because the number must be
+  even (the build fails on an odd one): the arcade compares heights
+  halved, and an odd shift would move what hits the fighter by a line
+  against the fighter itself.
+- Everything that goes by the fighter's line goes with it, through the
+  one constant: where its shots start, what touches it (enemies and
+  bombs), what the bombs are aimed at, the line it is pulled up from
+  and let back down to, and the line a rescued fighter comes down to.
+  What does not move: the enemies' paths, which are the arcade's, so a
+  diver or a bomb reaches the fighter 10 lines sooner; the height a boss
+  hovers at and the beam under it, so 10 lines more of the beam overlap
+  the fighter and a taken fighter has 10 lines less to rise; where a
+  shot is gone at the top. A shot is now at heights 4 lines off the
+  arcade's on each frame (it climbs 6 a frame from another start).
+- A rescued fighter that is freed below the fighter's line goes round
+  by the top, as the arcade's does (its y has 9 bits); the band where
+  that happens is 10 lines taller. Not seen in play.
+- The models take the same height (`SHIP_RAISED` in `stagetest.py`,
+  the aim's `fighter_half_y` in `motion/bombs.py`, whose default is the
+  arcade's, so the checks against MAME are as they were). The stage
+  test is identical in all six runs with it. The user has tried a
+  capture with the fighter raised and it works; a rescue has not been
+  tried since, by anyone: a scene that gets the fighter captured and
+  rescued from outside was attempted and given up (a fighter that
+  stands still for the beam is bombed first, at the arcade's height
+  too).
+
 ### Enemy movement
 - Use the arcade's own flight scripts and wave tables, extracted from
   the user's ROM by `motion/extract.py`, and port the arcade's per-frame
@@ -515,6 +547,13 @@ emulation on, and several at once. Decided 2026-10-02.
   so writes the bus's garbage to a write-only register for a moment
   (now in the style guide). Found and not fixed: the late frames under
   Open.
+- A gap in the stage test's model, found when the fighter was raised
+  and a run played out differently: a game that ends with enemies in
+  the formation rebuilds their rows' strips that frame (`StageIdle`),
+  which holds the one-row-a-frame turn back by a frame; the model did
+  not, and from then on could have a landed enemy in its strip a frame
+  early. It showed as one dive launched for another enemy. The model
+  now does as the game.
 - Not usable for timing: `cycle_exact=false` is faster still but gives
   106 lines where the truth is 134.
 
@@ -684,6 +723,10 @@ The three timing runs, as the code is now: 132 lines on average and 255
 at worst from stage 1, 142 and 297 from stage 6, 127 and 281 from
 stage 9 (before: 281, 307 and 302 at worst).
 
+With the fighter 10 lines higher the stress runs play other games than
+those in the table (what the fighter meets, it meets elsewhere): late
+frames 0, 0, 0, 0 and 11, worst frames 303, 269, 291, 285 and 330.
+
 Found and fixed with the profile: building a line of text took about
 13 lines a flyer (a byte at a time); it now builds both letters of a
 flyer a row at a time, about four times faster, which took the frame
@@ -765,11 +808,6 @@ included, so the real figure is a little lower.
   The user compared the game with the arcade in MAME (2026-10-01): the
   sounds and when they play are right; the arcade's effects sound more
   "direct" because it is mono, and the difference is accepted.
-- **The fighter may have to move up about 4 lines.** It sits where the
-  arcade's does, at display lines 241 to 256, so the last line is off
-  the 256-line display and its 32x32 explosion (233 to 264) loses its
-  bottom 8 lines. The user has seen the clipping; not decided yet
-  (2026-10-01).
 - Second star layer on sprite 6: decide once logic shows the frame time
   left.
 

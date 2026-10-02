@@ -71,7 +71,17 @@ LAST_BIG_X	equ	GUARD+PLAY_WIDTH-32	; a 32x32 object further right would show in 
 LAST_BIG_Y	equ	SCREEN_ROWS-32		;   and one further down leave the buffer
 
 ; the player's fighter and its shots are placed as the arcade's sprite hardware counts, too
-SHIP_SY		equ	297			; the fighter's y
+; The arcade's fighter is at y 297, which puts its last line, and the bottom 9 of its 32x32
+; explosion, off this 256-line display. It is SHIP_RAISED lines higher here, so that all of
+; the explosion shows, and everything that goes by where the fighter is (its shots, what
+; hits it, the bombs' aim, capture and rescue) goes with it. An even number: the arcade
+; compares heights halved, and an odd one would move what hits the fighter by a line
+; against the fighter itself.
+SHIP_RAISED	equ	10
+	if	SHIP_RAISED&1
+	fail	"SHIP_RAISED must be even"
+	endc
+SHIP_SY		equ	297-SHIP_RAISED		; the fighter's y
 DISPLAY_SY	equ	SPRITE_Y+GUARD		; sprite y of the first displayed line
 DISPLAY_SX	equ	SPRITE_X+GUARD		; sprite x of the playfield's left edge
 SHIP_Y		equ	SHIP_SY-DISPLAY_SY	; its display line
