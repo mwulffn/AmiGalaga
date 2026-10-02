@@ -10,9 +10,11 @@ StarSpeed	rs.w	1		; lines the stars scroll per frame
 StarTarget	rs.b	1		;   the speed they work up to, in 64ths of a line per arcade frame
 StarNow		rs.b	1		;   their speed now
 StarCarry	rs.b	1		;   the 64ths left over
-StarPad		rs.b	1
+FarCarry	rs.b	1		; far stars: lines the near ones have scrolled that have not moved them yet
 StarSteps	rs.w	1		;   lines to scroll, gathered over this frame's arcade frames
 StarFade	rs.l	1		; next entry of the fade schedule
+FarOffset	rs.b	1		; far stars: lines they have scrolled, 0-255
+FarFirst	rs.b	1		;   which of them is highest on the screen; FAR_STARS when it is the first
 ReportPtr	rs.l	1		; test builds: what to write to "results"
 ReportLen	rs.l	1
 FrameStart	rs.w	1		; test builds: FrameCount when this frame's work began

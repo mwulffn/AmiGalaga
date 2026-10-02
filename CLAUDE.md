@@ -113,8 +113,8 @@ Sprites pair up and each pair shares three colours.
 | 0, 1 | fighter on 0; its 32x32 explosion on both, left and right half (the pair's blue register is changed to the explosion's cyan in the copper list while it shows); second fighter on 1 when dual |
 | 2, 3 | player bullets: both of the fighter's two on sprite 2, one below the other; sprite 3 for the dual fighter's second bullets, 15 pixels to the right |
 | 4, 5 | captured fighter on 4: red, or white once rescued (the pair's three colour registers are set in the copper list for each use). When one of two fighters is lost, its explosion is on 4 and 5 while the other plays on; there is never a captured fighter while there are two |
-| 6 | free, two usable colours; candidate for a second star layer |
-| 7 | stars |
+| 6 | the far stars (experimental, see Starfield): a list of one-line images, in the pair's second and third colours |
+| 7 | the near stars: armed by hand and moved by the copper, in the pair's first colour, which the star table changes on every line |
 
 Every bullet on one sprite needs them 9 lines apart (the bullet's image
 trimmed to its 8 lines, plus the line the hardware needs between two
@@ -146,6 +146,26 @@ option, up to four.
   the opening, then 60 lines a second. They run backwards while the
   tractor beam pulls the fighter up, as the arcade's do (in the code,
   not yet looked at on screen).
+
+- **The far stars: experimental** (2026-10-02, the user's wish: "a
+  slower dimmer field on the last available sprite"). A second layer of
+  24 stars on sprite 6, in two dim colours (`FAR_DIM`, `FAR_DIMMER` in
+  `video.s`), scrolling a quarter as fast as the near ones
+  (`FAR_SLOWER` in `stars.s`), downwards only: they stand still while
+  the near ones run backwards. They cannot be in the near stars' copper
+  table, which scrolls as one, so they are an ordinary sprite: a list
+  of one-line images in chip RAM, one for each star, 4 lines apart at
+  least (a sprite needs a line between two uses). When they move a
+  line the vertical blank interrupt writes every star's place into the
+  list again (`FarPlace`, some 90 cycles a star), starting with the
+  highest on the screen: the star that leaves at the bottom comes in
+  at the top and is the first from then on. `tools/make_stars.py` makes
+  them (`stars2.bin`). Seen on screenshots: all 24 show, and scroll 30
+  lines while the near ones scroll 120. What it costs, on the same
+  stress games as before it: 0.7 lines a frame on average; the worst
+  frames 304, 263, 300, 286 and 336 lines (were 303, 269, 291, 285 and
+  330), late frames 0, 0, 0, 0 and 16 (were 11 in the last). The user
+  has not seen it yet.
 
 ### The fighter is 10 lines higher than the arcade's (decided 2026-10-02)
 - The arcade's fighter is at sprite y 297: display lines 241 to 256, its
@@ -844,8 +864,6 @@ included, so the real figure is a little lower.
   The user compared the game with the arcade in MAME (2026-10-01): the
   sounds and when they play are right; the arcade's effects sound more
   "direct" because it is mono, and the difference is accepted.
-- Second star layer on sprite 6: decide once logic shows the frame time
-  left.
 
 ## Repository
 

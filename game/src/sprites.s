@@ -29,11 +29,13 @@
 	xdef	SpritesInit
 	xdef	SpritesUpdate
 	xref	VideoSetSprite
+	xref	FarList
 	xref	CaptiveColours
 	xref	FighterColour
 
 FIGHTER_SPRITE	equ	0
 BULLET_SPRITE	equ	2
+FAR_SPRITE	equ	6			; the far stars (stars.s)
 CAPTIVE_SPRITE	equ	4
 DUAL_STEP	equ	15			; the second of two fighters is this far right of the first
 COLOUR_STEP	equ	4			; from one colour's value to the next in the copper list
@@ -60,7 +62,7 @@ BANG_CYAN	equ	$0ff
 
 ;--
 ; SpritesInit
-; Give the fighter and the bullets their sprites.
+; Give the fighter, the bullets and the far stars their sprites.
 ; In:       a5 = state
 ; Out:      -
 ; Clobbers: d0-d1, a0-a1
@@ -75,6 +77,9 @@ SpritesInit:
 	bsr	VideoSetSprite
 	moveq	#BULLET_SPRITE+1,d0
 	lea	BulletPair2,a0
+	bsr	VideoSetSprite
+	moveq	#FAR_SPRITE,d0			; the far stars: their list is the stars' business
+	lea	FarList,a0
 	bra	VideoSetSprite
 
 ;--

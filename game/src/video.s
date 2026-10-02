@@ -27,6 +27,8 @@ COPPER_END	equ	$fffffffe
 STAR_LINE	equ	DISPLAY_TOP-1		; the star table takes over at the end of this line
 END_OF_LINE	equ	$df			; copper wait: horizontal position
 STAR_PIXEL	equ	$8000			; sprite 7's image: its leftmost pixel
+FAR_DIM		equ	$557			; the far stars: the brighter of them,
+FAR_DIMMER	equ	$335			;   and the rest
 
 	section	code,code
 
@@ -173,6 +175,8 @@ FighterColour:
 	dc.w	color+50
 CaptiveColours:
 	dc.w	$bbf,color+52,$06f,color+54,$f00
+	; sprites 6-7: the far stars' two colours (stars.s). The near stars' one is set line by line.
+	dc.w	color+60,FAR_DIMMER,color+62,FAR_DIM
 	; Sprite 7 is the stars: one pixel, armed by hand once sprite DMA has
 	; had its turn, then moved and coloured line by line by the star table.
 	dc.w	STAR_LINE<<8|END_OF_LINE,$fffe

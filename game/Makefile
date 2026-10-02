@@ -20,7 +20,7 @@ OBJECTS = build/startup.o build/main.o build/game.o build/stage.o build/dives.o 
 	build/gfx.o build/state.o
 # built, most of it from the user's own ROM set; never committed
 GENERATED = build/snd_data.i build/snd_chip.bin build/sndtest_script.i \
-	build/stars.bin build/starev.bin \
+	build/stars.bin build/starev.bin build/stars2.bin build/stars2.i \
 	build/gfx.i build/enemies.bin build/sprites.bin build/font.bin build/badges.bin build/beam.bin build/flash.bin \
 	build/motion_data.s build/flight_cases.i \
 	build/logo.i build/logo.bin
@@ -59,7 +59,7 @@ build/flight_cases.i: tools/flighttest.py ../motion/extract.py ../motion/pal_sca
 	@mkdir -p build
 	python3 tools/flighttest.py cases $(ROM) $@
 
-build/stars.bin build/starev.bin: tools/make_stars.py
+build/stars.bin build/starev.bin build/stars2.bin build/stars2.i: tools/make_stars.py
 	@mkdir -p build
 	python3 tools/make_stars.py build
 
