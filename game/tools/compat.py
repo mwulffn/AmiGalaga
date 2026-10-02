@@ -4,7 +4,7 @@
 
 The game's target is a stock A500 with Kickstart 1.3, but a disk that is given out
 is put in whatever its owner has. PAL machines only: the game is for PAL (on an NTSC
-A500 it runs a fifth too fast with the fighter off the bottom of the screen). Each machine here boots the disk (build/galaga.adf)
+A500 it runs a fifth too fast with the fighter off the bottom of the screen). Each machine here boots the disk (build/AmiGalaga.adf)
 in an emulator, and the game is played for half a minute by a stick that goes from
 side to side and fires. What is checked:
 
@@ -26,7 +26,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
 from amiga import STOCK_A500, Machine, pin_warning
-from game import GAME, Game
+from game import GAME, PROGRAM, Game
 
 WORK = GAME / "build/compat"
 PLAY_FRAMES = 1500
@@ -105,8 +105,8 @@ def trial(name: str) -> Trial:
     work = WORK / "".join(c if c.isalnum() else "-" for c in name).lower()
     shutil.rmtree(work, ignore_errors=True)
     work.mkdir(parents=True)
-    adf = work / "galaga.adf"
-    shutil.copy(GAME / "build/galaga.adf", adf)
+    adf = work / f"{PROGRAM}.adf"
+    shutil.copy(GAME / f"build/{PROGRAM}.adf", adf)
     try:
         with Game(work, MACHINES[name], floppy=adf, hard_drive=False) as game:
             timing = game.amiga.lua("return emu.timing()")[0]

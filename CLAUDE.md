@@ -357,6 +357,13 @@ option, up to four.
 ### Title, options, best scores (decided by the user, 2026-10-01)
 - The arcade's coins, credits and second player are dropped. So is its
   table of what each enemy scores.
+- **Released as AmiGalaga, source under the MIT licence** (the user's
+  decision, 2026-10-02): the program, its symbol file and the disk
+  image are `build/AmiGalaga`, `AmiGalaga.dbg` and `AmiGalaga.adf`
+  (`NAME` in the Makefile, `PROGRAM` in `tools/game.py`), and the
+  disk's name is AmiGalaga. The licence is for what is in the
+  repository; the README says that it gives no right to Galaga, and
+  that what is built must not be handed on.
 - The game is called **AmiGalaga**. Namco's name and copyright line are
   not shown.
 - What shows when no game is on (`game/src/title.s`): the title with
@@ -520,7 +527,7 @@ emulation on, and several at once. Decided 2026-10-02.
   the beam depends on the host's disk.
 - **The released build is played from outside** (`game.py`,
   `playtest.py`): the test moves the stick, presses the button and keys,
-  and reads the game's state by its names. `build/galaga.dbg` is the
+  and reads the game's state by its names. `build/AmiGalaga.dbg` is the
   same program linked with its symbols, which say where `State` is;
   vasm says each field's offset and each constant's value from the
   headers (and `title.s`'s own constants). Nothing in the program is
@@ -828,5 +835,6 @@ included, so the real figure is a little lower.
 | `reference/` | local-only reading material, ignored by git |
 | `cfg/` | MAME's own settings, written when the arcade is run from here; not ours, untracked |
 | `original/` | the user's ROM set, ignored by git |
+| `README.md`, `LICENSE` | what the game is and how to build it, for someone new to it; the MIT licence |
 
 Python tooling follows the user's global rules: `uv`, ruff, type hints.

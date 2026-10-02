@@ -38,6 +38,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from amiga import KICKSTARTS, STOCK_A500, Amiga, boot_directory, pin_warning
+from game import PROGRAM
 from playtest import SCENES, STRESS, stress
 
 GAME = Path(__file__).resolve().parent.parent
@@ -142,13 +143,13 @@ def stress_runs(more: str) -> list[Run]:
 def build(run: Run) -> None:
     """Build the run's program and put it where its emulator will boot from."""
     subprocess.run(
-        ["make", "-s", "build/galaga", f"DEFS={run.defs}"],
+        ["make", "-s", f"build/{PROGRAM}", f"DEFS={run.defs}"],
         cwd=GAME,
         check=True,
         stdout=subprocess.DEVNULL,
     )
-    boot_directory(TESTS / run.name / "hd", GAME / "build/galaga")
-    shutil.copy(GAME / "build/galaga.dbg", TESTS / run.name)
+    boot_directory(TESTS / run.name / "hd", GAME / f"build/{PROGRAM}")
+    shutil.copy(GAME / f"build/{PROGRAM}.dbg", TESTS / run.name)
 
 
 def emulate(run: Run) -> None:

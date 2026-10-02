@@ -8,6 +8,7 @@
 # make compat     boot the disk on other Amigas than the stock A500 and play (tools/compat.py)
 # DEFS="-DRASTER_METER=1" and the like override include/config.i
 
+NAME    = AmiGalaga
 DEFS   ?=
 ROM    ?= ../original/galaga.zip
 KICK   ?= $(HOME)/Documents/FS-UAE/Kickstarts/kick34005.A500
@@ -24,7 +25,7 @@ GENERATED = build/snd_data.i build/snd_chip.bin build/sndtest_script.i \
 	build/motion_data.s build/flight_cases.i
 INCLUDES = $(wildcard include/*.i)
 
-all: build/galaga.adf
+all: build/$(NAME).adf
 
 build/%.o: src/%.s $(INCLUDES) $(GENERATED) FORCE
 	@mkdir -p build
@@ -54,9 +55,9 @@ build/sndtest_script.i: tools/sndtest.py
 	@mkdir -p build
 	python3 tools/sndtest.py script $@
 
-# galaga.dbg is the same program with its symbols left in, for the tests to find
+# $(NAME).dbg is the same program with its symbols left in, for the tests to find
 # routines by name in the one that runs
-build/galaga: $(OBJECTS) lint
+build/$(NAME): $(OBJECTS) lint
 	vlink -bamigahunk -o $@.dbg $(OBJECTS)
 	vlink -bamigahunk -s -o $@ $(OBJECTS)
 
@@ -66,18 +67,18 @@ lint: $(GENERATED)
 	uv run -q --project ../asmlint asmlint -I include -I build src/*.s
 	python3 tools/check_even.py include build
 
-build/galaga.adf: build/galaga
-	@printf 'galaga\n' > build/startup-sequence
-	xdftool $@ format galaga + boot install + makedir S \
-		+ write build/startup-sequence S/startup-sequence + write build/galaga
+build/$(NAME).adf: build/$(NAME)
+	@printf '$(NAME)\n' > build/startup-sequence
+	xdftool $@ format $(NAME) + boot install + makedir S \
+		+ write build/startup-sequence S/startup-sequence + write build/$(NAME)
 
-run: build/galaga.adf
-	$(UAE) --floppy_drive_0=$(CURDIR)/build/galaga.adf
+run: build/$(NAME).adf
+	$(UAE) --floppy_drive_0=$(CURDIR)/build/$(NAME).adf
 
 test:
 	python3 tools/run_tests.py
 
-compat: build/galaga.adf
+compat: build/$(NAME).adf
 	python3 tools/compat.py
 
 clean:

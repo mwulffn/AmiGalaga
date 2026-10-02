@@ -4,7 +4,7 @@ A test starts it, moves the stick, presses the button and keys, and reads the
 game's state by the names the source has for it. Nothing in the program is there
 for the test's sake: it is the build that goes on the disk.
 
-The names come from two places. The program's symbols (build/galaga.dbg: the same
+The names come from two places. The program's symbols (build/AmiGalaga.dbg: the same
 program linked with them left in) say where its state is in the Amiga's memory, and
 vasm says what each field's offset and each constant's value is, from the headers.
 """
@@ -18,6 +18,7 @@ from typing import Self
 from amiga import STOCK_A500, Amiga, Machine
 
 GAME = Path(__file__).resolve().parent.parent
+PROGRAM = "AmiGalaga"  # the program's name, in build/ and on the Amiga
 HEADERS = ("config.i", "hw.i", "layout.i", "flight.i", "sound.i", "state.i")
 NAME = re.compile(r"^(\w+):?\s+(?:rs\.[bwl]|equ)\s", re.MULTILINE)
 CONSTANT = re.compile(r"^\w+\s+equ\s.*$", re.MULTILINE)
@@ -84,8 +85,8 @@ class Game:
             floppy=floppy,
         )
         # a run that has a build of its own has that build's symbols beside it
-        own = work / "galaga.dbg"
-        default = own if own.exists() else GAME / "build/galaga.dbg"
+        own = work / f"{PROGRAM}.dbg"
+        default = own if own.exists() else GAME / f"build/{PROGRAM}.dbg"
         self.symbols = (symbols or default).resolve()
         try:
             self.find()
@@ -98,7 +99,7 @@ class Game:
         state. The frame counter in the state must be going: memory left by a run
         before this one would have a title in it too."""
         self.state = self.amiga.lua(
-            f"dbg.unload_symbols() dbg.load_symbols({str(self.symbols)!r}, 'galaga', "
+            f"dbg.unload_symbols() dbg.load_symbols({str(self.symbols)!r}, '{PROGRAM}', "
             f"{START_FRAMES}) return dbg.symbol('State')"
         )[0]
         count, mode = self.address("FrameCount"), self.address("Mode")
@@ -116,7 +117,7 @@ class Game:
         """After QUIT: start the program again from the AmigaDOS prompt. That it
         starts says the system had the machine back and was taking commands."""
         self.wait(100)
-        self.type("galaga\n")
+        self.type(f"{PROGRAM}\n")
         self.wait(25)
         self.find()
 

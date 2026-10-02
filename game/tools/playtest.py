@@ -15,7 +15,7 @@ import subprocess
 from collections.abc import Callable
 from pathlib import Path
 
-from game import GAME, Game
+from game import GAME, PROGRAM, Game
 
 # the stress runs: name, what the build is given, shots in flight at once
 STRESS = (
@@ -238,7 +238,7 @@ def quit_game(game: Game) -> None:
 
 def initials(work: Path) -> list[str]:
     """Initials, saving on QUIT to a hard drive directory, and reading them back."""
-    shutil.copy(GAME / "build/galaga", work / "hd/galaga")
+    shutil.copy(GAME / f"build/{PROGRAM}", work / f"hd/{PROGRAM}")
     file = work / "hd" / FILE
     with Game(work) as game:
         expect("read from disk", game.get("ScoresLoaded"), 0)
@@ -298,8 +298,8 @@ def on_floppy(adf: Path) -> bytes | None:
 def floppy(work: Path) -> list[str]:
     """The same from the disk the game is given out on, and from one that cannot
     be written: nothing saved then, and no requester in the way."""
-    adf = work / "galaga.adf"
-    shutil.copy(GAME / "build/galaga.adf", adf)
+    adf = work / f"{PROGRAM}.adf"
+    shutil.copy(GAME / f"build/{PROGRAM}.adf", adf)
     with Game(work, floppy=adf) as game:
         expect("read from disk", game.get("ScoresLoaded"), 0)
         play_to_initials(game, A_SCORE, 0)
@@ -315,7 +315,7 @@ def floppy(work: Path) -> list[str]:
         expect("its initials read back", game.text("Names", 3), name)
 
     locked = work / "locked.adf"
-    shutil.copy(GAME / "build/galaga.adf", locked)
+    shutil.copy(GAME / f"build/{PROGRAM}.adf", locked)
     locked.chmod(0o444)  # an image that cannot be written is a write-protected disk
     before = locked.read_bytes()
     with Game(work, floppy=locked) as game:
