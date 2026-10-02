@@ -113,7 +113,7 @@ Sprites pair up and each pair shares three colours.
 | 0, 1 | fighter on 0; its 32x32 explosion on both, left and right half (the pair's blue register is changed to the explosion's cyan in the copper list while it shows); second fighter on 1 when dual |
 | 2, 3 | player bullets: both of the fighter's two on sprite 2, one below the other; sprite 3 for the dual fighter's second bullets, 15 pixels to the right |
 | 4, 5 | captured fighter on 4: red, or white once rescued (the pair's three colour registers are set in the copper list for each use). When one of two fighters is lost, its explosion is on 4 and 5 while the other plays on; there is never a captured fighter while there are two |
-| 6 | free, two usable colours; candidate for a second star layer |
+| 6 | free, two usable colours (a second star layer was tried on it and not kept: see Starfield) |
 | 7 | stars |
 
 Every bullet on one sprite needs them 9 lines apart (the bullet's image
@@ -146,6 +146,22 @@ option, up to four.
   the opening, then 60 lines a second. They run backwards while the
   tractor beam pulls the fighter up, as the arcade's do (in the code,
   not yet looked at on screen).
+
+- **A second star layer was tried and not kept** (the user's decision,
+  2026-10-02: "it is not worth it ... the star field is good as is").
+  It is on the branch `second-stars`, pushed to the remote to keep it:
+  24 far stars on sprite 6 behind the near ones, at half their speed.
+  Two versions. With two fixed dim colours and no twinkle it cost under
+  2 lines a frame. With the near stars' hues at half brightness and a
+  twinkle of their own it cost about 10 lines a frame, all in the
+  vertical blank interrupt, and took the late frames in the heaviest
+  stress run from 11 to 29: a sprite has one spare colour register, so
+  every star's colour has to be written each frame into the copper
+  table's entry for the line the star is on. The branch's CLAUDE.md has
+  how it works and what was measured. One thing learnt there: the
+  stress runs' measure (from the frame's first work to the flip) mostly
+  misses what the vertical blank interrupt costs; the timing runs,
+  which count from the frame's start, see it.
 
 ### The fighter is 10 lines higher than the arcade's (decided 2026-10-02)
 - The arcade's fighter is at sprite y 297: display lines 241 to 256, its
@@ -844,8 +860,6 @@ included, so the real figure is a little lower.
   The user compared the game with the arcade in MAME (2026-10-01): the
   sounds and when they play are right; the arcade's effects sound more
   "direct" because it is mono, and the difference is accepted.
-- Second star layer on sprite 6: decide once logic shows the frame time
-  left.
 
 ## Repository
 
