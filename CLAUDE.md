@@ -726,7 +726,9 @@ included, so the real figure is a little lower.
   spare in the worst one, and none with the button hammered and the
   arcade's two shots. With four shots and two fighters: none on stages
   9 to 12, 1 in 6,000 on stages 14 to 16, 9 in 6,000 on stages 20 to
-  22. The user prefers a few late frames to messy code (2026-10-02).
+  22. Accepted by the user as it is (2026-10-02): a few late frames
+  are better than messy code, and many Amiga games were not this fast.
+  No more work on the frame budget is planned.
 - **The initials screen is late one frame in 16.** It takes about 265
   lines a frame (the best scores 232, the title 104: six lines of text
   drawn as flyers every frame), and rebuilding the blinking line costs
