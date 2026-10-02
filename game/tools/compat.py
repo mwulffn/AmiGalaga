@@ -3,7 +3,8 @@
     tools/compat.py [machine ...]
 
 The game's target is a stock A500 with Kickstart 1.3, but a disk that is given out
-is put in whatever its owner has. Each machine here boots the disk (build/galaga.adf)
+is put in whatever its owner has. PAL machines only: the game is for PAL (on an NTSC
+A500 it runs a fifth too fast with the fighter off the bottom of the screen). Each machine here boots the disk (build/galaga.adf)
 in an emulator, and the game is played for half a minute by a stick that goes from
 side to side and fires. What is checked:
 
@@ -57,9 +58,6 @@ MACHINES = {
         "A1200,0", "kick40068.A1200", (("fastmem_size", "4"),)
     ),
     "A4000 3.1": Machine("A4000,0", "kick40068.A4000"),
-    "A500 1.3 512K NTSC": Machine(
-        "A500,0", "kick34005.A500", (*STOCK, ("ntsc", "true"))
-    ),
 }
 
 

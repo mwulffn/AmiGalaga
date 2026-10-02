@@ -19,6 +19,10 @@ decision is made or changed.
   checksums) are fine.
 - **Target machine:** stock A500: 68000 at 7 MHz, OCS, 512K chip RAM,
   PAL, Kickstart 1.3. Do not rely on slow RAM or fast RAM.
+- **PAL only** (the user's decision, 2026-10-02). On an NTSC A500 the
+  game runs a fifth too fast (72 arcade frames a second) and the bottom
+  of the playfield, with the fighter, is off the screen; nothing is
+  done about it, and the release says so.
 - **Assembler:** vasm (`vasmm68k_mot`), Motorola syntax. Keep the code
   tight. The game's code follows the style guide: @docs/style.md
   (the experiments predate it and do not).
@@ -503,8 +507,9 @@ emulation on, and several at once. Decided 2026-10-02.
   prompt and the game started again. 2026-10-02, all as the stock A500:
   A500 with Kickstart 1.2, 1.3 (also with slow RAM and with fast RAM)
   and 2.04, A500+, A600 with 2.05 and 3.1, A1200 with 3.0 and 3.1 (also
-  with fast RAM), A4000 with 3.1. An NTSC A500 fails (see Open). This
-  is the emulator's word, not a real machine's.
+  with fast RAM), A4000 with 3.1. An NTSC A500 failed, and is no longer
+  in the sweep: the game is PAL only. This is the emulator's word, not
+  a real machine's.
 - Found by these tests and fixed: `SoundPause` and `SoundInit` cleared
   Paula's volume registers with `clr`, which reads first on a 68000 and
   so writes the bus's garbage to a write-only register for a moment
@@ -734,10 +739,6 @@ included, so the real figure is a little lower.
   drawn as flyers every frame), and rebuilding the blinking line costs
   another 45 or so. Nothing shows it (the stars are the interrupt's),
   but the 20 seconds of patience are 21.
-- **NTSC is not handled.** On an NTSC A500 the game runs a fifth too
-  fast (72 arcade frames a second) and the bottom of the playfield,
-  with the fighter, is off the screen. Not decided: say PAL only, or ask for
-  PAL where the chips can (ECS and AGA; not an NTSC A500).
 - **Sound cost: deferred, by decision.** The driver works and the user
   has confirmed it sounds right on the emulated A500 (2026-10-01). At up
   to 19 lines a frame it is the largest CPU item measured, and it lifts
