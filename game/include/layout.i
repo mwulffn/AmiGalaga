@@ -34,6 +34,7 @@ DISPLAY_TOP	equ	44			; raster line of the first displayed line
 ; point at one of these each.
 MAX_FLYERS	equ	48
 MAX_SMALLS	equ	8+4*12			; 8 bombs and four full lines of text, two letters a flyer
+MAX_BIGS	equ	8			; an explosion's 32x32 frames: as many as there can be blasts
 	rsreset
 scr_bitmap	rs.l	1			; the buffer, in chip RAM
 scr_score	rs.l	1			; the score its panel shows
@@ -41,6 +42,8 @@ scr_flyers	rs.w	1			; flyers drawn in it, to erase next time
 scr_erase	rs.l	MAX_FLYERS		;   and where
 scr_smalls	rs.w	1			; half-height flyers drawn in it (bombs, text), erased likewise
 scr_small_erase	rs.l	MAX_SMALLS
+scr_bigs	rs.w	1			; 32x32 objects drawn in it, erased likewise
+scr_big_erase	rs.l	MAX_BIGS
 scr_ships	rs.w	1			; how many spare fighters its panel shows
 scr_high	rs.l	1			; the high score its panel shows
 scr_badges	rs.w	1			; the stage and how many of its badges its panel shows
@@ -64,6 +67,8 @@ SPRITE_Y	equ	40
 FLIGHT_TOP	equ	312
 LAST_FLYER_X	equ	GUARD+PLAY_WIDTH-1	; a flyer further right is not on the screen
 LAST_FLYER_Y	equ	SCREEN_ROWS-16		; nor one further down
+LAST_BIG_X	equ	GUARD+PLAY_WIDTH-32	; a 32x32 object further right would show in the gap,
+LAST_BIG_Y	equ	SCREEN_ROWS-32		;   and one further down leave the buffer
 
 ; the player's fighter and its shots are placed as the arcade's sprite hardware counts, too
 SHIP_SY		equ	297			; the fighter's y

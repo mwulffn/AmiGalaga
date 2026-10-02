@@ -23,8 +23,10 @@ STRESS = (
     ("stage-9", "-DFIRST_STAGE=9", 2),
     ("stage-9-four-shots-two-fighters", "-DFIRST_STAGE=9 -DDUAL_START=1", 4),
     ("stage-14-four-shots-two-fighters", "-DFIRST_STAGE=14 -DDUAL_START=1", 4),
+    ("stage-20-four-shots-two-fighters", "-DFIRST_STAGE=20 -DDUAL_START=1", 4),
 )
 
+BEAM = 0xDFF006  # vhposr: where the beam is
 FILE = "AmiGalaga.scores"
 FILE_SIZE = 48  # a mark, five scores, five names, a checksum
 GAME_STARTS = 2000  # frames from START GAME to a fighter in play, at most
@@ -327,39 +329,58 @@ def floppy(work: Path) -> list[str]:
     return [f"{name} saved to the floppy and read back; a write-protected one is left"]
 
 
-def stress(shots: int, frames: int = 6000) -> Callable[[Path], list[str]]:
+def stress(shots: int, passes: int = 6000) -> Callable[[Path], list[str]]:
     """A scene that plays harder than the test builds' player does: the button
     hammered, with `shots` in flight at once, and the fighters in reserve topped up
-    so the game lasts. It counts the passes of the main loop that took more than a
-    frame, which is what a player would see as a hitch, and fails if there are any.
+    so the game lasts. It times every pass of the main loop, from the first thing
+    after the wait for the frame to the flip, and counts those that missed a frame,
+    which is what a player would see as a hitch; it fails if there are any.
     Which stage it starts at and whether with two fighters is the build's business
-    (FIRST_STAGE, DUAL_START)."""
+    (FIRST_STAGE, DUAL_START).
+
+    The same game is played whatever the code costs, so that two builds can be
+    compared: the stick and the button go by the game's own passes, not by the
+    emulator's frames, and the beam's position, which the game mixes into its
+    random numbers, is read as nought there."""
 
     def scene(work: Path) -> list[str]:
         with Game(work) as game:
+            game.amiga.lua(
+                "local random = dbg.symbol('Random') "
+                f"still = mem.tap_read({BEAM}, {BEAM + 1}, "
+                "function(address, value, size, pc) "
+                "if pc >= random and pc < random + 16 then return 0 end end)"
+            )
             game.set("OptShots", shots)
             start_game(game)
             first = game.get("Stage", 2)
             count, lives = game.address("FrameCount"), game.address("Lives")
-            late = game.amiga.lua(
-                f"local last, late = mem.peek_u16({count}), {{}} "
-                "local point = dbg.bpset('VideoFlip', function() "
+            late, lines = game.amiga.lua(
+                f"local done, start, late, lines, last = 0, 0, 0, {{}}, mem.peek_u16({count}) "
+                "local began = dbg.bpset('SpritesUpdate', function() "
+                "start = emu.cycles() end) "
+                "local flip = dbg.bpset('VideoFlip', function() "
+                "done = done + 1 lines[done] = (emu.cycles() - start) // 454 "
                 f"local now = mem.peek_u16({count}) "
-                "if (now - last) % 65536 > 1 then late[#late + 1] = emu.frame() end "
-                "last = now end) "
-                f"for frame = 0, {frames - 1} do local right = frame % 160 < 80 "
+                "if (now - last) % 65536 > 1 then late = late + 1 end last = now "
+                "local right = done % 160 < 80 "
                 "input.joy(1, 'right', right) input.joy(1, 'left', not right) "
-                "input.joy(1, 'fire', frame % 2 == 0) "
-                f"if frame % 500 == 0 then mem.poke_u8({lives}, 9) end "
-                "emu.wait_frames(1) end dbg.bpclear(point) return late"
-            )[0]
+                "input.joy(1, 'fire', done % 2 == 0) "
+                f"if done % 500 == 1 then mem.poke_u8({lives}, 9) end end) "
+                f"while done < {passes} do emu.wait_frames(10) end "
+                "dbg.bpclear(began) dbg.bpclear(flip) mem.tap_remove(still) "
+                "return late, lines"
+            )
             game.amiga.wait(0)  # raises if the program crashed meanwhile
+            lines = sorted(lines[:passes])
             said = (
-                f"{shots} shots, stages {first} to {game.get('Stage', 2)}: {len(late)}"
-                f" of {frames} frames late"
+                f"{shots} shots, stages {first} to {game.get('Stage', 2)}, score"
+                f" {game.get('Score', 4):06x}: {late} of {passes} frames late; a frame's"
+                f" work {sum(lines) / passes:.1f} lines on average,"
+                f" {lines[passes * 99 // 100]} at the 99th hundredth, {lines[-1]} at worst"
             )
             if late:
-                raise AssertionError(f"{said}, at emulator frames {late[:20]}")
+                raise AssertionError(said)
         return [said]
 
     return scene

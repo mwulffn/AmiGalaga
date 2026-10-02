@@ -4,8 +4,9 @@
 ; frame (on frames 1, 5, 9... or 3, 7, 11... by the enemy's number), so a
 ; destroyed enemy is still seen for up to four frames, then come three
 ; 16x16 frames, two 32x32 ones centred on the same spot, and for a boss shot
-; while diving its score for 19 steps. Each is drawn as a flyer, the big
-; frames as four.
+; while diving its score for 19 steps. Each is drawn as a flyer. A big frame
+; is one 32x32 object if all of it is inside the buffer; one that hangs over
+; an edge is four flyers, which are clipped, or left out, as flyers are.
 
 	include	"config.i"
 	include	"hw.i"
@@ -18,6 +19,9 @@
 	xdef	BlastsTick
 	xdef	BlastsDraw
 	xref	FlyerDraw
+	xref	FlyersBegin
+	xref	BigBegin
+	xref	BigDraw
 	xref	Enemies
 
 STEP_FRAMES	equ	4			; arcade frames between steps
@@ -93,6 +97,8 @@ BlastsDraw:
 	bra	.One
 .Big	cmp.w	#BLAST_STEPS,d6
 	bcc	.Score
+	bsr	BigPlace
+	beq	.Next				; one object: drawn with the others of its kind below
 	; four 16x16 images: top left, top right, bottom left, bottom right
 	sub.w	#1+SMALL_STEPS,d6
 	lsl.w	#2,d6
@@ -149,6 +155,54 @@ BlastsDraw:
 	bsr	Draw
 .Next	lea	bl_SIZEOF(a3),a3
 	dbf	d7,.Blast
+
+	; the big frames that are one object each. They want the blitter set up their own way,
+	; so they come after the flyers, and the flyers' set-up is put back after them
+	lea	Blasts(a5),a3
+	moveq	#BLASTS-1,d7
+	moveq	#0,d6				; nonzero once one has been drawn
+.Whole	bsr	BigPlace
+	bne	.Not
+	tst.w	d6
+	bne	.Begun
+	bsr	BigBegin
+	moveq	#1,d6
+.Begun	lea	Enemies+GFX_BIG_BLAST,a0
+	cmp.b	#1+SMALL_STEPS,bl_step(a3)
+	beq	.First
+	lea	BIG_FRAME_SIZE(a0),a0
+.First	bsr	BigDraw
+.Not	lea	bl_SIZEOF(a3),a3
+	dbf	d7,.Whole
+	tst.w	d6
+	bne	FlyersBegin
+	rts
+
+;--
+; BigPlace
+; Is a blast at one of its big frames, with all of the frame inside the buffer? Then it is
+; drawn as one 32x32 object, and this is where.
+; In:       a3 = the blast
+; Out:      Z = yes, and then d0.w = x in buffer pixels, d1.w = y in buffer rows
+; Clobbers: d0-d1
+BigPlace:
+	tst.b	bl_live(a3)
+	beq	.No
+	moveq	#-(1+SMALL_STEPS),d0
+	add.b	bl_step(a3),d0
+	cmp.b	#BIG_STEPS,d0
+	bcc	.No
+	move.w	bl_y(a3),d1
+	subq.w	#BIG_OFFSET,d1
+	cmp.w	#LAST_BIG_Y,d1			; unsigned: above the buffer is too high as well
+	bhi	.No
+	move.w	bl_x(a3),d0
+	subq.w	#BIG_OFFSET,d0
+	cmp.w	#LAST_BIG_X,d0
+	bhi	.No
+	cmp.w	d0,d0				; Z
+	rts
+.No	moveq	#1,d0				; not Z
 	rts
 
 ;--

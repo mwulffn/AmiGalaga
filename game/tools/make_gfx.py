@@ -220,6 +220,21 @@ def main() -> None:
                 )
             for row in pix:
                 frames += sum(1 << (15 - x) for x in range(16) if row[x]).to_bytes(2, "big") * 4
+    # The explosion's two 32x32 frames again, each as one image: 32 rows of 4 planes of two
+    # words, then the mask in the same layout. One blitter object where there is room for it.
+    inc.append(f"GFX_BIG_BLAST\tequ\t{len(frames)}")
+    inc.append("BIG_FRAME_SIZE\tequ\t1024")
+    for first in (3, 7):
+        quads = []
+        for t, code in BLAST[first : first + 4]:
+            cols = colours(code)
+            quads.append([[0 if cols[p] is None else PALETTE.index(cols[p]) for p in r] for r in tile_pens(rom, t)])
+        rows = [quads[0][y] + quads[1][y] for y in range(16)] + [quads[2][y] + quads[3][y] for y in range(16)]
+        for row in rows:
+            for plane in range(4):
+                frames += sum(1 << (31 - x) for x in range(32) if row[x] >> plane & 1).to_bytes(4, "big")
+        for row in rows:
+            frames += sum(1 << (31 - x) for x in range(32) if row[x]).to_bytes(4, "big") * 4
     (out / "enemies.bin").write_bytes(frames)
 
     # A bee and a butterfly, upright with wings open and closed, in the colours of each of the

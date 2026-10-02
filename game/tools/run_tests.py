@@ -132,9 +132,9 @@ def play_runs(names: tuple[str, ...]) -> list[Run]:
     return [Run(f"play-{name}", "", 0, 0, [], scene=SCENES[name]) for name in names]
 
 
-def stress_runs() -> list[Run]:
+def stress_runs(more: str) -> list[Run]:
     return [
-        Run(f"stress-{name}", defs, 0, 0, [], scene=stress(shots))
+        Run(f"stress-{name}", f"{defs} {more}", 0, 0, [], scene=stress(shots))
         for name, defs, shots in STRESS
     ]
 
@@ -243,7 +243,7 @@ def main() -> None:
     if what in ("play", "all") and not options.stock:
         runs += play_runs(arguments or tuple(SCENES))
     if what == "stress" and not options.stock:
-        runs += stress_runs()
+        runs += stress_runs(" ".join(defs))
     if not runs:
         parser.error(f"no such test: {what}")
 
