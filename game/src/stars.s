@@ -18,15 +18,24 @@
 ; raster lines 128-255 carry that bit. Scrolling by n lines moves 2n
 ; entries across those boundaries.
 ;
-; Behind them is a second layer, the far stars: fewer, dim, and scrolling
-; half as fast. They cannot be in the same table, which scrolls as one,
-; so they are an ordinary sprite (sprite 6): a list of one-line images, one
-; for each star, which the hardware shows from the top down. When they move
-; a line, every star's place in the list is written again; the one that
-; leaves at the bottom comes in at the top, and the list starts with it from
-; then on. They share the near stars' three colours: the near ones use the
-; first, which the table changes on every line, and the far ones the other
-; two, which stay as they are.
+; Behind them is a second layer, the far stars: fewer, half as bright, and
+; scrolling half as fast. They cannot be placed by the same table, which
+; scrolls as one, so they are an ordinary sprite (sprite 6): a list of
+; one-line images, one for each star, which the hardware shows from the top
+; down. When they move a line, every star's place in the list is written
+; again; the one that leaves at the bottom comes in at the top, and the list
+; starts with it from then on.
+;
+; A far star has a hue of its own and twinkles, as a near one does, and for
+; that the table is used after all: the sprites share three colours, the
+; near stars use the first and the far stars the second, and every entry of
+; the table sets both for its line. A far star's colour has to be in the
+; entry that runs on the line the star is on, which is another entry every
+; frame, as the two layers move at different speeds: so every frame each far
+; star's colour is written to where it is needed now. What is left behind in
+; an entry does no harm: no far star is on that line. They twinkle a few at
+; a time, in turn: a star's brightness follows a wave that all share, each
+; from its own place in it and at its own rate.
 
 	include	"config.i"
 	include	"hw.i"
@@ -42,10 +51,15 @@
 	xdef	StarsTick
 	xdef	StarsVBlank
 
-STAR_ENTRY	equ	12			; a table entry: move position, move colour, wait
+STAR_ENTRY	equ	16			; a table entry: move position, move colour, move the far colour, wait
 STAR_LINES	equ	256			; lines in the table, which is stored twice over
 STAR_COPY	equ	STAR_LINES*STAR_ENTRY	; from an entry to its second copy
-STAR_WAIT	equ	8			; offset of an entry's wait: its first byte is the line bits
+STAR_WAIT	equ	12			; offset of an entry's wait: its first byte is the line bits
+FAR_COLOUR	equ	10			;   and of the colour it gives a far star on its line
+ENTRY_SHIFT	equ	4			; from an entry's number to its offset
+	if	STAR_ENTRY-(1<<ENTRY_SHIFT)
+	fail	"ENTRY_SHIFT is not STAR_ENTRY's"
+	endc
 LINE_BIT7	equ	$80
 TO_LINE_128	equ	128-DISPLAY_TOP		; entries from the first line to raster line 128
 TO_LINE_256	equ	256-DISPLAY_TOP
@@ -64,12 +78,24 @@ FAR_PIXEL	equ	$8000			; a star: the sprite's leftmost pixel
 RASTER_LINES	equ	256			; a sprite's line has a ninth bit from here on
 SPR_START8	equ	4			; in a sprite's second control word: the ninth bit of its first line,
 SPR_STOP8	equ	2			;   and of the line after its last
-; a far star in FarStars
+TWINKLERS	equ	4			; far stars whose brightness is looked at each frame, in turn
+WAVE_STEPS	equ	32			; steps in the brightness wave
+; a far star in FarStars: where it is
 	rsreset
 fr_line		rs.b	1			; its line at rest, 0-255
 fr_x		rs.b	1			; its sprite x, halved
-fr_plane	rs.w	1			; the word for the sprite's first plane: FAR_PIXEL for the brighter colour
 fr_SIZEOF	rs.b	0
+; and in FarLooks: how it looks
+	rsreset
+fk_rate		rs.b	1			; steps of the wave each time its turn comes
+fk_start	rs.b	1			; where in the wave it starts
+fk_colours	rs.w	4			; its colour at each brightness, 0 (off) to 3
+fk_pad		rs.b	6
+fk_SIZEOF	rs.b	0
+LOOK_SHIFT	equ	4			; from a star's number to its look
+	if	fk_SIZEOF-(1<<LOOK_SHIFT)
+	fail	"LOOK_SHIFT is not fk_SIZEOF's"
+	endc
 
 ; Set the line bit of the entry \1 lines below the first one to \2, in both
 ; copies of the table. d0 = first entry, a1 = table, a2 = its second copy.
@@ -101,6 +127,16 @@ StarsInit:
 	clr.b	FarCarry(a5)
 	clr.b	FarOffset(a5)
 	move.b	#FAR_STARS,FarFirst(a5)
+	clr.b	FarTurn(a5)
+	; every far star at its start in the wave, and off until its first turn
+	lea	FarLooks,a0
+	lea	FarPhases,a1
+	lea	FarColours,a2
+	moveq	#FAR_STARS-1,d0
+.Far	move.b	fk_start(a0),(a1)+
+	clr.w	(a2)+
+	lea	fk_SIZEOF(a0),a0
+	dbf	d0,.Far
 	bra	FarPlace
 
 ;--
@@ -162,10 +198,10 @@ StarsTick:
 
 ;--
 ; StarsVBlank
-; Once per frame, from the vertical blank: scroll and fade.
+; Once per frame, from the vertical blank: scroll and fade, and the far stars.
 ; In:       a5 = state, a6 = CUSTOM
 ; Out:      -
-; Clobbers: d0-d2, a0-a2
+; Clobbers: d0-d3, a0-a2
 StarsVBlank:
 	lea	StarTable,a1
 	lea	STAR_COPY(a1),a2
@@ -205,7 +241,7 @@ StarsVBlank:
 	; the far stars: a line for every FAR_SLOWER the near ones scroll. Downwards only:
 	; while the near ones run backwards these stand still.
 	move.w	StarSpeed(a5),d0
-	ble	.Done
+	ble	.Stood
 	add.b	FarCarry(a5),d0
 	cmp.b	#FAR_SLOWER,d0
 	bcs	.Kept
@@ -218,7 +254,7 @@ StarsVBlank:
 .Lower	moveq	#0,d1
 	move.b	FarFirst(a5),d1
 	beq	.Lowered
-	lsl.w	#2,d1				; * fr_SIZEOF
+	add.w	d1,d1				; * fr_SIZEOF
 	lea	FarStars,a0
 	move.b	fr_line-fr_SIZEOF(a0,d1.w),d2
 	add.b	FarOffset(a5),d2
@@ -228,9 +264,74 @@ StarsVBlank:
 	cmp.b	#FAR_SLOWER,d0
 	bcc	.Line
 	move.b	d0,FarCarry(a5)
-	bra	FarPlace
+	bsr	FarPlace
+	bra	.Stood
 .Kept	move.b	d0,FarCarry(a5)
-.Done	rts
+.Stood	bsr	FarTwinkle
+	; falls through
+
+;--
+; FarColour
+; Give every far star its colour on the line it is on now: in the entry of the star table
+; that runs on that line this frame.
+; In:       a5 = state
+; Out:      -
+; Clobbers: d0-d3, a0-a2
+FarColour:
+	lea	FarStars,a0
+	lea	StarTable+FAR_COLOUR,a1
+	lea	FarColours,a2
+	move.b	FarOffset(a5),d1
+	move.w	StarFirst(a5),d3
+	moveq	#FAR_STARS-1,d2
+.Star	moveq	#0,d0
+	move.b	(a0),d0				; fr_line
+	addq.l	#fr_SIZEOF,a0
+	add.b	d1,d0				; its line now
+	add.w	d3,d0				; the entry that runs on it: in the table's second
+	lsl.w	#ENTRY_SHIFT,d0			;   copy if that is where this frame gets to
+	move.w	(a2)+,(a1,d0.w)
+	dbf	d2,.Star
+	rts
+
+;--
+; FarTwinkle
+; The next TWINKLERS far stars' turn: each moves on in the brightness wave at its own rate,
+; and has the colour of its hue at the brightness it has come to.
+; In:       a5 = state
+; Out:      -
+; Clobbers: d0-d2, a0-a2
+FarTwinkle:
+	lea	FarPhases,a1
+	lea	FarColours,a2
+	moveq	#0,d0
+	move.b	FarTurn(a5),d0
+	moveq	#TWINKLERS-1,d2
+.Star	move.w	d0,d1
+	lsl.w	#LOOK_SHIFT,d1
+	lea	FarLooks,a0
+	add.w	d1,a0
+	move.b	(a1,d0.w),d1
+	add.b	fk_rate(a0),d1
+	move.b	d1,(a1,d0.w)
+	and.w	#WAVE_STEPS-1,d1
+	move.b	FarWave(pc,d1.w),d1		; twice its brightness
+	move.w	fk_colours(a0,d1.w),d1
+	add.w	d0,d0
+	move.w	d1,(a2,d0.w)
+	lsr.w	#1,d0
+	addq.w	#1,d0
+	cmp.w	#FAR_STARS,d0
+	bne	.Next
+	moveq	#0,d0
+.Next	dbf	d2,.Star
+	move.b	d0,FarTurn(a5)
+	rts
+
+; the brightness wave, twice the brightness at each step: lit, fading, off, coming on
+FarWave:
+	dc.b	6,6,6,6,6,6,6,6,6,6,6,6,6,4,2,0
+	dc.b	0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,4
 
 ;--
 ; FarPlace
@@ -243,7 +344,7 @@ FarPlace:
 	lea	FarStars,a1
 	moveq	#0,d0
 	move.b	FarFirst(a5),d0
-	lsl.w	#2,d0				; * fr_SIZEOF
+	add.w	d0,d0				; * fr_SIZEOF
 	add.w	d0,a1				; the highest; the others follow it, twice over
 	lea	FarControl(pc),a2
 	move.b	FarOffset(a5),d1
@@ -256,8 +357,7 @@ FarPlace:
 	move.b	(a1)+,(a0)+
 	add.w	d0,d0
 	move.w	(a2,d0.w),(a0)+			; second: the line after, and both lines' ninth bits
-	move.w	(a1)+,(a0)+			; first plane; the second always has the pixel
-	addq.l	#2,a0
+	addq.l	#4,a0				; its image is always the same: see FarList
 	dbf	d2,.Star
 	rts
 
@@ -276,8 +376,15 @@ LINE	set	LINE+1
 ; generated by tools/make_stars.py: (offset of a colour word, new colour) pairs
 StarFades:	incbin	"starev.bin"
 
-; generated by tools/make_stars.py: the far stars in the order of their lines, twice over
+; generated by tools/make_stars.py: the far stars in the order of their lines, twice over,
+; and how each looks
 FarStars:	incbin	"stars2.bin"
+FarLooks:	incbin	"looks2.bin"
+
+	section	bss,bss
+
+FarPhases:	ds.b	FAR_STARS		; where each far star is in the brightness wave
+FarColours:	ds.w	FAR_STARS		;   and its colour now
 
 	section	chip_data,data_c
 
@@ -285,8 +392,9 @@ FarStars:	incbin	"stars2.bin"
 StarTable:	incbin	"stars.bin"
 	dc.l	COPPER_END
 
-; sprite 6's list: for each far star two control words and its one line's two planes; the
-; end is two words of nought
+; sprite 6's list: for each far star two control words and its one line's two planes, the
+; pixel in the second plane only, which is the pair's second colour; the end is two words
+; of nought
 FarList:
 	rept	FAR_STARS
 	dc.w	0,0,0,FAR_PIXEL

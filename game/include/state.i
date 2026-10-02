@@ -15,6 +15,8 @@ StarSteps	rs.w	1		;   lines to scroll, gathered over this frame's arcade frames
 StarFade	rs.l	1		; next entry of the fade schedule
 FarOffset	rs.b	1		; far stars: lines they have scrolled, 0-255
 FarFirst	rs.b	1		;   which of them is highest on the screen; FAR_STARS when it is the first
+FarTurn		rs.b	1		;   whose turn it is to twinkle
+FarPad		rs.b	1
 ReportPtr	rs.l	1		; test builds: what to write to "results"
 ReportLen	rs.l	1
 FrameStart	rs.w	1		; test builds: FrameCount when this frame's work began

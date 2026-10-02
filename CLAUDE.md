@@ -148,25 +148,44 @@ option, up to four.
   not yet looked at on screen).
 
 - **The far stars: experimental** (2026-10-02, the user's wish: "a
-  slower dimmer field on the last available sprite"). A second layer of
-  24 stars on sprite 6, in two dim colours (`FAR_DIM`, `FAR_DIMMER` in
-  `video.s`), scrolling half as fast as the near ones (`FAR_SLOWER` in
-  `stars.s`; a quarter was tried first and the user found it too
-  slow), downwards only: they stand still while
-  the near ones run backwards. They cannot be in the near stars' copper
-  table, which scrolls as one, so they are an ordinary sprite: a list
-  of one-line images in chip RAM, one for each star, 4 lines apart at
-  least (a sprite needs a line between two uses). When they move a
-  line the vertical blank interrupt writes every star's place into the
-  list again (`FarPlace`, some 90 cycles a star), starting with the
-  highest on the screen: the star that leaves at the bottom comes in
-  at the top and is the first from then on. `tools/make_stars.py` makes
-  them (`stars2.bin`). Seen on screenshots: all 24 show and scroll.
-  What it costs at half speed, on the same stress games as before it:
-  about a line a frame on average; the worst frames 302, 263, 290, 286
-  and 337 lines (were 303, 269, 291, 285 and 330), late frames 1, 0, 0,
-  0 and 16 (were 0, 0, 0, 0 and 11). At a quarter it was 0.7 lines and
-  0, 0, 0, 0 and 16.
+  slower dimmer field on the last available sprite"; on the branch
+  `second-stars`). A second layer of 24 stars on sprite 6, behind the
+  near ones, scrolling half as fast (`FAR_SLOWER` in `stars.s`; a
+  quarter was tried first and was too slow), downwards only: they stand
+  still while the near ones run backwards. Each has one of the near
+  stars' hues at half their brightness, and twinkles.
+  - Where they are: they cannot be placed by the near stars' copper
+    table, which scrolls as one, so they are an ordinary sprite: a list
+    of one-line images in chip RAM, one for each star, 4 lines apart at
+    least (a sprite needs a line between two uses). When they move a
+    line the vertical blank interrupt writes every star's place into
+    the list again (`FarPlace`), starting with the highest on the
+    screen: the star that leaves at the bottom comes in at the top and
+    is the first from then on.
+  - How they look: the sprite pair has three colours; the near stars
+    use the first and the far stars the second, and every entry of the
+    star table now sets both for its line (an entry is 16 bytes, the
+    table 8 KB). A far star's colour must be in the entry that runs on
+    the line the star is on, which is another entry every frame, so
+    every frame each star's colour is written to where it is needed
+    (`FarColour`). They twinkle four at a time in turn (`FarTwinkle`):
+    a star moves on in a brightness wave of 32 steps that all share,
+    from its own place in it and at its own rate, 1 to 3 steps a turn.
+  - `tools/make_stars.py` makes them (`stars2.bin`, `looks2.bin`).
+    Checked on screenshots: every lit star is found in the colour its
+    state has, near where its place says.
+  - What it costs: all of it is in the vertical blank interrupt, which
+    the stress runs' measure (from the frame's first work to the flip)
+    mostly does not see; the timing runs count from the frame's start
+    and do. Their average and worst lines from stages 1, 6 and 9:
+    without far stars 127 and 246 from stage 1; with them 138 and 257,
+    139 and 304, 148 and 286. So about 10 lines a frame, and 9 lines to
+    spare in the worst frame of those runs. Late frames in the five
+    stress runs: 1, 0, 1, 0 and 29 (without: 0, 0, 0, 0 and 11). The
+    first version (two fixed dim colours, no twinkle, nothing written
+    every frame) cost under 2 lines a frame, with late frames 1, 0, 0,
+    0 and 16.
+  - The user has not seen this version yet.
 
 ### The fighter is 10 lines higher than the arcade's (decided 2026-10-02)
 - The arcade's fighter is at sprite y 297: display lines 241 to 256, its
