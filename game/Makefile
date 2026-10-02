@@ -5,6 +5,7 @@
 # make test       run the test builds in the emulator: frame timing, and the sound driver,
 #                 the flight stepper and the game against their models (tools/run_tests.py;
 #                 it needs the FS-UAE with Lua scripting, see tools/amiga.py)
+# make compat     boot the disk on other Amigas than the stock A500 and play (tools/compat.py)
 # DEFS="-DRASTER_METER=1" and the like override include/config.i
 
 DEFS   ?=
@@ -76,8 +77,11 @@ run: build/galaga.adf
 test:
 	python3 tools/run_tests.py
 
+compat: build/galaga.adf
+	python3 tools/compat.py
+
 clean:
 	rm -rf build
 
 FORCE:
-.PHONY: all run test lint clean FORCE
+.PHONY: all run test compat lint clean FORCE

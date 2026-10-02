@@ -22,11 +22,12 @@ decision is made or changed.
 - **Assembler:** vasm (`vasmm68k_mot`), Motorola syntax. Keep the code
   tight. The game's code follows the style guide: @docs/style.md
   (the experiments predate it and do not).
-- **Measure, don't estimate.** Timing claims come from `tools/measure.sh`
-  (FS-UAE as an A500). Things only visible on the display (hardware
-  sprites, copper effects) are checked by capturing the FS-UAE window
-  with `~/Projects/amiga-project/tools/fsuae-screenshot.sh`, or by the
-  user looking.
+- **Measure, don't estimate.** Timing claims come from the emulator as a
+  stock A500 with its cycle-exact emulation on: `game/tools/run_tests.py`
+  (see Tests), or `tools/measure.sh` in the experiments. Things only
+  visible on the display (hardware sprites, copper effects) are checked
+  on screenshots the tests take through the emulator's Lua
+  (`Amiga.screenshot` in `game/tools/amiga.py`), or by the user looking.
 
 ## Decisions
 
@@ -343,11 +344,12 @@ option, up to four.
   are off for the process (`pr_WindowPtr` = -1), a file of the wrong
   size, mark or checksum, or with anything in it that is not a score or
   a letter, is ignored, and a disk that cannot be written is left.
-  Tried in FS-UAE with `-DSAVE_TEST=1` (a score entered and QUIT taken
-  by themselves): from a hard-drive directory and from a floppy image
-  the file is written and read back on the next start; a damaged file
-  gives the arcade's scores; a read-only floppy image ends at the
-  AmigaDOS prompt with no requester and the image unchanged.
+  Checked by the play scenes `initials` and `floppy` (see Tests), on
+  the released build: from a hard-drive directory and from a floppy
+  image the file is written and read back on the next start; a damaged
+  file gives the arcade's scores; a floppy image that cannot be written
+  ends at the AmigaDOS prompt with no requester, the image unchanged,
+  and the game starts again from there.
 - Options: FIGHTERS 3 or 6 (the user's choice; the arcade's switch has
   2 to 5), SHOTS 2 to 4 (how many can be in flight at once; 2 is the
   arcade's) and DIFFICULTY, which is the arcade's own switch: easy (its
@@ -367,8 +369,10 @@ option, up to four.
 - P pauses a game and lets it go on (`keys.s`: the keyboard is asked
   directly, once a frame, and answered with the beam for a clock;
   `main.s`): nothing moves, the sound is held, PAUSED shows in the
-  panel. Not in the attract mode or the menus. Written without being
-  tried: nothing here can press a key.
+  panel. Not in the attract mode or the menus. Checked by the play
+  scene `pause`, which presses the emulated keyboard's keys: P holds the
+  game, the stars and the sound and lets them go, every press counts,
+  and no other key does anything.
 - More shots: all of a fighter's shots are on one sprite, top one
   first, each 9 lines or more under the one above; firing waits for
   that room as it did for two. With SHOTS at 2 the game is as before
@@ -437,6 +441,63 @@ option, up to four.
   all identical. The game requests sound n by writing byte 2*n of
   `snd_state`. Size: 1.5 KB code, 3.2 KB tables, 0.5 KB state, 4.4 KB
   of samples in chip RAM.
+
+## Tests
+
+The tests need the FS-UAE with Lua scripting (github.com/mwulffn/fs-uae;
+`FSUAE_LUA` is its executable, by default
+`~/Projects/fs-uae-lua/fs-uae/od-fs/fs-uae`). It runs without a window,
+at full speed (about nine times the Amiga's) with the cycle-exact
+emulation on, and several at once. Decided 2026-10-02.
+
+- `game/tools/amiga.py` starts an emulator and talks to it: Lua code in,
+  values out. It watches for exceptions that mean a crash (not the
+  ROM's own: Kickstart tries instructions to find out what CPU it has).
+  A configuration file must be given by its full path: a relative one
+  is silently not read.
+- `game/tools/run_tests.py` (`make test`) builds every test program,
+  runs each in an emulator of its own and gives its report to the
+  checker: three timing runs (4,000 frames from stages 1, 6 and 9; a
+  late frame fails), the sound driver, the flight stepper in both
+  builds, the stage test's six runs, and the play scenes. 17 runs, a
+  minute. `run_tests.py timing 4000 -DFIRST_STAGE=6`, `stage 8:6000`,
+  `play pause` and the like run a part. Everything is left in
+  `build/tests`, a directory a run.
+- Checked against the released FS-UAE 3.2.35, which has an older UAE
+  core (`run_tests.py --stock`: windows, the Amiga's own speed): the
+  sound, flight and stage reports are byte for byte the same in both.
+  The timing reports agree on every figure but the sum of all frames'
+  lines, which differs by 10 to 30 in half a million, and does so from
+  run to run in the same emulator: when the program starts relative to
+  the beam depends on the host's disk.
+- **The released build is played from outside** (`game.py`,
+  `playtest.py`): the test moves the stick, presses the button and keys,
+  and reads the game's state by its names. `build/galaga.dbg` is the
+  same program linked with its symbols, which say where `State` is;
+  vasm says each field's offset and each constant's value from the
+  headers (and `title.s`'s own constants). Nothing in the program is
+  there for these tests. The scenes: `menus` (the title, every option,
+  a game with six fighters, HARD and four shots in flight), `pause`,
+  `attract` (silent throughout, ended by the button and by itself, the
+  score put back), `initials` and `floppy` (see Saving). Sound is
+  checked by watching the CPU's writes to Paula's volume registers.
+- `run_tests.py stress` is not part of `make test`: see Measured budget.
+- `game/tools/compat.py` (`make compat`) boots the released disk on
+  other Amigas and plays for half a minute: no crash, the title's
+  picture pixel for pixel the stock A500's, the game's and the sound's
+  speed, something hit and heard, the left mouse button out to the
+  prompt and the game started again. 2026-10-02, all as the stock A500:
+  A500 with Kickstart 1.2, 1.3 (also with slow RAM and with fast RAM)
+  and 2.04, A500+, A600 with 2.05 and 3.1, A1200 with 3.0 and 3.1 (also
+  with fast RAM), A4000 with 3.1. An NTSC A500 fails (see Open). This
+  is the emulator's word, not a real machine's.
+- Found by these tests and fixed: `SoundPause` and `SoundInit` cleared
+  Paula's volume registers with `clr`, which reads first on a 68000 and
+  so writes the bus's garbage to a write-only register for a moment
+  (now in the style guide). Found and not fixed: the late frames under
+  Open.
+- Not usable for timing: `cycle_exact=false` is faster still but gives
+  106 lines where the truth is 134.
 
 ## Measured budget
 
@@ -549,6 +610,27 @@ the part of a strip that changes (a rebuild clears and refills the
 whole strip), explosions as one 32x32 bob instead of four 16x16, the
 cheaper bomb, the sound driver.
 
+**Stress** (2026-10-02, `tools/run_tests.py stress`). The test builds'
+player presses the button every 16 frames. A build played from outside
+with the button hammered (down every other frame) and the stick going
+from side to side, the reserve topped up so the game lasts, counts the
+passes of the main loop that took more than one frame, over 6,000
+frames. The games differ from run to run (the random numbers have the
+beam in them), so the counts vary:
+
+| Run | Late frames |
+|---|---|
+| From stage 1, 2 shots | 0 to 1 |
+| From stage 9, 2 shots | 2 to 3 |
+| From stage 9, 4 shots, two fighters | 4 to 7 |
+| From stage 14, 4 shots, two fighters | 16 to 46 |
+
+One is the frame that sets a stage up; the rest come in runs, every
+sixth frame or so of a busy entrance. A late frame is shown for two
+frames; the sound and the stars do not notice. The same three timing
+runs as above, as the code is now: 131 lines on average and 281 at
+worst from stage 1, 140 and 307 from stage 6, 126 and 302 from stage 9.
+
 Found and fixed with the profile: building a line of text took about
 13 lines a flyer (a byte at a time); it now builds both letters of a
 flyer a row at a time, about four times faster, which took the frame
@@ -588,11 +670,24 @@ included, so the real figure is a little lower.
   firing from inside the beam, and the captured fighter that comes back
   in a later stage.
 - **Title, second pass:** a proper logo; the arcade's own scripted
-  demonstration, if wanted. Not yet confirmed by the user: entering
-  initials, the pause key, the SHOTS option, the attract mode.
-- **The frame budget is thin** (see Measured budget): no late frame in
-  the self-playing runs, with 8 lines to spare in the worst one. More
-  to gain is listed there.
+  demonstration, if wanted. Entering initials, the pause key, the
+  SHOTS option and the attract mode are checked by the play scenes (see
+  Tests) but the user has not yet seen them.
+- **The frame budget is exceeded in hard play** (see Measured budget,
+  Stress): no late frame in the self-playing test runs, with 6 lines to
+  spare in the worst one, but a player who hammers the button gets late
+  frames: up to 7 in 6,000 on stages 1 to 12, and up to 46 in 6,000 on
+  stages 14 to 16 with four shots and two fighters. More to gain is listed
+  there.
+- **The initials screen is late one frame in 16.** It takes about 265
+  lines a frame (the best scores 232, the title 104: six lines of text
+  drawn as flyers every frame), and rebuilding the blinking line costs
+  another 45 or so. Nothing shows it (the stars are the interrupt's),
+  but the 20 seconds of patience are 21.
+- **NTSC is not handled.** On an NTSC A500 the game runs a fifth too
+  fast (72 arcade frames a second) and the bottom of the playfield,
+  with the fighter, is off the screen. Not decided: say PAL only, or ask for
+  PAL where the chips can (ECS and AGA; not an NTSC A500).
 - **Sound cost: deferred, by decision.** The driver works and the user
   has confirmed it sounds right on the emulated A500 (2026-10-01). At up
   to 19 lines a frame it is the largest CPU item measured, and it lifts
@@ -629,7 +724,8 @@ included, so the real figure is a little lower.
 
 | Path | Contents |
 |---|---|
-| `game/` | the game itself, written to the style guide: `make`, `make run`, `make test` (runs a test build in FS-UAE and prints its report) |
+| `game/` | the game itself, written to the style guide: `make`, `make run`, `make test` (see Tests) |
+| `game/tools/run_tests.py`, `amiga.py`, `game.py`, `playtest.py`, `compat.py` | the tests: see Tests |
 | `experiment-1` .. `experiment-7` | the experiments (1-5 rendering, 6 adds sound, 7 compares blit scheduling); each has `make run`, and `tools/measure.sh` for timing |
 | `experiment-1/tools/extract_gfx.py` | sprites, font and palette from the ROM to Amiga bitplanes |
 | `analysis/` | MAME Lua trace scripts and results (colours, sprite load, positions) |

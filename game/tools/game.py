@@ -70,14 +70,23 @@ class Game:
         machine: Machine = STOCK_A500,
         *,
         floppy: Path | None = None,
+        hard_drive: bool = True,
         symbols: Path | None = None,
     ) -> None:
         self.v = header_values()
         self.work = work
         # the directory work/hd is the hard drive; a floppy, if there is one, boots
         (work / "hd").mkdir(parents=True, exist_ok=True)
-        self.amiga = Amiga(work, machine, hard_drive=work / "hd", floppy=floppy)
-        self.symbols = (symbols or GAME / "build/galaga.dbg").resolve()
+        self.amiga = Amiga(
+            work,
+            machine,
+            hard_drive=work / "hd" if hard_drive else None,
+            floppy=floppy,
+        )
+        # a run that has a build of its own has that build's symbols beside it
+        own = work / "galaga.dbg"
+        default = own if own.exists() else GAME / "build/galaga.dbg"
+        self.symbols = (symbols or default).resolve()
         try:
             self.find()
         except Exception:

@@ -17,6 +17,14 @@ from pathlib import Path
 
 from game import GAME, Game
 
+# the stress runs: name, what the build is given, shots in flight at once
+STRESS = (
+    ("stage-1", "", 2),
+    ("stage-9", "-DFIRST_STAGE=9", 2),
+    ("stage-9-four-shots-two-fighters", "-DFIRST_STAGE=9 -DDUAL_START=1", 4),
+    ("stage-14-four-shots-two-fighters", "-DFIRST_STAGE=14 -DDUAL_START=1", 4),
+)
+
 FILE = "AmiGalaga.scores"
 FILE_SIZE = 48  # a mark, five scores, five names, a checksum
 GAME_STARTS = 2000  # frames from START GAME to a fighter in play, at most
@@ -317,6 +325,44 @@ def floppy(work: Path) -> list[str]:
         expect("read from disk", game.get("ScoresLoaded"), 0)
     expect("the write-protected image unchanged", locked.read_bytes() == before, True)
     return [f"{name} saved to the floppy and read back; a write-protected one is left"]
+
+
+def stress(shots: int, frames: int = 6000) -> Callable[[Path], list[str]]:
+    """A scene that plays harder than the test builds' player does: the button
+    hammered, with `shots` in flight at once, and the fighters in reserve topped up
+    so the game lasts. It counts the passes of the main loop that took more than a
+    frame, which is what a player would see as a hitch, and fails if there are any.
+    Which stage it starts at and whether with two fighters is the build's business
+    (FIRST_STAGE, DUAL_START)."""
+
+    def scene(work: Path) -> list[str]:
+        with Game(work) as game:
+            game.set("OptShots", shots)
+            start_game(game)
+            first = game.get("Stage", 2)
+            count, lives = game.address("FrameCount"), game.address("Lives")
+            late = game.amiga.lua(
+                f"local last, late = mem.peek_u16({count}), {{}} "
+                "local point = dbg.bpset('VideoFlip', function() "
+                f"local now = mem.peek_u16({count}) "
+                "if (now - last) % 65536 > 1 then late[#late + 1] = emu.frame() end "
+                "last = now end) "
+                f"for frame = 0, {frames - 1} do local right = frame % 160 < 80 "
+                "input.joy(1, 'right', right) input.joy(1, 'left', not right) "
+                "input.joy(1, 'fire', frame % 2 == 0) "
+                f"if frame % 500 == 0 then mem.poke_u8({lives}, 9) end "
+                "emu.wait_frames(1) end dbg.bpclear(point) return late"
+            )[0]
+            game.amiga.wait(0)  # raises if the program crashed meanwhile
+            said = (
+                f"{shots} shots, stages {first} to {game.get('Stage', 2)}: {len(late)}"
+                f" of {frames} frames late"
+            )
+            if late:
+                raise AssertionError(f"{said}, at emulator frames {late[:20]}")
+        return [said]
+
+    return scene
 
 
 SCENES: dict[str, Callable[[Path], list[str]]] = {

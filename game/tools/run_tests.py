@@ -9,6 +9,10 @@
                                                 e.g. stage 8:6000
     tools/run_tests.py play [scene ...]         the released game, played from outside
                                                 (playtest.py), e.g. play pause
+    tools/run_tests.py stress                   not part of everything: games played
+                                                harder than the test builds play, at
+                                                later stages, with four shots and two
+                                                fighters; any frame that is late fails
 
 A test build runs by itself, writes a report to the file "results" and exits. Every
 run is built first, one after the other; then they all run at once, each in an
@@ -34,7 +38,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from amiga import KICKSTARTS, STOCK_A500, Amiga, boot_directory
-from playtest import SCENES
+from playtest import SCENES, STRESS, stress
 
 GAME = Path(__file__).resolve().parent.parent
 TOOLS = GAME / "tools"
@@ -128,6 +132,13 @@ def play_runs(names: tuple[str, ...]) -> list[Run]:
     return [Run(f"play-{name}", "", 0, 0, [], scene=SCENES[name]) for name in names]
 
 
+def stress_runs() -> list[Run]:
+    return [
+        Run(f"stress-{name}", defs, 0, 0, [], scene=stress(shots))
+        for name, defs, shots in STRESS
+    ]
+
+
 def build(run: Run) -> None:
     """Build the run's program and put it where its emulator will boot from."""
     subprocess.run(
@@ -137,6 +148,7 @@ def build(run: Run) -> None:
         stdout=subprocess.DEVNULL,
     )
     boot_directory(TESTS / run.name / "hd", GAME / "build/galaga")
+    shutil.copy(GAME / "build/galaga.dbg", TESTS / run.name)
 
 
 def emulate(run: Run) -> None:
@@ -228,6 +240,8 @@ def main() -> None:
         runs += stage_runs(arguments or STAGES)
     if what in ("play", "all") and not options.stock:
         runs += play_runs(arguments or tuple(SCENES))
+    if what == "stress" and not options.stock:
+        runs += stress_runs()
     if not runs:
         parser.error(f"no such test: {what}")
 
