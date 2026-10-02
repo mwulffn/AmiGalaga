@@ -12,6 +12,13 @@
 ; system's requesters for such things are switched off for this process
 ; while the game runs, as they would show behind the game's display.
 ;
+; Started from Workbench (its icon), the program has no shell: Workbench sends
+; it a message instead, which must be taken before anything else is done and
+; answered as the very last thing, and the directory the icon is in comes with
+; the message, not as the current directory. So that is made the current
+; directory while the program runs, and the best scores are beside the
+; program however it was started.
+;
 ; The sound driver takes CIA-B's timer A and switches the other CIA-B
 ; interrupts off; what the system had enabled there is asked of
 ; ciab.resource beforehand and put back afterwards.
@@ -33,6 +40,12 @@ EXEC_BASE	equ	4
 OldOpenLibrary	equ	-408
 CloseLibrary	equ	-414
 FindTask	equ	-294
+WaitPort	equ	-384
+GetMsg		equ	-372
+ReplyMsg	equ	-378
+pr_MsgPort	equ	92			; in the process: where Workbench's message comes
+pr_CLI		equ	172			;   its shell, or 0 if Workbench started it
+sm_ArgList	equ	36			; in Workbench's message: the program's directory (a lock) and name
 OpenResource	equ	-498
 pr_WindowPtr	equ	184			; in the process: where its requesters go; -1 for none
 ; cia.resource
@@ -52,6 +65,7 @@ Open		equ	-30
 Close		equ	-36
 Read		equ	-42
 Write		equ	-48
+CurrentDir	equ	-126
 MODE_OLDFILE	equ	1005
 MODE_NEWFILE	equ	1006
 ; the best scores' file: a mark, the scores and names as the state has them, a checksum
@@ -78,13 +92,24 @@ CALLSYS	macro
 Start:	move.l	EXEC_BASE.w,a6
 	sub.l	a1,a1
 	CALLSYS	FindTask
-	move.l	d0,a2				; this process: no requesters from here on
-	move.l	pr_WindowPtr(a2),OldWindow
+	move.l	d0,a2				; this process
+	clr.l	WbMessage
+	clr.b	AtHome
+	tst.l	pr_CLI(a2)
+	bne	.Shell
+	lea	pr_MsgPort(a2),a0		; from Workbench: its message first
+	CALLSYS	WaitPort
+	lea	pr_MsgPort(a2),a0
+	CALLSYS	GetMsg
+	move.l	d0,WbMessage
+.Shell	move.l	pr_WindowPtr(a2),OldWindow	; no requesters from here on
 	moveq	#-1,d0
 	move.l	d0,pr_WindowPtr(a2)
 	lea	DosName(pc),a1
 	CALLSYS	OldOpenLibrary
 	move.l	d0,DosBase
+	bsr	HomeDir
+	move.l	EXEC_BASE.w,a6
 	clr.b	CiaKnown
 	lea	CiaName(pc),a1
 	CALLSYS	OpenResource
@@ -202,13 +227,44 @@ Start:	move.l	EXEC_BASE.w,a6
 	move.l	d4,d1
 	CALLSYS	Close
 	endc
+	bsr	HomeDir				; the directory that was current, again
+	move.l	EXEC_BASE.w,a6
 	move.l	DosBase,d0
 	beq	.NoDos
 	move.l	d0,a1
-	move.l	EXEC_BASE.w,a6
 	CALLSYS	CloseLibrary
-.NoDos	moveq	#0,d0
+.NoDos	move.l	WbMessage,d2
+	beq	.Out
+	CALLSYS	Forbid				; so that Workbench cannot unload the program
+	move.l	d2,a1				;   before it has ended
+	CALLSYS	ReplyMsg
+.Out	moveq	#0,d0
 	rts
+
+;--
+; HomeDir
+; Started from Workbench: change the current directory. The first time to the program's
+; own, which comes with Workbench's message; the second time back to the one that was
+; current before. Started from a shell, or with no dos.library: nothing.
+; lint: allow a6
+; In:       -
+; Out:      -
+; Clobbers: d0-d1, a0-a1, a6
+HomeDir:
+	move.l	WbMessage,d0
+	beq	.Done
+	move.l	d0,a0
+	move.l	DosBase,d0
+	beq	.Done
+	move.l	d0,a6
+	move.l	OtherDir,d1
+	not.b	AtHome
+	beq	.Change				; it was at home: back
+	move.l	sm_ArgList(a0),a0
+	move.l	(a0),d1				; the first argument's lock: the program's directory
+.Change	CALLSYS	CurrentDir
+	move.l	d0,OtherDir			; the one that was current
+.Done	rts
 
 	if	REPORTING=0
 ;--
@@ -364,8 +420,11 @@ ScoresName:	dc.b	"AmiGalaga.scores",0
 SavedVectors:	ds.l	VEC_COUNT
 DosBase:	ds.l	1
 OldWindow:	ds.l	1			; the process's pr_WindowPtr, to put back
+WbMessage:	ds.l	1			; Workbench's message if it started the program, else 0
+OtherDir:	ds.l	1			; started from Workbench: the directory that was current before
 FileBuffer:	ds.b	FILE_SIZE		; the best scores' file as read or to be written
 CiaMask:	ds.b	1			; the CIA-B interrupts the system had enabled
 CiaControl:	ds.b	1			;   and its timer A's control register
 CiaKnown:	ds.b	1			;   nonzero if ciab.resource told us
+AtHome:		ds.b	1			; nonzero while the current directory is the program's own
 	even

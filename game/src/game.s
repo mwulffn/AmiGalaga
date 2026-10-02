@@ -36,6 +36,7 @@
 	xref	ShotsTick
 	xref	BlastsTick
 	xref	BlastsDraw
+	xref	LogoDraw
 	xref	BombsDrop
 	xref	BombsFall
 	xref	BombsDraw
@@ -318,6 +319,7 @@ GameFrame:
 	MARK	PROF_FORMATION
 	bsr	BeamDraw
 	bsr	CaptivePlace
+	bsr	LogoDraw
 	MARK	PROF_BEAM
 	bsr	FlyersBegin
 	lea	Flights(a5),a3

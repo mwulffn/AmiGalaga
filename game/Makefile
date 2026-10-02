@@ -15,14 +15,15 @@ KICK   ?= $(HOME)/Documents/FS-UAE/Kickstarts/kick34005.A500
 UAE     = fs-uae --amiga_model=A500 --kickstart_file=$(KICK) --slow_memory=0
 
 # startup.o must be first: the program starts at the top of the first object
-OBJECTS = build/startup.o build/main.o build/game.o build/stage.o build/dives.o build/player.o build/blasts.o build/bombs.o build/text.o build/flow.o build/capture.o build/transform.o build/title.o build/keys.o build/video.o build/stars.o \
+OBJECTS = build/startup.o build/main.o build/game.o build/stage.o build/dives.o build/player.o build/blasts.o build/bombs.o build/text.o build/flow.o build/capture.o build/transform.o build/title.o build/logo.o build/keys.o build/video.o build/stars.o \
 	build/formation.o build/flyers.o build/flight.o build/flighttest.o build/panel.o build/sprites.o build/sound.o \
 	build/gfx.o build/state.o
-# built from the user's own ROM set; never committed
+# built, most of it from the user's own ROM set; never committed
 GENERATED = build/snd_data.i build/snd_chip.bin build/sndtest_script.i \
 	build/stars.bin build/starev.bin \
 	build/gfx.i build/enemies.bin build/sprites.bin build/font.bin build/badges.bin build/beam.bin build/flash.bin \
-	build/motion_data.s build/flight_cases.i
+	build/motion_data.s build/flight_cases.i \
+	build/logo.i build/logo.bin
 INCLUDES = $(wildcard include/*.i)
 
 all: build/$(NAME).adf
@@ -51,6 +52,11 @@ build/stars.bin build/starev.bin: tools/make_stars.py
 	@mkdir -p build
 	python3 tools/make_stars.py build
 
+# the logo is the game's own: nothing of the ROM is in it
+build/logo.i build/logo.bin: tools/make_logo.py
+	@mkdir -p build
+	python3 tools/make_logo.py build
+
 build/sndtest_script.i: tools/sndtest.py
 	@mkdir -p build
 	python3 tools/sndtest.py script $@
@@ -67,10 +73,16 @@ lint: $(GENERATED)
 	uv run -q --project ../asmlint asmlint -I include -I build src/*.s
 	python3 tools/check_even.py include build
 
-build/$(NAME).adf: build/$(NAME)
+# the icon is the game's own: nothing of the ROM is in it
+build/$(NAME).info: tools/make_icon.py
+	@mkdir -p build
+	python3 tools/make_icon.py $@
+
+build/$(NAME).adf: build/$(NAME) build/$(NAME).info
 	@printf '$(NAME)\n' > build/startup-sequence
 	xdftool $@ format $(NAME) + boot install + makedir S \
-		+ write build/startup-sequence S/startup-sequence + write build/$(NAME)
+		+ write build/startup-sequence S/startup-sequence + write build/$(NAME) \
+		+ write build/$(NAME).info
 
 run: build/$(NAME).adf
 	$(UAE) --floppy_drive_0=$(CURDIR)/build/$(NAME).adf

@@ -47,6 +47,7 @@ scr_big_erase	rs.l	MAX_BIGS
 scr_ships	rs.w	1			; how many spare fighters its panel shows
 scr_high	rs.l	1			; the high score its panel shows
 scr_badges	rs.w	1			; the stage and how many of its badges its panel shows
+scr_logo	rs.w	1			; nonzero: the title's logo is in it (logo.s)
 scr_SIZEOF	rs.b	0
 
 ; the formation, and the arcade's two tables that place it (HomeX, HomeLoc):

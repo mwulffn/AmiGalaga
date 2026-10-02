@@ -82,8 +82,9 @@ make run                      # or: make run KICK=/path/to/kickstart-1.3.rom
 On a real Amiga, write `build/AmiGalaga.adf` to a floppy, or put it on a
 floppy emulator, and boot from it.
 
-From a hard disk, copy the file `AmiGalaga` anywhere and start it from the
-Shell. Starting it from Workbench is not supported yet.
+From a hard disk, copy `AmiGalaga` and its icon `AmiGalaga.info` into any
+drawer, and start it from Workbench with a double click or from the Shell
+by its name.
 
 ## Playing
 

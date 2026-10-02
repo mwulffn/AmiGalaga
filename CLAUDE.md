@@ -425,10 +425,33 @@ option, up to four.
   that room as it did for two. With SHOTS at 2 the game is as before
   (the stage test is unchanged and identical). Tried on screenshots at
   4 with two fighters and fast automatic fire.
-- Still a stub: the title
-  is the game's font, capitals only (AMIGALAGA), not a logo. Starting
-  from Workbench (an icon) is not handled: the game is started from the
-  shell or a startup-sequence.
+- **The logo** (the user's choice of five drawn, 2026-10-02): AMIGALAGA
+  in block letters, yellow over gold over rust with a white top edge and
+  a blue shadow, 192 x 30. The letters are the game's own, drawn on a
+  grid in `tools/make_logo.py` (five of them: A, M, I, G, L); nothing of
+  the arcade is in them, and nothing of its logo. It is a picture in
+  the playfield, not text: copied into a screen once when the title
+  comes and cleared once when it goes (`logo.s`). Each screen remembers
+  whether it has it (`scr_logo`), and what is on is asked of `Mode`, so
+  the title's code knows nothing of it. Seen on screenshots: on the
+  title, gone on the options, back, gone when a game starts.
+- **The icon and starting from Workbench** (2026-10-02): the disk has
+  `AmiGalaga.info`, a fighter of the game's own drawing (the user's
+  choice of three) in Workbench's four pens, made by
+  `tools/make_icon.py` in the old icon format every Kickstart reads.
+  The pens are other colours on 1.3 than on 2.0 and later, so it is a
+  body in pen 1 with an edge in pen 2. `startup.s` takes Workbench's
+  message first, makes the program's directory (which comes with the
+  message) the current one so that the best scores are beside the
+  program, puts the old one back at the end, and answers the message
+  last, under Forbid. Tried on Workbench 3.1 (an A1200, a copy of the
+  user's hard disk image, the pointer worked from outside): the disk's
+  window shows the icon; a double click starts the game; the left mouse
+  button ends it and Workbench is as it was (the same graphics memory
+  free); a second start works; a best score entered is written to the
+  floppy and read back at the next start from the icon. Not tried on
+  Workbench 1.3: there is no Workbench 1.3 disk here. The disk has no
+  icon of its own: Workbench shows its usual one.
 - While the title, the options or the best scores show, the stars
   drift slowly: a quarter of a line per arcade frame, 15 lines a second
   (`TITLE_SPEED` in `stars.s`). Asked for and confirmed on screen by
@@ -772,8 +795,8 @@ included, so the real figure is a little lower.
   (2026-10-01). Also open there:
   firing from inside the beam, and the captured fighter that comes back
   in a later stage.
-- **Title, second pass:** a proper logo; the arcade's own scripted
-  demonstration, if wanted. Entering initials, the pause key, the
+- **Title, second pass:** the arcade's own scripted demonstration, if
+  wanted. Entering initials, the pause key, the
   SHOTS option and the attract mode are checked by the play scenes (see
   Tests) but the user has not yet seen them.
 - **A few late frames are left in the hardest play** (see Measured

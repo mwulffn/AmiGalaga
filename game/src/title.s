@@ -2,7 +2,7 @@
 ;
 ; The arcade's coin slot, its start buttons and its second player are gone.
 ; Instead:
-;   The title: the game's name, START GAME, OPTIONS and QUIT. The stick moves
+;   The title: the game's name (a picture: logo.s), START GAME, OPTIONS and QUIT. The stick moves
 ;     between them, the button takes one. QUIT ends the program and gives the
 ;     machine back to the system (startup.s saves the best scores on the way).
 ;     Left alone for a while the title gives way to
@@ -76,7 +76,6 @@ SCORE_DIGITS	equ	6
 NAME_AT		equ	3+2+SCORE_DIGITS+2	; where the initials are in a best score's line
 ; where things go, in characters of the playfield
 HEAD_ROW	equ	8
-TITLE_COLUMN	equ	9
 TITLE_ITEMS	equ	3
 ITEM_QUIT	equ	2
 MENU_ROW	equ	16			; the title's lines, ITEM_PITCH rows apart
@@ -103,13 +102,7 @@ ENTER_COLUMN	equ	4
 TitleShow:
 	move.b	#MODE_TITLE,Mode(a5)
 	clr.b	MenuItem(a5)
-	bsr	NoGame
-	lea	NameText(pc),a0
-	moveq	#TITLE_COLUMN,d1
-	moveq	#HEAD_ROW,d2
-	moveq	#TEXT_WHITE,d3
-	moveq	#0,d0
-	bsr	TextShow
+	bsr	NoGame				; the game's name is the logo's business (logo.s)
 	; falls through
 
 ;--
@@ -756,8 +749,6 @@ ScoresInsert:
 	move.w	d1,d0
 	rts
 
-NameText:
-	dc.b	"AMIGALAGA",0
 OptionsText:
 	dc.b	"OPTIONS",0
 FightersText:
