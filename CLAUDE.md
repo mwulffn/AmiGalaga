@@ -72,7 +72,7 @@ decision is made or changed.
   every 4 frames by bit patterns from the ROM, 32 steps each way).
   `motion/formation.py` is the model: identical to the MAME trace's
   tables on all 33,016 frames of the 7 stages with a formation. The
-  68000 version is `FormationTick`; `test_stage.sh` checks it every
+  68000 version is `FormationTick`; the stage test checks it every
   frame. The drift is added when strips are drawn, so all rows move
   together; breathing reaches a row when its strip is recomposed, so a
   row can be up to 5 frames (2 pixels) behind. When breathing starts
@@ -162,7 +162,7 @@ option, up to four.
   with the beam position mixed in except in test builds, whose model
   makes the same numbers). For the check against the trace the places
   are read from the trace's own order of launches. The 68000 version is `game/src/stage.s`,
-  checked by `game/tools/test_stage.sh` (see below).
+  checked by the stage test (`game/tools/run_tests.py stage`, see below).
 - Dives are scheduled as the arcade does it (`game/src/dives.s`, model
   `motion/dives.py`): three timers (boss, butterfly, bee) counted every
   16 arcade frames, a limit on how many fly at once, restart values from
@@ -219,7 +219,7 @@ option, up to four.
   Stage badges are in the panel above SHIPS, not at the bottom right.
 - Capture, rescue and the dual fighter are ported from the arcade's own
   tasks, with their counters (`game/src/capture.s`; no Python model yet,
-  so `test_stage.sh` builds with `CAPTURE=0` and none of this is checked
+  so the stage test builds with `CAPTURE=0` and none of this is checked
   against MAME). Every other boss dive, while no boss is out capturing
   and the player has one fighter, is a capture attempt: the boss stops
   above where the fighter was, turns to point down and puts the beam
@@ -287,7 +287,7 @@ option, up to four.
 - The wave timer was found because the launcher model started a
   challenging stage's waves too early; with it the model makes all 160
   trace launches at the arcade's frame with no unexplained waits.
-- `test_stage.sh` runs a build that plays itself (side to side, a press
+- The stage test runs a build that plays itself (side to side, a press
   every 16 frames) and compares every launch, landing, hit, kill, score,
   bomb, lost fighter and stage start with the models, in both builds:
   6,000 frames from stage 1 (through a stage change, a game over and
@@ -295,7 +295,7 @@ option, up to four.
   stage, its results and bonus, and stage 4 with its fly-through
   enemies, some shot and some gone) and 6,000 from stage 8 (an enemy
   transforms in both builds). All identical.
-  `STAGES="8:6000" tools/test_stage.sh` runs one of them. Which run
+  `tools/run_tests.py stage 8:6000` runs one of them. Which run
   contains a transformation depends on how the self-playing game goes:
   check with the model when the game's timing changes (the run from
   stage 6 lost its transformation when the results screen came in).
@@ -408,7 +408,7 @@ option, up to four.
   `motion/render_compare.py` shows it side by side.
 - The 68000 stepper is `game/src/flight.s` (`FlightLaunch`,
   `FlightStep`), a port of `motion/pal_scale.py`. `EXACT_TIMING=1`
-  builds the 5-fifths version. `game/tools/test_flight.sh` flies 1,860
+  builds the 5-fifths version. `game/tools/run_tests.py flight` flies 1,860
   cases (every entry path to every place in the formation, every dive
   and escort script, mirrored, with the fighter in different places and
   the hard-stage branches) in FS-UAE in both builds and compares each
@@ -521,7 +521,7 @@ in the worst frame is 7 lines.
 With everything up to the results screen in (2026-10-01), self-playing
 runs of 4,000 frames. The report gives the worst frame's number and
 lists the late frames with what was on screen
-(`tools/test.sh 4000 -DFIRST_STAGE=6`):
+(`tools/run_tests.py timing 4000 -DFIRST_STAGE=6`):
 
 | From stage | Average | Worst frame | Frames over 313 |
 |---|---|---|---|
@@ -582,7 +582,7 @@ included, so the real figure is a little lower.
   style guide and linted.
 - **Capture has no model.** A Python model of the beam, the rescue and
   the dual fighter, checked against a MAME trace with a capture in it,
-  would let `test_stage.sh` run with capture on. The user knows of the
+  would let the stage test run with capture on. The user knows of the
   gap and has put it off: fix it if something turns out to be amiss
   (2026-10-01). Also open there:
   firing from inside the beam, and the captured fighter that comes back

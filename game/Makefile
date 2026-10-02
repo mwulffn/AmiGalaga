@@ -2,8 +2,9 @@
 # make            build the executable and a bootable disk image
 # make run        boot the disk in FS-UAE (stock A500, Kickstart 1.3)
 # make lint       check every routine's header against its code (also part of the build)
-# make test       run the test builds in FS-UAE: frame timing, and the sound driver,
-#                 the flight stepper and the stage entrance against their models
+# make test       run the test builds in the emulator: frame timing, and the sound driver,
+#                 the flight stepper and the game against their models (tools/run_tests.py;
+#                 it needs the FS-UAE with Lua scripting, see tools/amiga.py)
 # DEFS="-DRASTER_METER=1" and the like override include/config.i
 
 DEFS   ?=
@@ -52,7 +53,10 @@ build/sndtest_script.i: tools/sndtest.py
 	@mkdir -p build
 	python3 tools/sndtest.py script $@
 
+# galaga.dbg is the same program with its symbols left in, for the tests to find
+# routines by name in the one that runs
 build/galaga: $(OBJECTS) lint
+	vlink -bamigahunk -o $@.dbg $(OBJECTS)
 	vlink -bamigahunk -s -o $@ $(OBJECTS)
 
 # a header that has drifted from its code breaks the build, and so does a word or long
@@ -70,10 +74,7 @@ run: build/galaga.adf
 	$(UAE) --floppy_drive_0=$(CURDIR)/build/galaga.adf
 
 test:
-	tools/test.sh
-	tools/test_sound.sh
-	tools/test_flight.sh
-	tools/test_stage.sh
+	python3 tools/run_tests.py
 
 clean:
 	rm -rf build

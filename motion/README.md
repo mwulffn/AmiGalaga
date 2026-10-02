@@ -147,7 +147,7 @@ moment; arrival differs by at most 3.2 arcade frames. Most of that
 distance is along the path (a frame or two early or late), not a
 different shape.
 
-The 68000 version is `game/src/flight.s`. `game/tools/test_flight.sh`
+The 68000 version is `game/src/flight.s`. `game/tools/run_tests.py flight`
 flies 1,860 cases through it in FS-UAE, in the exact and the PAL build,
 and compares every frame with `pal_scale.py`: all identical. It costs
 about 1.8 raster lines per flight per frame.
