@@ -172,10 +172,10 @@ option, up to four.
 - The models take the same height (`SHIP_RAISED` in `stagetest.py`,
   the aim's `fighter_half_y` in `motion/bombs.py`, whose default is the
   arcade's, so the checks against MAME are as they were). The stage
-  test is identical in all six runs with it. The user has tried a
-  capture with the fighter raised and it works; a rescue has not been
-  tried since, by anyone: a scene that gets the fighter captured and
-  rescued from outside was attempted and given up (a fighter that
+  test is identical in all six runs with it. The user has played it
+  with the fighter raised and confirmed capture, rescue and how it
+  plays (2026-10-02). No test plays a capture or a rescue: a scene that
+  does it from outside was attempted and given up (a fighter that
   stands still for the beam is bombed first, at the arcade's height
   too).
 
