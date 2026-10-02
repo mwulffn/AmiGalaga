@@ -268,21 +268,6 @@ TitleTick:
 	beq	Initials
 	cmp.b	#MODE_SCORES,d0
 	beq	.Scores
-	if	SAVE_TEST
-	; no joystick needed: a score, its initials, and out
-	cmp.w	#3*50,MenuTimer(a5)
-	bne	.Menu
-	move.l	#$00054320,Score(a5)
-	bsr	ScoresInsert
-	tst.w	d0
-	bmi	.Quit
-	lsl.w	#2,d0
-	lea	Names(a5),a0
-	move.l	#'TST'<<8,(a0,d0.w)
-	st	ScoresDirty(a5)
-	bra	.Quit
-.Menu
-	endc
 	; the title: up and down move between the lines, the button takes the one it is on
 	moveq	#TITLE_ITEMS,d1
 	bsr	MenuMove

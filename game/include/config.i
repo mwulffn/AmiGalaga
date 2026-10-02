@@ -45,10 +45,6 @@ CAPTURE		equ	1		; 0: no boss tries to capture the fighter (the stage test's
 PROFILE		equ	0		; 1: with TEST_FRAMES, the report says where a frame's lines go.
 	endc				;    Noting the time costs some itself: about 15 lines a frame
 
-	ifnd	SAVE_TEST
-SAVE_TEST	equ	0		; 1: to try the saving without a joystick: after a few seconds on the
-	endc				;    title a score is entered as TST and the game quits
-
 	ifnd	DUAL_START
 DUAL_START	equ	0		; 1: a game starts with two fighters, to try them out
 	endc

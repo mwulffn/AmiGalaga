@@ -98,13 +98,15 @@ SoundInit:
 .Voice	move.l	#SndWaves,aud_lc(a0)
 	move.w	#WAVE_LONGEST/2,aud_len(a0)
 	move.w	#IDLE_PERIOD,aud_per(a0)
-	clr.w	aud_vol(a0)
+	; not clr: a 68000's clr reads first, and reading a register that can only be
+	; written puts whatever is on the bus in it. The same wherever a volume is cleared.
+	move.w	#0,aud_vol(a0)
 	lea	AUD_SIZE(a0),a0
 	dbf	d0,.Voice
 	move.l	#SndNoise,aud_lc(a0)
 	move.w	#NOISE_LENGTH/2,aud_len(a0)
 	move.w	#NOISE_PERIOD,aud_per(a0)
-	clr.w	aud_vol(a0)
+	move.w	#0,aud_vol(a0)
 	move.w	#DMA_SET|DMA_AUDIO,dmacon(a6)
 
 	lea	SoundInterrupt(pc),a0
@@ -130,7 +132,7 @@ SoundStop:
 	move.b	#CIA_ICR_TA,CIAB_ICR
 	lea	aud0lc(a6),a0
 	moveq	#AUD_CHANNELS-1,d0
-.Mute	clr.w	aud_vol(a0)
+.Mute	move.w	#0,aud_vol(a0)
 	lea	AUD_SIZE(a0),a0
 	dbf	d0,.Mute
 	move.w	#DMA_AUDIO,dmacon(a6)
@@ -146,7 +148,7 @@ SoundPause:
 	move.w	#INT_EXTER,intena(a6)
 	lea	aud0lc(a6),a0
 	moveq	#AUD_CHANNELS-1,d0
-.Mute	clr.w	aud_vol(a0)
+.Mute	move.w	#0,aud_vol(a0)
 	lea	AUD_SIZE(a0),a0
 	dbf	d0,.Mute
 	rts

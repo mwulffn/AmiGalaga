@@ -104,6 +104,9 @@ Every routine starts with a header like this:
   runs. Two more waits are required for correctness: before the CPU reads
   or writes memory that a pending blit touches, and before a buffer is
   shown.
+- Never `clr` a hardware register that can only be written. A 68000's `clr`
+  reads before it writes, and reading such a register puts whatever is on
+  the bus in it. Write `move.w #0,` instead (vasm leaves that alone).
 - The blitter has one owner at a time. Nothing in an interrupt starts a
   blit unless that interrupt is the owner.
 - Use an interrupt for work that belongs to a hardware moment (the

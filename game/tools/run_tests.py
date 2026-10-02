@@ -7,6 +7,8 @@
     tools/run_tests.py flight                   the flight stepper against its model
     tools/run_tests.py stage [first:frames ...] the game against the models,
                                                 e.g. stage 8:6000
+    tools/run_tests.py play [scene ...]         the released game, played from outside
+                                                (playtest.py), e.g. play pause
 
 A test build runs by itself, writes a report to the file "results" and exits. Every
 run is built first, one after the other; then they all run at once, each in an
@@ -14,7 +16,8 @@ emulator of its own without a window and at full speed (see amiga.py), and each
 report is given to its checker. All of it is in build/tests, a directory a run.
 
 --stock runs them in the released FS-UAE instead: in windows and at the Amiga's own
-speed. It is there to check the two emulators against each other.
+speed. It is there to check the two emulators against each other. The released game
+cannot be played from outside there, so those scenes are left out.
 --jobs N runs N at once (default: as many as the host has processors).
 """
 
@@ -25,11 +28,13 @@ import struct
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
 from amiga import KICKSTARTS, STOCK_A500, Amiga, boot_directory
+from playtest import SCENES
 
 GAME = Path(__file__).resolve().parent.parent
 TOOLS = GAME / "tools"
@@ -52,6 +57,7 @@ class Run:
     size: int  # its report is at least this long
     check: list[str]  # the checker's command; the report's path is put for "@"
     no_late_frames: bool = False  # a timing report with a late frame fails
+    scene: Callable[[Path], list[str]] | None = None  # or: the released game, played
     output: str = ""
     passed: bool = False
     seconds: float = 0.0
@@ -118,6 +124,10 @@ def stage_runs(specs: tuple[str, ...]) -> list[Run]:
     return runs
 
 
+def play_runs(names: tuple[str, ...]) -> list[Run]:
+    return [Run(f"play-{name}", "", 0, 0, [], scene=SCENES[name]) for name in names]
+
+
 def build(run: Run) -> None:
     """Build the run's program and put it where its emulator will boot from."""
     subprocess.run(
@@ -174,6 +184,11 @@ def execute(run: Run, stock: bool) -> None:
     start = time.monotonic()
     results = TESTS / run.name / "hd/results"
     try:
+        if run.scene:
+            run.output = "\n".join(run.scene(TESTS / run.name))
+            run.passed = True
+            run.seconds = time.monotonic() - start
+            return
         (emulate_stock if stock else emulate)(run)
         command = [str(results) if a == "@" else a for a in run.check]
         check = subprocess.run(
@@ -211,6 +226,8 @@ def main() -> None:
         runs += flight_runs()
     if what in ("stage", "all"):
         runs += stage_runs(arguments or STAGES)
+    if what in ("play", "all") and not options.stock:
+        runs += play_runs(arguments or tuple(SCENES))
     if not runs:
         parser.error(f"no such test: {what}")
 
@@ -220,8 +237,8 @@ def main() -> None:
         for run in runs:
             build(run)
     finally:
-        # leave the normal build in place
-        subprocess.run(["make", "-s", "build/galaga"], cwd=GAME, check=True)
+        # leave the normal build in place, with its disk
+        subprocess.run(["make", "-s"], cwd=GAME, check=True)
     with ThreadPoolExecutor(options.jobs) as pool:
         list(pool.map(lambda run: execute(run, options.stock), runs))
 
